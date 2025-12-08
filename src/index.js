@@ -31,7 +31,7 @@ const CONFIG = {
   bonusCooldownMs: 5000,
   speedBoostMultiplier: 1.05,
   ballSpeedCap: 1500,
-  speedIncreaseInterval: 60,
+  speedIncreaseInterval: 30,
   speedIncreaseMultiplier: 1.05
 };
 
@@ -70,7 +70,11 @@ const state = {
   rowIndex: 0,
   brickSpeed: CONFIG.brickDriftSpeed,
   speedTimer: 0,
-  level: 1
+  level: 1,
+  playerLevel: 1,
+  xp: 0,
+  xpNeeded: 10,
+  xpDrops: []
 };
 
 const bonusState = {
@@ -128,6 +132,19 @@ function getBrickHP() {
   const base = 1;
   const ramp = Math.floor(state.rowIndex / 8);
   return Math.min(base + ramp, 5);
+}
+
+function xpForLevel(level) {
+  return 10 + (level - 1) * 5;
+}
+
+function gainXp(amount) {
+  state.xp += amount;
+  while (state.xp >= state.xpNeeded) {
+    state.xp -= state.xpNeeded;
+    state.playerLevel += 1;
+    state.xpNeeded = xpForLevel(state.playerLevel);
+  }
 }
 
 function spawnBrickRow() {
@@ -211,6 +228,22 @@ function spawnRewardBall(brick) {
     returning: true,
     returnSpeed: speed,
     reward: true
+  });
+}
+
+function spawnXpDrop(brick) {
+  const targetX = state.paddle.x + state.paddle.w / 2;
+  const targetY = state.paddle.y - state.paddle.h;
+  const dx = targetX - (brick.x + brick.w / 2);
+  const dy = targetY - (brick.y + brick.h / 2);
+  const dist = Math.hypot(dx, dy) || 1;
+  const speed = 800;
+  state.xpDrops.push({
+    x: brick.x + brick.w / 2,
+    y: brick.y + brick.h / 2,
+    vx: (dx / dist) * speed,
+    vy: (dy / dist) * speed,
+    size: 10
   });
 }
 
@@ -310,6 +343,9 @@ function resetGame() {
   state.brickSpeed = CONFIG.brickDriftSpeed;
   state.speedTimer = 0;
   state.level = 1;
+  state.playerLevel = 1;
+  state.xp = 0;
+  state.xpNeeded = xpForLevel(1);
   state.ballCount = 1;
   state.balls = [];
   placeBallOnPaddle({ centerPaddle: true });
@@ -395,6 +431,29 @@ function update(dt) {
     }
   }
   paddle.x = clamp(paddle.x, 0, CONFIG.width - paddle.w);
+
+  // Mouvement des drops d'XP
+  for (let i = state.xpDrops.length - 1; i >= 0; i -= 1) {
+    const drop = state.xpDrops[i];
+    drop.x += drop.vx * dt;
+    drop.y += drop.vy * dt;
+    const targetX = paddle.x + paddle.w / 2;
+    const targetY = paddle.y - paddle.h / 2;
+    const dx = targetX - drop.x;
+    const dy = targetY - drop.y;
+    const dist = Math.hypot(dx, dy);
+    if (dist < drop.size + 6) {
+      state.xpDrops.splice(i, 1);
+      gainXp(1);
+      continue;
+    }
+    if (dist > 0.001) {
+      const speed = 800;
+      const scale = speed / dist;
+      drop.vx = dx * scale;
+      drop.vy = dy * scale;
+    }
+  }
 
   // Mouvement et collisions pour chaque balle active
   for (let i = state.balls.length - 1; i >= 0; i -= 1) {
@@ -538,6 +597,7 @@ function update(dt) {
           brick.alive = false;
           brick.deathTime = now;
           state.score += 50 + brick.row * 10;
+          spawnXpDrop(brick);
           if (brick.type === 'bonus') {
             bonusState.lastBonus = brick.deathTime;
             spawnRewardBall(brick);
@@ -705,6 +765,13 @@ function renderBricks() {
   }
 }
 
+function renderXpDrops() {
+  ctx.fillStyle = 'rgba(56, 189, 248, 0.8)';
+  for (const drop of state.xpDrops) {
+    ctx.fillRect(drop.x - drop.size / 2, drop.y - drop.size / 2, drop.size, drop.size);
+  }
+}
+
 function renderPaddle() {
   const { paddle } = state;
   ctx.fillStyle = '#38bdf8';
@@ -822,7 +889,7 @@ function renderHUD() {
   const barH = 8;
   const barX = CONFIG.width - barW - 20;
   const barY = 40;
-  ctx.fillText(`Niveau: ${state.level}`, barX, barY - 8);
+  ctx.fillText(`Stage: ${state.level}`, barX, barY - 8);
   ctx.fillStyle = 'rgba(255,255,255,0.12)';
   ctx.fillRect(barX, barY, barW, barH);
   ctx.fillStyle = '#38bdf8';
@@ -830,6 +897,22 @@ function renderHUD() {
   ctx.strokeStyle = 'rgba(255,255,255,0.5)';
   ctx.lineWidth = 1;
   ctx.strokeRect(barX, barY, barW, barH);
+
+  // Barre de progression XP / Level joueur.
+  const xpBarW = 180;
+  const xpBarH = 8;
+  const xpBarX = CONFIG.width - xpBarW - 20;
+  const xpBarY = barY + 36;
+  const xpProgress = Math.min(state.xp / state.xpNeeded, 1);
+  ctx.fillText(`Level ${state.playerLevel}`, xpBarX, xpBarY - 8);
+  ctx.fillStyle = 'rgba(255,255,255,0.12)';
+  ctx.fillRect(xpBarX, xpBarY, xpBarW, xpBarH);
+  ctx.fillStyle = '#f472b6';
+  ctx.fillRect(xpBarX, xpBarY, xpBarW * xpProgress, xpBarH);
+  ctx.strokeStyle = 'rgba(255,255,255,0.5)';
+  ctx.lineWidth = 1;
+  ctx.strokeRect(xpBarX, xpBarY, xpBarW, xpBarH);
+  ctx.fillText(`${Math.floor(state.xp)}/${state.xpNeeded}`, xpBarX + xpBarW - 70, xpBarY - 8);
 
   if (!state.running) {
     ctx.fillStyle = 'rgba(0,0,0,0.6)';
@@ -845,6 +928,7 @@ function render() {
   renderWalls();
   renderBricks();
   renderPaddle();
+  renderXpDrops();
   renderAimCone();
   renderBalls();
   renderHUD();
