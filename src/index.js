@@ -1,5 +1,6 @@
 const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
+const autoBtn = document.getElementById('auto-toggle');
 
 const CONFIG = {
   width: 800,
@@ -38,7 +39,8 @@ const state = {
   bricks: [],
   score: 0,
   lives: 3,
-  running: true
+  running: true,
+  autoPlay: false
 };
 
 function clamp(value, min, max) {
@@ -95,11 +97,19 @@ function update(dt) {
   const { paddle, ball, keys } = state;
 
   // Mouvement du paddle
-  if (keys.left) {
-    paddle.x -= CONFIG.paddleSpeed * dt;
-  }
-  if (keys.right) {
-    paddle.x += CONFIG.paddleSpeed * dt;
+  if (state.autoPlay) {
+    // Suivi automatique du point visé.
+    const targetX = ball.vy > 0 ? ball.x - paddle.w / 2 : CONFIG.width / 2 - paddle.w / 2;
+    const autoSpeed = CONFIG.paddleSpeed * 1.2;
+    const dir = Math.sign(targetX - paddle.x);
+    paddle.x += dir * autoSpeed * dt;
+  } else {
+    if (keys.left) {
+      paddle.x -= CONFIG.paddleSpeed * dt;
+    }
+    if (keys.right) {
+      paddle.x += CONFIG.paddleSpeed * dt;
+    }
   }
   paddle.x = clamp(paddle.x, 0, CONFIG.width - paddle.w);
 
@@ -134,14 +144,33 @@ function update(dt) {
     ball.y = paddle.y - ball.r;
     ball.vy *= -1;
 
-    // Ajuste l'angle selon le point d'impact.
-    const hitPos = (ball.x - paddle.x) / paddle.w; // 0 -> 1
-    const offset = (hitPos - 0.5) * 2; // -1 -> 1
-    const maxAngle = (70 * Math.PI) / 180;
-    const angle = offset * maxAngle;
     const speed = Math.hypot(ball.vx, ball.vy);
-    ball.vx = Math.sin(angle) * speed;
-    ball.vy = -Math.cos(angle) * speed;
+    if (state.autoPlay) {
+      // Vise le centre de la brique la plus haute encore vivante.
+      const target = state.bricks.find((b) => b.alive);
+      if (target) {
+        const tx = target.x + target.w / 2;
+        const ty = target.y + target.h / 2;
+        const dx = tx - ball.x;
+        const dy = ty - ball.y;
+        const len = Math.hypot(dx, dy) || 1;
+        const nx = dx / len;
+        const ny = dy / len;
+        ball.vx = nx * speed;
+        ball.vy = ny * speed;
+        if (ball.vy > -40) ball.vy = -Math.abs(ball.vy) - 40; // évite un angle trop plat vers le bas
+      } else {
+        ball.vy = -Math.abs(ball.vy);
+      }
+    } else {
+      // Ajuste l'angle selon le point d'impact côté joueur.
+      const hitPos = (ball.x - paddle.x) / paddle.w; // 0 -> 1
+      const offset = (hitPos - 0.5) * 2; // -1 -> 1
+      const maxAngle = (70 * Math.PI) / 180;
+      const angle = offset * maxAngle;
+      ball.vx = Math.sin(angle) * speed;
+      ball.vy = -Math.cos(angle) * speed;
+    }
   }
 
   // Briques
@@ -227,6 +256,7 @@ function renderHUD() {
   ctx.font = '16px "Segoe UI", sans-serif';
   ctx.fillText(`Score: ${state.score}`, 14, 24);
   ctx.fillText(`Vies: ${state.lives}`, CONFIG.width - 80, 24);
+  ctx.fillText(state.autoPlay ? 'Auto: ON' : 'Auto: OFF', CONFIG.width / 2 - 40, 24);
 
   if (!state.running) {
     ctx.fillStyle = 'rgba(0,0,0,0.6)';
@@ -269,6 +299,10 @@ function bindControls() {
   window.addEventListener('keyup', (event) => {
     if (event.key === 'ArrowLeft' || event.key === 'q') state.keys.left = false;
     if (event.key === 'ArrowRight' || event.key === 'd') state.keys.right = false;
+  });
+  autoBtn.addEventListener('click', () => {
+    state.autoPlay = !state.autoPlay;
+    autoBtn.textContent = state.autoPlay ? 'Désactiver auto-visée' : 'Activer auto-visée';
   });
 }
 

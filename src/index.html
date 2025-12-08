@@ -28,9 +28,36 @@
       margin: 0 0 6px;
       letter-spacing: 0.03em;
     }
+    .controls {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
     .hint {
       color: #cbd5e1;
       font-size: 0.95rem;
+    }
+    button {
+      background: linear-gradient(135deg, #22d3ee, #6366f1);
+      color: #0b1223;
+      border: none;
+      border-radius: 8px;
+      padding: 8px 14px;
+      font-weight: 700;
+      letter-spacing: 0.01em;
+      cursor: pointer;
+      box-shadow: 0 6px 16px rgba(0, 0, 0, 0.25);
+      transition: transform 120ms ease, box-shadow 120ms ease;
+    }
+    button:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 8px 18px rgba(0, 0, 0, 0.3);
+    }
+    button:active {
+      transform: translateY(0);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
     }
     canvas {
       width: 100%;
@@ -48,7 +75,10 @@
     <header>
       <h1>BrickIdle</h1>
       <p>Mini moteur canvas pour un casse-brique.</p>
-      <p class="hint">Flèches gauche/droite pour jouer.</p>
+      <div class="controls">
+        <p class="hint">Flèches gauche/droite pour jouer.</p>
+        <button id="auto-toggle" type="button">Activer auto-visée</button>
+      </div>
     </header>
     <canvas id="game" width="800" height="600"></canvas>
   </div>
