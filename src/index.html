@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BrickIdle</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      font-family: 'Segoe UI', sans-serif;
+      background: #0f172a;
+      color: #e2e8f0;
+    }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+    }
+    #app {
+      width: min(90vw, 880px);
+    }
+    header {
+      text-align: center;
+      margin-bottom: 12px;
+    }
+    h1 {
+      margin: 0 0 6px;
+      letter-spacing: 0.03em;
+    }
+    .hint {
+      color: #cbd5e1;
+      font-size: 0.95rem;
+    }
+    canvas {
+      width: 100%;
+      height: auto;
+      border: 2px solid #334155;
+      border-radius: 10px;
+      background: radial-gradient(circle at 20% 20%, rgba(148, 163, 184, 0.18), rgba(15, 23, 42, 0.5) 60%), #0b1223;
+      box-shadow: 0 12px 30px rgba(0, 0, 0, 0.35);
+      display: block;
+    }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <header>
+      <h1>BrickIdle</h1>
+      <p>Mini moteur canvas pour un casse-brique.</p>
+      <p class="hint">Flèches gauche/droite pour jouer.</p>
+    </header>
+    <canvas id="game" width="800" height="600"></canvas>
+  </div>
+  <script type="module" src="./index.js"></script>
+</body>
+</html>
