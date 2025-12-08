@@ -5,8 +5,8 @@ const aimToggle = document.getElementById('aim-toggle');
 const autoFireToggle = document.getElementById('autofire-toggle');
 
 const CONFIG = {
-  width: 800,
-  height: 600,
+  width: 1600,
+  height: 1200,
   paddleWidth: 120,
   paddleHeight: 16,
   paddleSpeed: 600,
@@ -27,7 +27,10 @@ const CONFIG = {
   brickRowFillRate: 0.525, // 25% de briques en moins par rangée
   brickPauseChance: 0.25, // chance de ne rien spawner pour faire une pause
   bonusChance: 0.15,
-  bonusCooldownMs: 5000
+  speedBonusChance: 0.12,
+  bonusCooldownMs: 5000,
+  speedBoostMultiplier: 1.05,
+  ballSpeedCap: 1500
 };
 
 CONFIG.brickSpawnInterval = (CONFIG.brickHeight + CONFIG.brickPadding) / CONFIG.brickDriftSpeed;
@@ -96,14 +99,15 @@ function computeBrickLayout() {
   const { brickCols, brickPadding, sideMargin } = CONFIG;
   const baseCols = brickCols + 2; // largeur héritée d'un layout plus large
   const brickWidthBase = (CONFIG.width - sideMargin * 2 - brickPadding * (baseCols - 1)) / baseCols;
-  const totalWidth = brickCols * brickWidthBase + brickPadding * (brickCols - 1);
+  const brickWidth = brickWidthBase * 0.5; // largeur divisée par deux
+  const totalWidth = brickCols * brickWidth + brickPadding * (brickCols - 1);
   const startX = (CONFIG.width - totalWidth) / 2;
-  return { brickWidthBase, startX };
+  return { brickWidth, startX };
 }
 
 function spawnBrickRow() {
-  const { brickCols, brickPadding, brickHeight, brickTopOffset, brickRowFillRate, bonusChance } = CONFIG;
-  const { brickWidthBase, startX } = computeBrickLayout();
+  const { brickCols, brickPadding, brickHeight, brickTopOffset, brickRowFillRate, bonusChance, speedBonusChance } = CONFIG;
+  const { brickWidth, startX } = computeBrickLayout();
 
   const bricks = [];
   let spawned = 0;
@@ -111,18 +115,25 @@ function spawnBrickRow() {
   const allowBonus = now - bonusState.lastBonus >= CONFIG.bonusCooldownMs;
   for (let col = 0; col < brickCols; col += 1) {
     if (Math.random() > brickRowFillRate) continue;
-    const x = startX + col * (brickWidthBase + brickPadding);
+    const x = startX + col * (brickWidth + brickPadding);
     const y = -brickHeight - brickTopOffset;
-    const bonus = allowBonus && Math.random() < bonusChance;
+    const roll = Math.random();
+    let type = 'normal';
+    if (allowBonus && roll < bonusChance) {
+      type = 'bonus';
+    } else if (roll < bonusChance + speedBonusChance) {
+      type = 'speed';
+    }
     bricks.push({
       x,
       y,
-      w: brickWidthBase,
+      w: brickWidth,
       h: brickHeight,
       alive: true,
       row: state.rowIndex,
-      bonus,
-      deathTime: null
+      type,
+      deathTime: null,
+      flashTime: null
     });
     spawned += 1;
   }
@@ -130,17 +141,25 @@ function spawnBrickRow() {
   if (spawned === 0) {
     // Garantit au moins une brique.
     const col = Math.floor(Math.random() * brickCols);
-    const x = startX + col * (brickWidthBase + brickPadding);
+    const x = startX + col * (brickWidth + brickPadding);
     const y = -brickHeight - brickTopOffset;
+    const roll = Math.random();
+    let type = 'normal';
+    if (allowBonus && roll < bonusChance) {
+      type = 'bonus';
+    } else if (roll < bonusChance + speedBonusChance) {
+      type = 'speed';
+    }
     bricks.push({
       x,
       y,
-      w: brickWidthBase,
+      w: brickWidth,
       h: brickHeight,
       alive: true,
       row: state.rowIndex,
-      bonus: allowBonus && Math.random() < bonusChance,
-      deathTime: null
+      type,
+      deathTime: null,
+      flashTime: null
     });
   }
 
@@ -167,6 +186,14 @@ function spawnRewardBall(brick) {
   });
 }
 
+function applySpeedBoost() {
+  CONFIG.ballSpeed = Math.min(CONFIG.ballSpeed * CONFIG.speedBoostMultiplier, CONFIG.ballSpeedCap);
+  for (const b of state.balls) {
+    b.vx = Math.max(Math.min(b.vx * CONFIG.speedBoostMultiplier, CONFIG.ballSpeedCap), -CONFIG.ballSpeedCap);
+    b.vy = Math.max(Math.min(b.vy * CONFIG.speedBoostMultiplier, CONFIG.ballSpeedCap), -CONFIG.ballSpeedCap);
+  }
+}
+
 function selectTargetBrick() {
   const dangerY = CONFIG.height * 0.72;
   const alive = state.bricks.filter((b) => b.alive);
@@ -175,8 +202,10 @@ function selectTargetBrick() {
   const dangerous = alive.filter((b) => b.y + b.h >= dangerY);
   if (dangerous.length) return dangerous.sort((a, b) => b.y - a.y)[0];
 
-  const bonus = alive.filter((b) => b.bonus);
+  const bonus = alive.filter((b) => b.type === 'bonus');
   if (bonus.length) return bonus.sort((a, b) => b.y - a.y)[0];
+  const speed = alive.filter((b) => b.type === 'speed');
+  if (speed.length) return speed.sort((a, b) => b.y - a.y)[0];
 
   return alive.sort((a, b) => b.y - a.y)[0];
 }
@@ -425,12 +454,31 @@ function update(dt) {
       const withinY = ball.y + ball.r >= brick.y && ball.y - ball.r <= brick.y + brick.h;
 
       if (withinX && withinY) {
+        const now = performance.now ? performance.now() : Date.now();
+        if (brick.y < 0) {
+          brick.flashTime = now;
+          // Rebond sans détruire
+          const overlapLeft = ball.x + ball.r - brick.x;
+          const overlapRight = brick.x + brick.w - (ball.x - ball.r);
+          const overlapTop = ball.y + ball.r - brick.y;
+          const overlapBottom = brick.y + brick.h - (ball.y - ball.r);
+          const minOverlap = Math.min(overlapLeft, overlapRight, overlapTop, overlapBottom);
+          if (minOverlap === overlapLeft || minOverlap === overlapRight) {
+            ball.vx *= -1;
+          } else {
+            ball.vy *= -1;
+          }
+          break;
+        }
+
         brick.alive = false;
-        brick.deathTime = performance.now ? performance.now() : Date.now();
+        brick.deathTime = now;
         state.score += 50 + brick.row * 10;
-        if (brick.bonus) {
+        if (brick.type === 'bonus') {
           bonusState.lastBonus = brick.deathTime;
           spawnRewardBall(brick);
+        } else if (brick.type === 'speed') {
+          applySpeedBoost();
         }
 
         // Choix d'axe de rebond simple.
@@ -482,6 +530,7 @@ function renderBricks() {
   for (const brick of state.bricks) {
     const baseHue = 200 + brick.row * 12;
     const now = performance.now ? performance.now() : Date.now();
+    if (!brick.alive && !brick.deathTime) continue;
     let alpha = 1;
     let scale = 1;
     let explode = false;
@@ -491,8 +540,6 @@ function renderBricks() {
       alpha = 1 - t;
       scale = 1 + 0.3 * t;
       explode = true;
-    } else if (!brick.alive) {
-      continue;
     }
 
     const drawX = brick.x - (scale - 1) * brick.w / 2;
@@ -500,13 +547,25 @@ function renderBricks() {
     const drawW = brick.w * scale;
     const drawH = brick.h * scale;
 
+    let flashAlpha = 0;
+    if (brick.flashTime) {
+      const f = Math.max(0, 1 - (now - brick.flashTime) / 200);
+      if (f > 0) flashAlpha = 0.4 * f * (0.5 + 0.5 * Math.sin(now / 40));
+      else brick.flashTime = null;
+    }
+
     ctx.fillStyle = `hsla(${baseHue}, 70%, 60%, ${alpha})`;
     ctx.fillRect(drawX, drawY, drawW, drawH);
     ctx.strokeStyle = `rgba(15, 23, 42, ${0.4 * alpha})`;
     ctx.lineWidth = 1.5;
     ctx.strokeRect(drawX, drawY, drawW, drawH);
+    if (flashAlpha > 0) {
+      ctx.strokeStyle = `rgba(255, 255, 255, ${flashAlpha})`;
+      ctx.lineWidth = 2;
+      ctx.strokeRect(drawX + 1, drawY + 1, drawW - 2, drawH - 2);
+    }
 
-    if (brick.bonus) {
+    if (brick.type === 'bonus' || brick.type === 'speed') {
       const inset = 6 * scale;
       const innerX = drawX + inset;
       const innerY = drawY + inset;
@@ -516,21 +575,32 @@ function renderBricks() {
       ctx.lineWidth = 2;
       ctx.strokeRect(innerX, innerY, innerW, innerH);
 
-      // Icône minimaliste: cercle + "+1".
       ctx.strokeStyle = `rgba(255, 255, 255, ${0.9 * alpha})`;
       ctx.lineWidth = 2;
       const cx = drawX + drawW / 2;
       const cy = drawY + drawH / 2;
       const r = Math.min(innerW, innerH) * 0.18;
-      ctx.beginPath();
-      ctx.arc(cx, cy, r, 0, Math.PI * 2);
-      ctx.stroke();
-      ctx.beginPath();
-      ctx.moveTo(cx - r * 1.5, cy);
-      ctx.lineTo(cx + r * 1.5, cy);
-      ctx.moveTo(cx, cy - r * 1.1);
-      ctx.lineTo(cx, cy + r * 1.1);
-      ctx.stroke();
+      if (brick.type === 'bonus') {
+        ctx.beginPath();
+        ctx.arc(cx, cy, r, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(cx - r * 1.5, cy);
+        ctx.lineTo(cx + r * 1.5, cy);
+        ctx.moveTo(cx, cy - r * 1.1);
+        ctx.lineTo(cx, cy + r * 1.1);
+        ctx.stroke();
+      } else if (brick.type === 'speed') {
+        ctx.beginPath();
+        ctx.moveTo(cx - r * 1.6, cy + r * 0.9);
+        ctx.lineTo(cx, cy - r);
+        ctx.lineTo(cx + r * 1.6, cy + r * 0.9);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(cx - r * 0.6, cy + r * 0.5);
+        ctx.lineTo(cx + r * 0.6, cy + r * 0.5);
+        ctx.stroke();
+      }
     }
 
     if (explode && alpha > 0) {
@@ -610,6 +680,19 @@ function renderAimCone() {
 function renderBalls() {
   for (const ball of state.balls) {
     if (ball.returning) {
+      const trailLength = 4;
+      const trailAlpha = 0.2;
+      for (let i = 1; i <= trailLength; i += 1) {
+        const t = i / (trailLength + 1);
+        const tx = ball.x - ball.vx * 0.01 * i;
+        const ty = ball.y - ball.vy * 0.01 * i;
+        ctx.fillStyle = `rgba(255, 255, 255, ${trailAlpha * (1 - t)})`;
+        ctx.beginPath();
+        ctx.arc(tx, ty, ball.r * 0.9, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+    if (ball.returning) {
       ctx.fillStyle = 'rgba(255, 255, 255, 0.35)';
     } else {
       ctx.fillStyle = '#f472b6';
@@ -628,18 +711,20 @@ function renderBalls() {
 
 function renderHUD() {
   ctx.fillStyle = '#e2e8f0';
-  ctx.font = '16px "Segoe UI", sans-serif';
+  ctx.font = '18px "Segoe UI", sans-serif';
   ctx.fillText(`Score: ${state.score}`, 14, 24);
-  ctx.fillText(`Vies: ${state.lives}`, CONFIG.width - 80, 24);
-  ctx.fillText(state.autoPlay ? 'Auto: ON' : 'Auto: OFF', CONFIG.width / 2 - 40, 24);
+  ctx.fillText(state.autoPlay ? 'Auto: ON' : 'Auto: OFF', 14, 46);
   const totalOwned = state.ballCount + state.balls.length + (state.ballHeld ? 1 : 0);
-  ctx.fillText(`Balles: ${state.ballCount}/${totalOwned}`, CONFIG.width / 2 - 40, 46);
+  ctx.fillText(`Balles: ${state.ballCount}/${totalOwned}`, 14, 68);
+  ctx.fillText(`Vitesse: ${Math.round(CONFIG.ballSpeed)} px/s`, 14, 90);
+  ctx.fillText(`Cadence: ${(1000 / CONFIG.launchCooldownMs).toFixed(1)} /s`, 14, 112);
+  ctx.fillText(`Vies: ${state.lives}`, CONFIG.width - 80, 24);
 
   if (!state.running) {
     ctx.fillStyle = 'rgba(0,0,0,0.6)';
     ctx.fillRect(0, 0, CONFIG.width, CONFIG.height);
     ctx.fillStyle = '#e2e8f0';
-    ctx.font = '24px "Segoe UI", sans-serif';
+    ctx.font = '26px "Segoe UI", sans-serif';
     ctx.fillText('Partie terminée - Appuyez sur Entrée pour rejouer', 110, CONFIG.height / 2);
   }
 }
