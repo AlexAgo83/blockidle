@@ -9,7 +9,8 @@ const CONFIG = {
   height: 600,
   paddleWidth: 120,
   paddleHeight: 16,
-  paddleSpeed: 460,
+  paddleSpeed: 600,
+  paddleMaxSpeed: 600, // vitesse max (légèrement supérieure à la balle)
   ballSpeed: 540,
   ballRadius: 8,
   brickRows: 5,
@@ -196,7 +197,9 @@ function update(dt) {
       ? refBall.x - paddle.w / 2
       : CONFIG.width / 2 - paddle.w / 2;
     const smoothing = 8; // plus élevé = plus réactif
-    paddle.x += (targetX - paddle.x) * smoothing * dt;
+    const maxStep = CONFIG.paddleMaxSpeed * dt;
+    const delta = (targetX - paddle.x) * smoothing * dt;
+    paddle.x += clamp(delta, -maxStep, maxStep);
   } else {
     if (keys.left) {
       paddle.x -= CONFIG.paddleSpeed * dt;
@@ -424,7 +427,8 @@ function renderHUD() {
   ctx.fillText(`Score: ${state.score}`, 14, 24);
   ctx.fillText(`Vies: ${state.lives}`, CONFIG.width - 80, 24);
   ctx.fillText(state.autoPlay ? 'Auto: ON' : 'Auto: OFF', CONFIG.width / 2 - 40, 24);
-  ctx.fillText(`Balles: ${state.ballCount}`, CONFIG.width / 2 - 40, 46);
+  const totalOwned = state.ballCount + state.balls.length + (state.ballHeld ? 1 : 0);
+  ctx.fillText(`Balles: ${state.ballCount}/${totalOwned}`, CONFIG.width / 2 - 40, 46);
 
   if (!state.running) {
     ctx.fillStyle = 'rgba(0,0,0,0.6)';
