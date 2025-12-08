@@ -72,6 +72,10 @@ const bonusState = {
   lastBonus: 0
 };
 
+const WALL = {
+  width: 12
+};
+
 function degToRad(deg) {
   return (deg * Math.PI) / 180;
 }
@@ -99,10 +103,26 @@ function computeBrickLayout() {
   const { brickCols, brickPadding, sideMargin } = CONFIG;
   const baseCols = brickCols + 2; // largeur héritée d'un layout plus large
   const brickWidthBase = (CONFIG.width - sideMargin * 2 - brickPadding * (baseCols - 1)) / baseCols;
-  const brickWidth = brickWidthBase * 0.5; // largeur divisée par deux
+  const brickWidth = brickWidthBase * 0.25; // largeur encore divisée par deux
   const totalWidth = brickCols * brickWidth + brickPadding * (brickCols - 1);
   const startX = (CONFIG.width - totalWidth) / 2;
   return { brickWidth, startX };
+}
+
+function getWalls() {
+  const { startX } = computeBrickLayout();
+  const xLeft = startX / 2 - WALL.width / 2;
+  const xRight = CONFIG.width - startX / 2 - WALL.width / 2;
+  return [
+    { x: xLeft, y: 0, w: WALL.width, h: CONFIG.height },
+    { x: xRight, y: 0, w: WALL.width, h: CONFIG.height }
+  ];
+}
+
+function getBrickHP() {
+  const base = 1;
+  const ramp = Math.floor(state.rowIndex / 8);
+  return Math.min(base + ramp, 5);
 }
 
 function spawnBrickRow() {
@@ -113,6 +133,7 @@ function spawnBrickRow() {
   let spawned = 0;
   const now = performance.now ? performance.now() : Date.now();
   const allowBonus = now - bonusState.lastBonus >= CONFIG.bonusCooldownMs;
+  const hp = getBrickHP();
   for (let col = 0; col < brickCols; col += 1) {
     if (Math.random() > brickRowFillRate) continue;
     const x = startX + col * (brickWidth + brickPadding);
@@ -132,6 +153,7 @@ function spawnBrickRow() {
       alive: true,
       row: state.rowIndex,
       type,
+      hp,
       deathTime: null,
       flashTime: null
     });
@@ -158,6 +180,7 @@ function spawnBrickRow() {
       alive: true,
       row: state.rowIndex,
       type,
+      hp,
       deathTime: null,
       flashTime: null
     });
@@ -401,6 +424,24 @@ function update(dt) {
       ball.vy *= -1;
     }
 
+    // Murs latéraux internes
+    for (const wall of getWalls()) {
+      const hitWall = (
+        ball.x + ball.r >= wall.x &&
+        ball.x - ball.r <= wall.x + wall.w &&
+        ball.y + ball.r >= wall.y &&
+        ball.y - ball.r <= wall.y + wall.h
+      );
+      if (hitWall) {
+        if (ball.x < wall.x) {
+          ball.x = wall.x - ball.r;
+        } else if (ball.x > wall.x + wall.w) {
+          ball.x = wall.x + wall.w + ball.r;
+        }
+        ball.vx *= -1;
+      }
+    }
+
     // Paddle
     const hitPaddle = !ball.returning && (
       ball.y + ball.r >= paddle.y &&
@@ -454,15 +495,17 @@ function update(dt) {
       const withinY = ball.y + ball.r >= brick.y && ball.y - ball.r <= brick.y + brick.h;
 
       if (withinX && withinY) {
+        const overlapLeft = ball.x + ball.r - brick.x;
+        const overlapRight = brick.x + brick.w - (ball.x - ball.r);
+        const overlapTop = ball.y + ball.r - brick.y;
+        const overlapBottom = brick.y + brick.h - (ball.y - ball.r);
+        const minOverlap = Math.min(overlapLeft, overlapRight, overlapTop, overlapBottom);
+
         const now = performance.now ? performance.now() : Date.now();
-        if (brick.y < 0) {
+        const brickVisible = brick.y + brick.h > 0;
+        if (!brickVisible) {
           brick.flashTime = now;
           // Rebond sans détruire
-          const overlapLeft = ball.x + ball.r - brick.x;
-          const overlapRight = brick.x + brick.w - (ball.x - ball.r);
-          const overlapTop = ball.y + ball.r - brick.y;
-          const overlapBottom = brick.y + brick.h - (ball.y - ball.r);
-          const minOverlap = Math.min(overlapLeft, overlapRight, overlapTop, overlapBottom);
           if (minOverlap === overlapLeft || minOverlap === overlapRight) {
             ball.vx *= -1;
           } else {
@@ -471,22 +514,21 @@ function update(dt) {
           break;
         }
 
-        brick.alive = false;
-        brick.deathTime = now;
-        state.score += 50 + brick.row * 10;
-        if (brick.type === 'bonus') {
-          bonusState.lastBonus = brick.deathTime;
-          spawnRewardBall(brick);
-        } else if (brick.type === 'speed') {
-          applySpeedBoost();
-        }
+        brick.flashTime = now;
+        brick.hp = Math.max(0, (brick.hp || 1) - 1);
+        const destroyed = brick.hp <= 0;
 
-        // Choix d'axe de rebond simple.
-        const overlapLeft = ball.x + ball.r - brick.x;
-        const overlapRight = brick.x + brick.w - (ball.x - ball.r);
-        const overlapTop = ball.y + ball.r - brick.y;
-        const overlapBottom = brick.y + brick.h - (ball.y - ball.r);
-        const minOverlap = Math.min(overlapLeft, overlapRight, overlapTop, overlapBottom);
+        if (destroyed) {
+          brick.alive = false;
+          brick.deathTime = now;
+          state.score += 50 + brick.row * 10;
+          if (brick.type === 'bonus') {
+            bonusState.lastBonus = brick.deathTime;
+            spawnRewardBall(brick);
+          } else if (brick.type === 'speed') {
+            applySpeedBoost();
+          }
+        }
 
         if (minOverlap === overlapLeft || minOverlap === overlapRight) {
           ball.vx *= -1;
@@ -524,6 +566,16 @@ function renderBackground() {
   gradient.addColorStop(1, 'rgba(59, 130, 246, 0.12)');
   ctx.fillStyle = gradient;
   ctx.fillRect(0, 0, CONFIG.width, CONFIG.height);
+}
+
+function renderWalls() {
+  ctx.fillStyle = 'rgba(148, 163, 184, 0.35)';
+  ctx.strokeStyle = 'rgba(148, 163, 184, 0.6)';
+  ctx.lineWidth = 1.5;
+  for (const wall of getWalls()) {
+    ctx.fillRect(wall.x, wall.y, wall.w, wall.h);
+    ctx.strokeRect(wall.x, wall.y, wall.w, wall.h);
+  }
 }
 
 function renderBricks() {
@@ -600,6 +652,31 @@ function renderBricks() {
         ctx.moveTo(cx - r * 0.6, cy + r * 0.5);
         ctx.lineTo(cx + r * 0.6, cy + r * 0.5);
         ctx.stroke();
+      }
+    }
+
+    if (brick.hp && alpha > 0) {
+      const starCount = Math.min(Math.max(brick.hp, 1), 5);
+      const starR = Math.min(drawW, drawH) * 0.12;
+      const spacing = starR * 2.2;
+      const total = spacing * (starCount - 1);
+      const sy = drawY - starR * 0.3;
+      ctx.fillStyle = `rgba(255, 255, 255, ${0.9 * alpha})`;
+      for (let i = 0; i < starCount; i += 1) {
+        const sx = drawX + drawW / 2 - total / 2 + i * spacing;
+        ctx.beginPath();
+        for (let k = 0; k < 5; k += 1) {
+          const angle = -Math.PI / 2 + (k * 2 * Math.PI) / 5;
+          const ox = sx + Math.cos(angle) * starR;
+          const oy = sy + Math.sin(angle) * starR;
+          ctx.lineTo(ox, oy);
+          const angle2 = angle + Math.PI / 5;
+          const ox2 = sx + Math.cos(angle2) * starR * 0.5;
+          const oy2 = sy + Math.sin(angle2) * starR * 0.5;
+          ctx.lineTo(ox2, oy2);
+        }
+        ctx.closePath();
+        ctx.fill();
       }
     }
 
@@ -731,6 +808,7 @@ function renderHUD() {
 
 function render() {
   renderBackground();
+  renderWalls();
   renderBricks();
   renderPaddle();
   renderAimCone();
