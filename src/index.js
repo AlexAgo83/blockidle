@@ -20,7 +20,7 @@ const CONFIG = {
   brickHeight: 22,
   sideMargin: 30,
   aimJitterDeg: 5,
-  maxBalls: 2,
+  maxBalls: 10,
   launchCooldownMs: 500,
   brickDriftSpeed: 22, // pixels/sec, tapis roulant lent vers le bas mais plus rapide
   brickSpawnInterval: 1.55, // recalculé juste après CONFIG
@@ -807,8 +807,9 @@ function renderHUD() {
   ctx.font = '18px "Segoe UI", sans-serif';
   ctx.fillText(`Score: ${state.score}`, 14, 24);
   ctx.fillText(state.autoPlay ? 'Auto: ON' : 'Auto: OFF', 14, 46);
-  const totalOwned = state.ballCount + state.balls.length + (state.ballHeld ? 1 : 0);
-  ctx.fillText(`Balles: ${state.ballCount}/${totalOwned}`, 14, 68);
+  const availableBalls = state.ballCount + (state.ballHeld ? 1 : 0);
+  const totalBalls = availableBalls + state.balls.length;
+  ctx.fillText(`Balles: ${availableBalls}/${totalBalls}`, 14, 68);
   ctx.fillText(`Vitesse: ${Math.round(CONFIG.ballSpeed)} px/s`, 14, 90);
   ctx.fillText(`Cadence: ${(1000 / CONFIG.launchCooldownMs).toFixed(1)} /s`, 14, 112);
   ctx.fillText(`Briques: ${state.brickSpeed.toFixed(1)} px/s`, 14, 134);
