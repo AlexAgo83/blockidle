@@ -16,18 +16,20 @@ const CONFIG = {
   brickRows: 5,
   brickCols: 6,
   brickTopOffset: 70,
-  brickPadding: 8,
+  brickPadding: 12,
   brickHeight: 22,
   sideMargin: 30,
   aimJitterDeg: 5,
   maxBalls: 2,
   launchCooldownMs: 500,
   brickDriftSpeed: 22, // pixels/sec, tapis roulant lent vers le bas mais plus rapide
-  brickSpawnInterval: 1.1,
+  brickSpawnInterval: 1.55, // recalculé juste après CONFIG
   brickRowFillRate: 0.525, // 25% de briques en moins par rangée
   brickPauseChance: 0.25, // chance de ne rien spawner pour faire une pause
   bonusChance: 0.15
 };
+
+CONFIG.brickSpawnInterval = (CONFIG.brickHeight + CONFIG.brickPadding) / CONFIG.brickDriftSpeed;
 
 const state = {
   keys: {
@@ -135,6 +137,25 @@ function spawnBrickRow() {
 
   state.rowIndex += 1;
   state.bricks.push(...bricks);
+}
+
+function spawnRewardBall(brick) {
+  const targetX = state.paddle.x + state.paddle.w / 2;
+  const targetY = state.paddle.y - state.paddle.h;
+  const dx = targetX - (brick.x + brick.w / 2);
+  const dy = targetY - (brick.y + brick.h / 2);
+  const dist = Math.hypot(dx, dy) || 1;
+  const speed = CONFIG.ballSpeed * 0.65;
+  state.balls.push({
+    x: brick.x + brick.w / 2,
+    y: brick.y + brick.h / 2,
+    r: CONFIG.ballRadius,
+    vx: (dx / dist) * speed,
+    vy: (dy / dist) * speed,
+    returning: true,
+    returnSpeed: speed,
+    reward: true
+  });
 }
 
 function selectTargetBrick() {
@@ -312,7 +333,11 @@ function update(dt) {
       const dist = Math.hypot(dx, dy);
       if (dist < Math.max(ball.r + 4, paddle.h + 4)) {
         state.balls.splice(i, 1);
-        placeBallOnPaddle({ refill: true });
+        if (ball.reward) {
+          state.ballCount = Math.min(CONFIG.maxBalls, state.ballCount + 1);
+        } else {
+          placeBallOnPaddle({ refill: true });
+        }
         continue;
       }
       if (dist > 0.0001) {
@@ -394,7 +419,7 @@ function update(dt) {
         brick.alive = false;
         state.score += 50 + brick.row * 10;
         if (brick.bonus) {
-          state.ballCount = Math.min(CONFIG.maxBalls, state.ballCount + 1);
+          spawnRewardBall(brick);
         }
 
         // Choix d'axe de rebond simple.
@@ -426,6 +451,7 @@ function update(dt) {
         ball.vx = (dx / dist) * speed;
         ball.vy = (dy / dist) * speed;
         ball.returning = true;
+        ball.reward = false;
       }
     }
   }
@@ -445,10 +471,37 @@ function renderBricks() {
   for (const brick of state.bricks) {
     if (!brick.alive) continue;
     const hue = 200 + brick.row * 12;
-    ctx.fillStyle = brick.bonus ? '#fbbf24' : `hsl(${hue}, 70%, 60%)`;
+    ctx.fillStyle = `hsl(${hue}, 70%, 60%)`;
     ctx.fillRect(brick.x, brick.y, brick.w, brick.h);
-    ctx.strokeStyle = brick.bonus ? 'rgba(161, 98, 7, 0.6)' : 'rgba(15, 23, 42, 0.4)';
+    ctx.strokeStyle = 'rgba(15, 23, 42, 0.4)';
     ctx.strokeRect(brick.x, brick.y, brick.w, brick.h);
+
+    if (brick.bonus) {
+      const inset = 6;
+      const innerX = brick.x + inset;
+      const innerY = brick.y + inset;
+      const innerW = brick.w - inset * 2;
+      const innerH = brick.h - inset * 2;
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(innerX, innerY, innerW, innerH);
+
+      // Icône minimaliste: cercle + "+1" horizontal stylisé.
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.9)';
+      ctx.lineWidth = 2;
+      const cx = brick.x + brick.w / 2;
+      const cy = brick.y + brick.h / 2;
+      const r = Math.min(innerW, innerH) * 0.18;
+      ctx.beginPath();
+      ctx.arc(cx, cy, r, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(cx - r * 1.5, cy);
+      ctx.lineTo(cx + r * 1.5, cy);
+      ctx.moveTo(cx, cy - r * 1.1);
+      ctx.lineTo(cx, cy + r * 1.1);
+      ctx.stroke();
+    }
   }
 }
 
@@ -518,8 +571,12 @@ function renderAimCone() {
 }
 
 function renderBalls() {
-  ctx.fillStyle = '#f472b6';
   for (const ball of state.balls) {
+    if (ball.returning) {
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.35)';
+    } else {
+      ctx.fillStyle = '#f472b6';
+    }
     ctx.beginPath();
     ctx.arc(ball.x, ball.y, ball.r, 0, Math.PI * 2);
     ctx.fill();
