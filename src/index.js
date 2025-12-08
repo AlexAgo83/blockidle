@@ -18,7 +18,9 @@ const CONFIG = {
   brickPadding: 8,
   brickHeight: 22,
   sideMargin: 30,
-  aimJitterDeg: 5
+  aimJitterDeg: 5,
+  maxBalls: 2,
+  launchCooldownMs: 1000
 };
 
 const state = {
@@ -32,13 +34,14 @@ const state = {
     w: CONFIG.paddleWidth,
     h: CONFIG.paddleHeight
   },
-  ball: {
+  heldBall: {
     x: 0,
     y: 0,
     r: CONFIG.ballRadius,
     vx: 0,
     vy: 0
   },
+  balls: [],
   bricks: [],
   score: 0,
   lives: 3,
@@ -46,7 +49,9 @@ const state = {
   autoPlay: true,
   showAim: false,
   ballHeld: true,
-  autoFire: true
+  autoFire: true,
+  ballCount: 1,
+  lastLaunch: 0
 };
 
 function degToRad(deg) {
@@ -78,82 +83,118 @@ function buildBricks() {
   const brickWidth = availableWidth / brickCols;
 
   const bricks = [];
+  const total = brickRows * brickCols;
+  const specialIndex = Math.floor(Math.random() * total);
+  let idx = 0;
   for (let row = 0; row < brickRows; row += 1) {
     for (let col = 0; col < brickCols; col += 1) {
       const x = sideMargin + col * (brickWidth + brickPadding);
       const y = brickTopOffset + row * (brickHeight + brickPadding);
-      bricks.push({ x, y, w: brickWidth, h: brickHeight, alive: true, row });
+      bricks.push({ x, y, w: brickWidth, h: brickHeight, alive: true, row, bonus: idx === specialIndex });
+      idx += 1;
     }
   }
   return bricks;
 }
 
-function placeBallOnPaddle({ centerPaddle = false } = {}) {
-  const { paddle, ball } = state;
+function placeBallOnPaddle({ centerPaddle = false, refill = false } = {}) {
+  const { paddle, heldBall } = state;
   paddle.w = CONFIG.paddleWidth;
   paddle.h = CONFIG.paddleHeight;
   if (centerPaddle) {
     paddle.x = (CONFIG.width - paddle.w) / 2;
   }
   paddle.y = CONFIG.height - 60;
-  ball.x = paddle.x + paddle.w / 2;
-  ball.y = paddle.y - ball.r - 2;
-  ball.vx = 0;
-  ball.vy = 0;
+  heldBall.x = paddle.x + paddle.w / 2;
+  heldBall.y = paddle.y - heldBall.r - 2;
+  heldBall.vx = 0;
+  heldBall.vy = 0;
   state.ballHeld = true;
+  if (refill) {
+    state.ballCount = Math.min(CONFIG.maxBalls, state.ballCount + 1);
+  }
 }
 
 function launchBall() {
-  if (!state.ballHeld) return;
+  if (!state.ballHeld || state.ballCount <= 0) return;
+  const now = performance.now ? performance.now() : Date.now();
+  if (now - state.lastLaunch < CONFIG.launchCooldownMs) return;
+  state.ballCount -= 1;
   state.ballHeld = false;
+  state.lastLaunch = now;
   const speed = CONFIG.ballSpeed;
+  const originX = state.heldBall.x;
+  const originY = state.heldBall.y;
+
+  let vx;
+  let vy;
 
   if (state.autoPlay) {
     const target = state.bricks.find((b) => b.alive);
     if (target) {
-      const dx = target.x + target.w / 2 - state.ball.x;
-      const dy = target.y + target.h / 2 - state.ball.y;
+      const dx = target.x + target.w / 2 - originX;
+      const dy = target.y + target.h / 2 - originY;
       const len = Math.hypot(dx, dy) || 1;
       const aimed = withAimJitter((dx / len) * speed, (dy / len) * speed);
-      state.ball.vx = aimed.vx;
-      state.ball.vy = aimed.vy;
-      if (state.ball.vy > -40) state.ball.vy = -Math.abs(state.ball.vy) - 40;
-      return;
+      vx = aimed.vx;
+      vy = aimed.vy;
+      if (vy > -40) vy = -Math.abs(vy) - 40;
     }
   }
 
-  const angle = (Math.random() * 0.5 + 0.25) * Math.PI; // entre 45° et 135°
-  const direction = Math.random() > 0.5 ? 1 : -1;
-  const aimed = withAimJitter(Math.cos(angle) * speed * direction, -Math.abs(Math.sin(angle) * speed));
-  state.ball.vx = aimed.vx;
-  state.ball.vy = aimed.vy;
+  if (vx === undefined || vy === undefined) {
+    const angle = (Math.random() * 0.5 + 0.25) * Math.PI; // entre 45° et 135°
+    const direction = Math.random() > 0.5 ? 1 : -1;
+    const aimed = withAimJitter(Math.cos(angle) * speed * direction, -Math.abs(Math.sin(angle) * speed));
+    vx = aimed.vx;
+    vy = aimed.vy;
+  }
+
+  state.balls.push({
+    x: originX,
+    y: originY,
+    r: CONFIG.ballRadius,
+    vx,
+    vy
+  });
 }
 
 function resetGame() {
   state.score = 0;
   state.lives = 3;
   state.bricks = buildBricks();
+  state.ballCount = 1;
+  state.balls = [];
   placeBallOnPaddle({ centerPaddle: true });
 }
 
 function update(dt) {
   if (!state.running) return;
-  const { paddle, ball, keys } = state;
+  const { paddle, heldBall, keys } = state;
+
+  if (!state.ballHeld && state.ballCount > 0) {
+    placeBallOnPaddle();
+  }
 
   if (state.ballHeld) {
     // Garde la balle dans la "poche" au-dessus du paddle.
-    ball.x = paddle.x + paddle.w / 2;
-    ball.y = paddle.y - ball.r - 2;
+    heldBall.x = paddle.x + paddle.w / 2;
+    heldBall.y = paddle.y - heldBall.r - 2;
     if (state.autoFire) {
       launchBall();
     }
-    return;
   }
 
   // Mouvement du paddle
+  const refBall = state.ballHeld
+    ? heldBall
+    : (state.balls.find((b) => b.vy > 0) || state.balls[0] || heldBall);
+
   if (state.autoPlay) {
     // Suivi automatique lissé (approche progressive du point visé).
-    const targetX = ball.vy > 0 ? ball.x - paddle.w / 2 : CONFIG.width / 2 - paddle.w / 2;
+    const targetX = refBall && refBall.vy > 0
+      ? refBall.x - paddle.w / 2
+      : CONFIG.width / 2 - paddle.w / 2;
     const smoothing = 8; // plus élevé = plus réactif
     paddle.x += (targetX - paddle.x) * smoothing * dt;
   } else {
@@ -166,100 +207,107 @@ function update(dt) {
   }
   paddle.x = clamp(paddle.x, 0, CONFIG.width - paddle.w);
 
-  // Mouvement de la balle
-  ball.x += ball.vx * dt;
-  ball.y += ball.vy * dt;
+  // Mouvement et collisions pour chaque balle active
+  for (let i = state.balls.length - 1; i >= 0; i -= 1) {
+    const ball = state.balls[i];
+    ball.x += ball.vx * dt;
+    ball.y += ball.vy * dt;
 
-  // Collisions murs
-  if (ball.x - ball.r <= 0 && ball.vx < 0) {
-    ball.x = ball.r;
-    ball.vx *= -1;
-  }
-  if (ball.x + ball.r >= CONFIG.width && ball.vx > 0) {
-    ball.x = CONFIG.width - ball.r;
-    ball.vx *= -1;
-  }
-  if (ball.y - ball.r <= 0 && ball.vy < 0) {
-    ball.y = ball.r;
-    ball.vy *= -1;
-  }
+    // Collisions murs
+    if (ball.x - ball.r <= 0 && ball.vx < 0) {
+      ball.x = ball.r;
+      ball.vx *= -1;
+    }
+    if (ball.x + ball.r >= CONFIG.width && ball.vx > 0) {
+      ball.x = CONFIG.width - ball.r;
+      ball.vx *= -1;
+    }
+    if (ball.y - ball.r <= 0 && ball.vy < 0) {
+      ball.y = ball.r;
+      ball.vy *= -1;
+    }
 
-  // Paddle
-  const hitPaddle = (
-    ball.y + ball.r >= paddle.y &&
-    ball.y - ball.r <= paddle.y + paddle.h &&
-    ball.x >= paddle.x - ball.r &&
-    ball.x <= paddle.x + paddle.w + ball.r &&
-    ball.vy > 0
-  );
+    // Paddle
+    const hitPaddle = (
+      ball.y + ball.r >= paddle.y &&
+      ball.y - ball.r <= paddle.y + paddle.h &&
+      ball.x >= paddle.x - ball.r &&
+      ball.x <= paddle.x + paddle.w + ball.r &&
+      ball.vy > 0
+    );
 
-  if (hitPaddle) {
-    ball.y = paddle.y - ball.r;
-    ball.vy *= -1;
+    if (hitPaddle) {
+      ball.y = paddle.y - ball.r;
+      ball.vy *= -1;
 
-    const speed = Math.hypot(ball.vx, ball.vy);
-    if (state.autoPlay) {
-      // Vise le centre de la brique la plus haute encore vivante.
-      const target = state.bricks.find((b) => b.alive);
-      if (target) {
-        const tx = target.x + target.w / 2;
-        const ty = target.y + target.h / 2;
-        const dx = tx - ball.x;
-        const dy = ty - ball.y;
-        const len = Math.hypot(dx, dy) || 1;
-        const nx = dx / len;
-        const ny = dy / len;
-        const aimed = withAimJitter(nx * speed, ny * speed);
-        ball.vx = aimed.vx;
-        ball.vy = aimed.vy;
-        if (ball.vy > -40) ball.vy = -Math.abs(ball.vy) - 40; // évite un angle trop plat vers le bas
+      const speed = Math.hypot(ball.vx, ball.vy);
+      if (state.autoPlay) {
+        // Vise le centre de la brique la plus haute encore vivante.
+        const target = state.bricks.find((b) => b.alive);
+        if (target) {
+          const tx = target.x + target.w / 2;
+          const ty = target.y + target.h / 2;
+          const dx = tx - ball.x;
+          const dy = ty - ball.y;
+          const len = Math.hypot(dx, dy) || 1;
+          const nx = dx / len;
+          const ny = dy / len;
+          const aimed = withAimJitter(nx * speed, ny * speed);
+          ball.vx = aimed.vx;
+          ball.vy = aimed.vy;
+          if (ball.vy > -40) ball.vy = -Math.abs(ball.vy) - 40; // évite un angle trop plat vers le bas
+        } else {
+          const aimed = withAimJitter(ball.vx, -Math.abs(ball.vy));
+          ball.vx = aimed.vx;
+          ball.vy = aimed.vy;
+        }
       } else {
-        const aimed = withAimJitter(ball.vx, -Math.abs(ball.vy));
+        // Ajuste l'angle selon le point d'impact côté joueur.
+        const hitPos = (ball.x - paddle.x) / paddle.w; // 0 -> 1
+        const offset = (hitPos - 0.5) * 2; // -1 -> 1
+        const maxAngle = (70 * Math.PI) / 180;
+        const angle = offset * maxAngle;
+        const aimed = withAimJitter(Math.sin(angle) * speed, -Math.cos(angle) * speed);
         ball.vx = aimed.vx;
         ball.vy = aimed.vy;
       }
-    } else {
-      // Ajuste l'angle selon le point d'impact côté joueur.
-      const hitPos = (ball.x - paddle.x) / paddle.w; // 0 -> 1
-      const offset = (hitPos - 0.5) * 2; // -1 -> 1
-      const maxAngle = (70 * Math.PI) / 180;
-      const angle = offset * maxAngle;
-      const aimed = withAimJitter(Math.sin(angle) * speed, -Math.cos(angle) * speed);
-      ball.vx = aimed.vx;
-      ball.vy = aimed.vy;
     }
-  }
 
-  // Briques
-  for (const brick of state.bricks) {
-    if (!brick.alive) continue;
-    const withinX = ball.x + ball.r >= brick.x && ball.x - ball.r <= brick.x + brick.w;
-    const withinY = ball.y + ball.r >= brick.y && ball.y - ball.r <= brick.y + brick.h;
+    // Briques
+    for (const brick of state.bricks) {
+      if (!brick.alive) continue;
+      const withinX = ball.x + ball.r >= brick.x && ball.x - ball.r <= brick.x + brick.w;
+      const withinY = ball.y + ball.r >= brick.y && ball.y - ball.r <= brick.y + brick.h;
 
-    if (withinX && withinY) {
-      brick.alive = false;
-      state.score += 50 + brick.row * 10;
+      if (withinX && withinY) {
+        brick.alive = false;
+        state.score += 50 + brick.row * 10;
+        if (brick.bonus) {
+          state.ballCount = Math.min(CONFIG.maxBalls, state.ballCount + 1);
+        }
 
-      // Choix d'axe de rebond simple.
-      const overlapLeft = ball.x + ball.r - brick.x;
-      const overlapRight = brick.x + brick.w - (ball.x - ball.r);
-      const overlapTop = ball.y + ball.r - brick.y;
-      const overlapBottom = brick.y + brick.h - (ball.y - ball.r);
-      const minOverlap = Math.min(overlapLeft, overlapRight, overlapTop, overlapBottom);
+        // Choix d'axe de rebond simple.
+        const overlapLeft = ball.x + ball.r - brick.x;
+        const overlapRight = brick.x + brick.w - (ball.x - ball.r);
+        const overlapTop = ball.y + ball.r - brick.y;
+        const overlapBottom = brick.y + brick.h - (ball.y - ball.r);
+        const minOverlap = Math.min(overlapLeft, overlapRight, overlapTop, overlapBottom);
 
-      if (minOverlap === overlapLeft || minOverlap === overlapRight) {
-        ball.vx *= -1;
-      } else {
-        ball.vy *= -1;
+        if (minOverlap === overlapLeft || minOverlap === overlapRight) {
+          ball.vx *= -1;
+        } else {
+          ball.vy *= -1;
+        }
+        break;
       }
-      break;
     }
-  }
 
-  // Balle perdue -> revient dans la poche sans perdre de vie.
-  if (ball.y - ball.r > CONFIG.height) {
-    placeBallOnPaddle();
-    return;
+    // Balle perdue -> revient dans la poche sans perdre de vie.
+    if (ball.y - ball.r > CONFIG.height) {
+      state.balls.splice(i, 1);
+      placeBallOnPaddle({ refill: true });
+      continue;
+    }
   }
 
   // Niveau terminé
@@ -283,9 +331,9 @@ function renderBricks() {
   for (const brick of state.bricks) {
     if (!brick.alive) continue;
     const hue = 200 + brick.row * 12;
-    ctx.fillStyle = `hsl(${hue}, 70%, 60%)`;
+    ctx.fillStyle = brick.bonus ? '#fbbf24' : `hsl(${hue}, 70%, 60%)`;
     ctx.fillRect(brick.x, brick.y, brick.w, brick.h);
-    ctx.strokeStyle = 'rgba(15, 23, 42, 0.4)';
+    ctx.strokeStyle = brick.bonus ? 'rgba(161, 98, 7, 0.6)' : 'rgba(15, 23, 42, 0.4)';
     ctx.strokeRect(brick.x, brick.y, brick.w, brick.h);
   }
 }
@@ -355,12 +403,19 @@ function renderAimCone() {
   ctx.fill();
 }
 
-function renderBall() {
-  const { ball } = state;
+function renderBalls() {
   ctx.fillStyle = '#f472b6';
-  ctx.beginPath();
-  ctx.arc(ball.x, ball.y, ball.r, 0, Math.PI * 2);
-  ctx.fill();
+  for (const ball of state.balls) {
+    ctx.beginPath();
+    ctx.arc(ball.x, ball.y, ball.r, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  if (state.ballHeld) {
+    ctx.fillStyle = '#fb7185';
+    ctx.beginPath();
+    ctx.arc(state.heldBall.x, state.heldBall.y, state.heldBall.r, 0, Math.PI * 2);
+    ctx.fill();
+  }
 }
 
 function renderHUD() {
@@ -369,7 +424,7 @@ function renderHUD() {
   ctx.fillText(`Score: ${state.score}`, 14, 24);
   ctx.fillText(`Vies: ${state.lives}`, CONFIG.width - 80, 24);
   ctx.fillText(state.autoPlay ? 'Auto: ON' : 'Auto: OFF', CONFIG.width / 2 - 40, 24);
-  ctx.fillText(`Balle: ${state.ballHeld ? 1 : 0}`, CONFIG.width / 2 - 40, 46);
+  ctx.fillText(`Balles: ${state.ballCount}`, CONFIG.width / 2 - 40, 46);
 
   if (!state.running) {
     ctx.fillStyle = 'rgba(0,0,0,0.6)';
@@ -385,7 +440,7 @@ function render() {
   renderBricks();
   renderPaddle();
   renderAimCone();
-  renderBall();
+  renderBalls();
   renderHUD();
 }
 
