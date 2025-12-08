@@ -2,6 +2,7 @@ const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
 const autoBtn = document.getElementById('auto-toggle');
 const aimToggle = document.getElementById('aim-toggle');
+const autoFireToggle = document.getElementById('autofire-toggle');
 
 const CONFIG = {
   width: 800,
@@ -43,7 +44,9 @@ const state = {
   lives: 3,
   running: true,
   autoPlay: true,
-  showAim: false
+  showAim: false,
+  ballHeld: true,
+  autoFire: true
 };
 
 function degToRad(deg) {
@@ -85,33 +88,67 @@ function buildBricks() {
   return bricks;
 }
 
-function resetBallAndPaddle() {
+function placeBallOnPaddle({ centerPaddle = false } = {}) {
   const { paddle, ball } = state;
   paddle.w = CONFIG.paddleWidth;
   paddle.h = CONFIG.paddleHeight;
-  paddle.x = (CONFIG.width - paddle.w) / 2;
+  if (centerPaddle) {
+    paddle.x = (CONFIG.width - paddle.w) / 2;
+  }
   paddle.y = CONFIG.height - 60;
-
   ball.x = paddle.x + paddle.w / 2;
   ball.y = paddle.y - ball.r - 2;
+  ball.vx = 0;
+  ball.vy = 0;
+  state.ballHeld = true;
+}
 
-  // Lance la balle avec un angle initial léger.
+function launchBall() {
+  if (!state.ballHeld) return;
+  state.ballHeld = false;
+  const speed = CONFIG.ballSpeed;
+
+  if (state.autoPlay) {
+    const target = state.bricks.find((b) => b.alive);
+    if (target) {
+      const dx = target.x + target.w / 2 - state.ball.x;
+      const dy = target.y + target.h / 2 - state.ball.y;
+      const len = Math.hypot(dx, dy) || 1;
+      const aimed = withAimJitter((dx / len) * speed, (dy / len) * speed);
+      state.ball.vx = aimed.vx;
+      state.ball.vy = aimed.vy;
+      if (state.ball.vy > -40) state.ball.vy = -Math.abs(state.ball.vy) - 40;
+      return;
+    }
+  }
+
   const angle = (Math.random() * 0.5 + 0.25) * Math.PI; // entre 45° et 135°
   const direction = Math.random() > 0.5 ? 1 : -1;
-  ball.vx = Math.cos(angle) * CONFIG.ballSpeed * direction;
-  ball.vy = -Math.abs(Math.sin(angle) * CONFIG.ballSpeed);
+  const aimed = withAimJitter(Math.cos(angle) * speed * direction, -Math.abs(Math.sin(angle) * speed));
+  state.ball.vx = aimed.vx;
+  state.ball.vy = aimed.vy;
 }
 
 function resetGame() {
   state.score = 0;
   state.lives = 3;
   state.bricks = buildBricks();
-  resetBallAndPaddle();
+  placeBallOnPaddle({ centerPaddle: true });
 }
 
 function update(dt) {
   if (!state.running) return;
   const { paddle, ball, keys } = state;
+
+  if (state.ballHeld) {
+    // Garde la balle dans la "poche" au-dessus du paddle.
+    ball.x = paddle.x + paddle.w / 2;
+    ball.y = paddle.y - ball.r - 2;
+    if (state.autoFire) {
+      launchBall();
+    }
+    return;
+  }
 
   // Mouvement du paddle
   if (state.autoPlay) {
@@ -219,20 +256,16 @@ function update(dt) {
     }
   }
 
-  // Balle perdue
+  // Balle perdue -> revient dans la poche sans perdre de vie.
   if (ball.y - ball.r > CONFIG.height) {
-    state.lives -= 1;
-    if (state.lives <= 0) {
-      state.running = false;
-    } else {
-      resetBallAndPaddle();
-    }
+    placeBallOnPaddle();
+    return;
   }
 
   // Niveau terminé
   if (state.bricks.every((b) => !b.alive)) {
     state.bricks = buildBricks();
-    resetBallAndPaddle();
+    placeBallOnPaddle({ centerPaddle: true });
   }
 }
 
@@ -336,6 +369,7 @@ function renderHUD() {
   ctx.fillText(`Score: ${state.score}`, 14, 24);
   ctx.fillText(`Vies: ${state.lives}`, CONFIG.width - 80, 24);
   ctx.fillText(state.autoPlay ? 'Auto: ON' : 'Auto: OFF', CONFIG.width / 2 - 40, 24);
+  ctx.fillText(`Balle: ${state.ballHeld ? 1 : 0}`, CONFIG.width / 2 - 40, 46);
 
   if (!state.running) {
     ctx.fillStyle = 'rgba(0,0,0,0.6)';
@@ -369,6 +403,10 @@ function loop(timestamp) {
 
 function bindControls() {
   window.addEventListener('keydown', (event) => {
+    if (state.ballHeld && (event.code === 'Space' || event.key === 'ArrowUp' || event.key === 'Enter')) {
+      launchBall();
+      return;
+    }
     if (event.key === 'ArrowLeft' || event.key === 'q') state.keys.left = true;
     if (event.key === 'ArrowRight' || event.key === 'd') state.keys.right = true;
     if (event.key === 'Enter' && !state.running) {
@@ -387,6 +425,12 @@ function bindControls() {
   aimToggle.addEventListener('change', (event) => {
     state.showAim = event.target.checked;
   });
+  autoFireToggle.addEventListener('change', (event) => {
+    state.autoFire = event.target.checked;
+  });
+  canvas.addEventListener('click', () => {
+    if (state.ballHeld) launchBall();
+  });
 }
 
 function init() {
@@ -394,6 +438,7 @@ function init() {
   bindControls();
   autoBtn.textContent = state.autoPlay ? 'Désactiver auto-visée' : 'Activer auto-visée';
   aimToggle.checked = state.showAim;
+  autoFireToggle.checked = state.autoFire;
   resetGame();
   requestAnimationFrame(loop);
 }
