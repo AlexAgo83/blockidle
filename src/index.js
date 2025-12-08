@@ -30,7 +30,9 @@ const CONFIG = {
   speedBonusChance: 0.12,
   bonusCooldownMs: 5000,
   speedBoostMultiplier: 1.05,
-  ballSpeedCap: 1500
+  ballSpeedCap: 1500,
+  speedIncreaseInterval: 60,
+  speedIncreaseMultiplier: 1.05
 };
 
 CONFIG.brickSpawnInterval = (CONFIG.brickHeight + CONFIG.brickPadding) / CONFIG.brickDriftSpeed;
@@ -65,7 +67,10 @@ const state = {
   ballCount: 1,
   lastLaunch: 0,
   spawnTimer: 0,
-  rowIndex: 0
+  rowIndex: 0,
+  brickSpeed: CONFIG.brickDriftSpeed,
+  speedTimer: 0,
+  level: 1
 };
 
 const bonusState = {
@@ -302,6 +307,9 @@ function resetGame() {
   state.bricks = [];
   state.rowIndex = 0;
   state.spawnTimer = 0;
+  state.brickSpeed = CONFIG.brickDriftSpeed;
+  state.speedTimer = 0;
+  state.level = 1;
   state.ballCount = 1;
   state.balls = [];
   placeBallOnPaddle({ centerPaddle: true });
@@ -311,6 +319,13 @@ function resetGame() {
 function update(dt) {
   if (!state.running) return;
   const { paddle, heldBall, keys } = state;
+  const speedInterval = CONFIG.speedIncreaseInterval;
+  state.speedTimer += dt;
+  while (state.speedTimer >= speedInterval) {
+    state.speedTimer -= speedInterval;
+    state.brickSpeed *= CONFIG.speedIncreaseMultiplier;
+    state.level += 1;
+  }
 
   if (!state.ballHeld && state.ballCount > 0) {
     placeBallOnPaddle();
@@ -318,8 +333,9 @@ function update(dt) {
 
   // Génération continue de briques façon rail infini.
   state.spawnTimer += dt;
-  while (state.spawnTimer >= CONFIG.brickSpawnInterval) {
-    state.spawnTimer -= CONFIG.brickSpawnInterval;
+  const spawnInterval = (CONFIG.brickHeight + CONFIG.brickPadding) / state.brickSpeed;
+  while (state.spawnTimer >= spawnInterval) {
+    state.spawnTimer -= spawnInterval;
     if (Math.random() >= CONFIG.brickPauseChance) {
       spawnBrickRow();
     }
@@ -328,7 +344,7 @@ function update(dt) {
   // Descente lente des briques façon tapis roulant.
   for (const brick of state.bricks) {
     if (brick.alive) {
-      brick.y += CONFIG.brickDriftSpeed * dt;
+      brick.y += state.brickSpeed * dt;
     }
   }
 
@@ -795,7 +811,24 @@ function renderHUD() {
   ctx.fillText(`Balles: ${state.ballCount}/${totalOwned}`, 14, 68);
   ctx.fillText(`Vitesse: ${Math.round(CONFIG.ballSpeed)} px/s`, 14, 90);
   ctx.fillText(`Cadence: ${(1000 / CONFIG.launchCooldownMs).toFixed(1)} /s`, 14, 112);
+  ctx.fillText(`Briques: ${state.brickSpeed.toFixed(1)} px/s`, 14, 134);
   ctx.fillText(`Vies: ${state.lives}`, CONFIG.width - 80, 24);
+
+  // Barre de progression pour l'évolution de vitesse.
+  const interval = CONFIG.speedIncreaseInterval;
+  const progress = Math.min(state.speedTimer / interval, 1);
+  const barW = 180;
+  const barH = 8;
+  const barX = CONFIG.width - barW - 20;
+  const barY = 40;
+  ctx.fillText(`Niveau: ${state.level}`, barX, barY - 8);
+  ctx.fillStyle = 'rgba(255,255,255,0.12)';
+  ctx.fillRect(barX, barY, barW, barH);
+  ctx.fillStyle = '#38bdf8';
+  ctx.fillRect(barX, barY, barW * progress, barH);
+  ctx.strokeStyle = 'rgba(255,255,255,0.5)';
+  ctx.lineWidth = 1;
+  ctx.strokeRect(barX, barY, barW, barH);
 
   if (!state.running) {
     ctx.fillStyle = 'rgba(0,0,0,0.6)';
