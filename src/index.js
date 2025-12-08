@@ -21,8 +21,12 @@ const CONFIG = {
   sideMargin: 30,
   aimJitterDeg: 5,
   maxBalls: 2,
-  launchCooldownMs: 1000,
-  brickDriftSpeed: 22 // pixels/sec, tapis roulant lent vers le bas mais plus rapide
+  launchCooldownMs: 500,
+  brickDriftSpeed: 22, // pixels/sec, tapis roulant lent vers le bas mais plus rapide
+  brickSpawnInterval: 1.1,
+  brickRowFillRate: 0.525, // 25% de briques en moins par rangée
+  brickPauseChance: 0.25, // chance de ne rien spawner pour faire une pause
+  bonusChance: 0.15
 };
 
 const state = {
@@ -53,7 +57,9 @@ const state = {
   ballHeld: true,
   autoFire: true,
   ballCount: 1,
-  lastLaunch: 0
+  lastLaunch: 0,
+  spawnTimer: 0,
+  rowIndex: 0
 };
 
 function degToRad(deg) {
@@ -79,28 +85,70 @@ function resizeCanvas() {
   canvas.height = CONFIG.height;
 }
 
-function buildBricks() {
-  const { brickCols, brickRows, brickPadding, sideMargin, brickTopOffset, brickHeight } = CONFIG;
-  // Conserve la largeur de brique d'un layout plus large en "perdant" 1 colonne de chaque côté.
-  const baseCols = brickCols + 2; // cols initiales avant retrait
+function computeBrickLayout() {
+  const { brickCols, brickPadding, sideMargin } = CONFIG;
+  const baseCols = brickCols + 2; // largeur héritée d'un layout plus large
   const brickWidthBase = (CONFIG.width - sideMargin * 2 - brickPadding * (baseCols - 1)) / baseCols;
   const totalWidth = brickCols * brickWidthBase + brickPadding * (brickCols - 1);
   const startX = (CONFIG.width - totalWidth) / 2;
+  return { brickWidthBase, startX };
+}
+
+function spawnBrickRow() {
+  const { brickCols, brickPadding, brickHeight, brickTopOffset, brickRowFillRate, bonusChance } = CONFIG;
+  const { brickWidthBase, startX } = computeBrickLayout();
 
   const bricks = [];
-  const startTop = -((brickHeight + brickPadding) * brickRows) - brickTopOffset;
-  const total = brickRows * brickCols;
-  const specialIndex = Math.floor(Math.random() * total);
-  let idx = 0;
-  for (let row = 0; row < brickRows; row += 1) {
-    for (let col = 0; col < brickCols; col += 1) {
-      const x = startX + col * (brickWidthBase + brickPadding);
-      const y = startTop + row * (brickHeight + brickPadding);
-      bricks.push({ x, y, w: brickWidthBase, h: brickHeight, alive: true, row, bonus: idx === specialIndex });
-      idx += 1;
-    }
+  let spawned = 0;
+  for (let col = 0; col < brickCols; col += 1) {
+    if (Math.random() > brickRowFillRate) continue;
+    const x = startX + col * (brickWidthBase + brickPadding);
+    const y = -brickHeight - brickTopOffset;
+    const bonus = Math.random() < bonusChance;
+    bricks.push({
+      x,
+      y,
+      w: brickWidthBase,
+      h: brickHeight,
+      alive: true,
+      row: state.rowIndex,
+      bonus
+    });
+    spawned += 1;
   }
-  return bricks;
+
+  if (spawned === 0) {
+    // Garantit au moins une brique.
+    const col = Math.floor(Math.random() * brickCols);
+    const x = startX + col * (brickWidthBase + brickPadding);
+    const y = -brickHeight - brickTopOffset;
+    bricks.push({
+      x,
+      y,
+      w: brickWidthBase,
+      h: brickHeight,
+      alive: true,
+      row: state.rowIndex,
+      bonus: Math.random() < bonusChance
+    });
+  }
+
+  state.rowIndex += 1;
+  state.bricks.push(...bricks);
+}
+
+function selectTargetBrick() {
+  const dangerY = CONFIG.height * 0.72;
+  const alive = state.bricks.filter((b) => b.alive);
+  if (!alive.length) return null;
+
+  const dangerous = alive.filter((b) => b.y + b.h >= dangerY);
+  if (dangerous.length) return dangerous.sort((a, b) => b.y - a.y)[0];
+
+  const bonus = alive.filter((b) => b.bonus);
+  if (bonus.length) return bonus.sort((a, b) => b.y - a.y)[0];
+
+  return alive.sort((a, b) => b.y - a.y)[0];
 }
 
 function placeBallOnPaddle({ centerPaddle = false, refill = false } = {}) {
@@ -136,9 +184,7 @@ function launchBall() {
   let vy;
 
   if (state.autoPlay) {
-    const bonus = state.bricks.filter((b) => b.alive && b.bonus);
-    const normals = state.bricks.filter((b) => b.alive && !b.bonus);
-    const target = (bonus.length ? bonus : normals).sort((a, b) => b.y - a.y)[0];
+    const target = selectTargetBrick();
     if (target) {
       const dx = target.x + target.w / 2 - originX;
       const dy = target.y + target.h / 2 - originY;
@@ -171,10 +217,13 @@ function launchBall() {
 function resetGame() {
   state.score = 0;
   state.lives = 3;
-  state.bricks = buildBricks();
+  state.bricks = [];
+  state.rowIndex = 0;
+  state.spawnTimer = 0;
   state.ballCount = 1;
   state.balls = [];
   placeBallOnPaddle({ centerPaddle: true });
+  spawnBrickRow();
 }
 
 function update(dt) {
@@ -183,6 +232,15 @@ function update(dt) {
 
   if (!state.ballHeld && state.ballCount > 0) {
     placeBallOnPaddle();
+  }
+
+  // Génération continue de briques façon rail infini.
+  state.spawnTimer += dt;
+  while (state.spawnTimer >= CONFIG.brickSpawnInterval) {
+    state.spawnTimer -= CONFIG.brickSpawnInterval;
+    if (Math.random() >= CONFIG.brickPauseChance) {
+      spawnBrickRow();
+    }
   }
 
   // Descente lente des briques façon tapis roulant.
@@ -203,6 +261,9 @@ function update(dt) {
       }
     }
   }
+
+  // Nettoyage des briques sorties ou détruites pour éviter l'accumulation.
+  state.bricks = state.bricks.filter((b) => b.alive || b.y < CONFIG.height + 120);
 
   if (state.ballHeld) {
     // Garde la balle dans la "poche" au-dessus du paddle.
@@ -293,9 +354,7 @@ function update(dt) {
       const speed = Math.hypot(ball.vx, ball.vy);
       if (state.autoPlay) {
         // Vise le centre de la brique la plus haute encore vivante.
-        const bonus = state.bricks.filter((b) => b.alive && b.bonus);
-        const normals = state.bricks.filter((b) => b.alive && !b.bonus);
-        const target = (bonus.length ? bonus : normals).sort((a, b) => b.y - a.y)[0];
+        const target = selectTargetBrick();
         if (target) {
           const tx = target.x + target.w / 2;
           const ty = target.y + target.h / 2;
@@ -370,12 +429,6 @@ function update(dt) {
       }
     }
   }
-
-  // Niveau terminé
-  if (state.bricks.every((b) => !b.alive)) {
-    state.bricks = buildBricks();
-    placeBallOnPaddle({ centerPaddle: true });
-  }
 }
 
 function renderBackground() {
@@ -416,7 +469,7 @@ function renderAimCone() {
   let dirY = -1;
   let targetPoint = null;
   if (state.autoPlay) {
-    const target = state.bricks.find((b) => b.alive && b.bonus) || state.bricks.find((b) => b.alive);
+    const target = selectTargetBrick();
     if (target) {
       targetPoint = { x: target.x + target.w / 2, y: target.y + target.h / 2 };
       dirX = targetPoint.x - originX;
