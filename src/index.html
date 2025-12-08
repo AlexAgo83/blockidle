@@ -39,6 +39,21 @@
       color: #cbd5e1;
       font-size: 0.95rem;
     }
+    .checkbox {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      cursor: pointer;
+      user-select: none;
+      color: #e2e8f0;
+      font-weight: 600;
+    }
+    .checkbox input {
+      width: 16px;
+      height: 16px;
+      accent-color: #6366f1;
+      cursor: pointer;
+    }
     button {
       background: linear-gradient(135deg, #22d3ee, #6366f1);
       color: #0b1223;
@@ -78,6 +93,10 @@
       <div class="controls">
         <p class="hint">Flèches gauche/droite pour jouer.</p>
         <button id="auto-toggle" type="button">Activer auto-visée</button>
+        <label class="checkbox">
+          <input id="aim-toggle" type="checkbox" />
+          <span>Ligne</span>
+        </label>
       </div>
     </header>
     <canvas id="game" width="800" height="600"></canvas>

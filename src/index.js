@@ -1,6 +1,7 @@
 const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
 const autoBtn = document.getElementById('auto-toggle');
+const aimToggle = document.getElementById('aim-toggle');
 
 const CONFIG = {
   width: 800,
@@ -8,14 +9,15 @@ const CONFIG = {
   paddleWidth: 120,
   paddleHeight: 16,
   paddleSpeed: 460,
-  ballSpeed: 360,
+  ballSpeed: 540,
   ballRadius: 8,
   brickRows: 5,
-  brickCols: 10,
+  brickCols: 8,
   brickTopOffset: 70,
   brickPadding: 8,
   brickHeight: 22,
-  sideMargin: 30
+  sideMargin: 30,
+  aimJitterDeg: 5
 };
 
 const state = {
@@ -40,11 +42,26 @@ const state = {
   score: 0,
   lives: 3,
   running: true,
-  autoPlay: false
+  autoPlay: true,
+  showAim: false
 };
+
+function degToRad(deg) {
+  return (deg * Math.PI) / 180;
+}
 
 function clamp(value, min, max) {
   return Math.min(Math.max(value, min), max);
+}
+
+function withAimJitter(vx, vy) {
+  const angle = Math.atan2(vy, vx);
+  const jitter = degToRad(CONFIG.aimJitterDeg);
+  const offset = (Math.random() * 2 - 1) * jitter;
+  const speed = Math.hypot(vx, vy);
+  const nx = Math.cos(angle + offset);
+  const ny = Math.sin(angle + offset);
+  return { vx: nx * speed, vy: ny * speed };
 }
 
 function resizeCanvas() {
@@ -98,11 +115,10 @@ function update(dt) {
 
   // Mouvement du paddle
   if (state.autoPlay) {
-    // Suivi automatique du point visé.
+    // Suivi automatique lissé (approche progressive du point visé).
     const targetX = ball.vy > 0 ? ball.x - paddle.w / 2 : CONFIG.width / 2 - paddle.w / 2;
-    const autoSpeed = CONFIG.paddleSpeed * 1.2;
-    const dir = Math.sign(targetX - paddle.x);
-    paddle.x += dir * autoSpeed * dt;
+    const smoothing = 8; // plus élevé = plus réactif
+    paddle.x += (targetX - paddle.x) * smoothing * dt;
   } else {
     if (keys.left) {
       paddle.x -= CONFIG.paddleSpeed * dt;
@@ -156,11 +172,14 @@ function update(dt) {
         const len = Math.hypot(dx, dy) || 1;
         const nx = dx / len;
         const ny = dy / len;
-        ball.vx = nx * speed;
-        ball.vy = ny * speed;
+        const aimed = withAimJitter(nx * speed, ny * speed);
+        ball.vx = aimed.vx;
+        ball.vy = aimed.vy;
         if (ball.vy > -40) ball.vy = -Math.abs(ball.vy) - 40; // évite un angle trop plat vers le bas
       } else {
-        ball.vy = -Math.abs(ball.vy);
+        const aimed = withAimJitter(ball.vx, -Math.abs(ball.vy));
+        ball.vx = aimed.vx;
+        ball.vy = aimed.vy;
       }
     } else {
       // Ajuste l'angle selon le point d'impact côté joueur.
@@ -168,8 +187,9 @@ function update(dt) {
       const offset = (hitPos - 0.5) * 2; // -1 -> 1
       const maxAngle = (70 * Math.PI) / 180;
       const angle = offset * maxAngle;
-      ball.vx = Math.sin(angle) * speed;
-      ball.vy = -Math.cos(angle) * speed;
+      const aimed = withAimJitter(Math.sin(angle) * speed, -Math.cos(angle) * speed);
+      ball.vx = aimed.vx;
+      ball.vy = aimed.vy;
     }
   }
 
@@ -243,6 +263,65 @@ function renderPaddle() {
   ctx.fillRect(paddle.x, paddle.y, paddle.w, paddle.h);
 }
 
+function renderAimCone() {
+  if (!state.showAim) return;
+  const { paddle } = state;
+  const originX = paddle.x + paddle.w / 2;
+  const originY = paddle.y;
+
+  // Direction d'intention: auto vers la première brique vivante, sinon vers le haut.
+  let dirX = 0;
+  let dirY = -1;
+  let targetPoint = null;
+  if (state.autoPlay) {
+    const target = state.bricks.find((b) => b.alive);
+    if (target) {
+      targetPoint = { x: target.x + target.w / 2, y: target.y + target.h / 2 };
+      dirX = targetPoint.x - originX;
+      dirY = targetPoint.y - originY;
+      const len = Math.hypot(dirX, dirY) || 1;
+      dirX /= len;
+      dirY /= len;
+    }
+  }
+
+  const baseAngle = Math.atan2(dirY, dirX);
+  const jitter = degToRad(CONFIG.aimJitterDeg);
+  const len = 100;
+
+  ctx.strokeStyle = 'rgba(99, 102, 241, 0.45)';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(originX, originY);
+  ctx.lineTo(originX + Math.cos(baseAngle - jitter) * len, originY + Math.sin(baseAngle - jitter) * len);
+  ctx.stroke();
+
+  ctx.beginPath();
+  ctx.moveTo(originX, originY);
+  ctx.lineTo(originX + Math.cos(baseAngle + jitter) * len, originY + Math.sin(baseAngle + jitter) * len);
+  ctx.stroke();
+
+  if (targetPoint) {
+    ctx.save();
+    ctx.setLineDash([6, 6]);
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.65)';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(originX, originY);
+    ctx.lineTo(targetPoint.x, targetPoint.y);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  ctx.fillStyle = 'rgba(99, 102, 241, 0.08)';
+  ctx.beginPath();
+  ctx.moveTo(originX, originY);
+  ctx.lineTo(originX + Math.cos(baseAngle - jitter) * len, originY + Math.sin(baseAngle - jitter) * len);
+  ctx.lineTo(originX + Math.cos(baseAngle + jitter) * len, originY + Math.sin(baseAngle + jitter) * len);
+  ctx.closePath();
+  ctx.fill();
+}
+
 function renderBall() {
   const { ball } = state;
   ctx.fillStyle = '#f472b6';
@@ -271,6 +350,7 @@ function render() {
   renderBackground();
   renderBricks();
   renderPaddle();
+  renderAimCone();
   renderBall();
   renderHUD();
 }
@@ -304,11 +384,16 @@ function bindControls() {
     state.autoPlay = !state.autoPlay;
     autoBtn.textContent = state.autoPlay ? 'Désactiver auto-visée' : 'Activer auto-visée';
   });
+  aimToggle.addEventListener('change', (event) => {
+    state.showAim = event.target.checked;
+  });
 }
 
 function init() {
   resizeCanvas();
   bindControls();
+  autoBtn.textContent = state.autoPlay ? 'Désactiver auto-visée' : 'Activer auto-visée';
+  aimToggle.checked = state.showAim;
   resetGame();
   requestAnimationFrame(loop);
 }
