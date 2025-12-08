@@ -14,14 +14,15 @@ const CONFIG = {
   ballSpeed: 540,
   ballRadius: 8,
   brickRows: 5,
-  brickCols: 8,
+  brickCols: 6,
   brickTopOffset: 70,
   brickPadding: 8,
   brickHeight: 22,
   sideMargin: 30,
   aimJitterDeg: 5,
   maxBalls: 2,
-  launchCooldownMs: 1000
+  launchCooldownMs: 1000,
+  brickDriftSpeed: 22 // pixels/sec, tapis roulant lent vers le bas mais plus rapide
 };
 
 const state = {
@@ -80,18 +81,22 @@ function resizeCanvas() {
 
 function buildBricks() {
   const { brickCols, brickRows, brickPadding, sideMargin, brickTopOffset, brickHeight } = CONFIG;
-  const availableWidth = CONFIG.width - sideMargin * 2 - brickPadding * (brickCols - 1);
-  const brickWidth = availableWidth / brickCols;
+  // Conserve la largeur de brique d'un layout plus large en "perdant" 1 colonne de chaque côté.
+  const baseCols = brickCols + 2; // cols initiales avant retrait
+  const brickWidthBase = (CONFIG.width - sideMargin * 2 - brickPadding * (baseCols - 1)) / baseCols;
+  const totalWidth = brickCols * brickWidthBase + brickPadding * (brickCols - 1);
+  const startX = (CONFIG.width - totalWidth) / 2;
 
   const bricks = [];
+  const startTop = -((brickHeight + brickPadding) * brickRows) - brickTopOffset;
   const total = brickRows * brickCols;
   const specialIndex = Math.floor(Math.random() * total);
   let idx = 0;
   for (let row = 0; row < brickRows; row += 1) {
     for (let col = 0; col < brickCols; col += 1) {
-      const x = sideMargin + col * (brickWidth + brickPadding);
-      const y = brickTopOffset + row * (brickHeight + brickPadding);
-      bricks.push({ x, y, w: brickWidth, h: brickHeight, alive: true, row, bonus: idx === specialIndex });
+      const x = startX + col * (brickWidthBase + brickPadding);
+      const y = startTop + row * (brickHeight + brickPadding);
+      bricks.push({ x, y, w: brickWidthBase, h: brickHeight, alive: true, row, bonus: idx === specialIndex });
       idx += 1;
     }
   }
@@ -131,7 +136,9 @@ function launchBall() {
   let vy;
 
   if (state.autoPlay) {
-    const target = state.bricks.find((b) => b.alive);
+    const bonus = state.bricks.filter((b) => b.alive && b.bonus);
+    const normals = state.bricks.filter((b) => b.alive && !b.bonus);
+    const target = (bonus.length ? bonus : normals).sort((a, b) => b.y - a.y)[0];
     if (target) {
       const dx = target.x + target.w / 2 - originX;
       const dy = target.y + target.h / 2 - originY;
@@ -156,7 +163,8 @@ function launchBall() {
     y: originY,
     r: CONFIG.ballRadius,
     vx,
-    vy
+    vy,
+    returning: false
   });
 }
 
@@ -175,6 +183,25 @@ function update(dt) {
 
   if (!state.ballHeld && state.ballCount > 0) {
     placeBallOnPaddle();
+  }
+
+  // Descente lente des briques façon tapis roulant.
+  for (const brick of state.bricks) {
+    if (brick.alive) {
+      brick.y += CONFIG.brickDriftSpeed * dt;
+    }
+  }
+
+  // Si une brique atteint le bas, perte de vie.
+  for (const brick of state.bricks) {
+    if (!brick.alive) continue;
+    if (brick.y + brick.h >= CONFIG.height) {
+      brick.alive = false;
+      state.lives -= 1;
+      if (state.lives <= 0) {
+        state.running = false;
+      }
+    }
   }
 
   if (state.ballHeld) {
@@ -216,6 +243,26 @@ function update(dt) {
     ball.x += ball.vx * dt;
     ball.y += ball.vy * dt;
 
+    if (ball.returning) {
+      const targetX = paddle.x + paddle.w / 2;
+      const targetY = paddle.y - paddle.h;
+      const dx = targetX - ball.x;
+      const dy = targetY - ball.y;
+      const dist = Math.hypot(dx, dy);
+      if (dist < Math.max(ball.r + 4, paddle.h + 4)) {
+        state.balls.splice(i, 1);
+        placeBallOnPaddle({ refill: true });
+        continue;
+      }
+      if (dist > 0.0001) {
+        const speed = ball.returnSpeed || (CONFIG.ballSpeed * 0.5);
+        const scale = speed / dist;
+        ball.vx = dx * scale;
+        ball.vy = dy * scale;
+      }
+      continue;
+    }
+
     // Collisions murs
     if (ball.x - ball.r <= 0 && ball.vx < 0) {
       ball.x = ball.r;
@@ -231,7 +278,7 @@ function update(dt) {
     }
 
     // Paddle
-    const hitPaddle = (
+    const hitPaddle = !ball.returning && (
       ball.y + ball.r >= paddle.y &&
       ball.y - ball.r <= paddle.y + paddle.h &&
       ball.x >= paddle.x - ball.r &&
@@ -246,7 +293,9 @@ function update(dt) {
       const speed = Math.hypot(ball.vx, ball.vy);
       if (state.autoPlay) {
         // Vise le centre de la brique la plus haute encore vivante.
-        const target = state.bricks.find((b) => b.alive);
+        const bonus = state.bricks.filter((b) => b.alive && b.bonus);
+        const normals = state.bricks.filter((b) => b.alive && !b.bonus);
+        const target = (bonus.length ? bonus : normals).sort((a, b) => b.y - a.y)[0];
         if (target) {
           const tx = target.x + target.w / 2;
           const ty = target.y + target.h / 2;
@@ -307,9 +356,18 @@ function update(dt) {
 
     // Balle perdue -> revient dans la poche sans perdre de vie.
     if (ball.y - ball.r > CONFIG.height) {
-      state.balls.splice(i, 1);
-      placeBallOnPaddle({ refill: true });
-      continue;
+      if (!ball.returning) {
+        const targetX = paddle.x + paddle.w / 2;
+        const targetY = paddle.y - paddle.h;
+        const dx = targetX - ball.x;
+        const dy = targetY - ball.y;
+        const dist = Math.hypot(dx, dy) || 1;
+        const speed = CONFIG.ballSpeed * 0.5;
+        ball.returnSpeed = speed;
+        ball.vx = (dx / dist) * speed;
+        ball.vy = (dy / dist) * speed;
+        ball.returning = true;
+      }
     }
   }
 
@@ -358,7 +416,7 @@ function renderAimCone() {
   let dirY = -1;
   let targetPoint = null;
   if (state.autoPlay) {
-    const target = state.bricks.find((b) => b.alive);
+    const target = state.bricks.find((b) => b.alive && b.bonus) || state.bricks.find((b) => b.alive);
     if (target) {
       targetPoint = { x: target.x + target.w / 2, y: target.y + target.h / 2 };
       dirX = targetPoint.x - originX;
