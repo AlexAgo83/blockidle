@@ -26,7 +26,8 @@ const CONFIG = {
   brickSpawnInterval: 1.55, // recalculé juste après CONFIG
   brickRowFillRate: 0.525, // 25% de briques en moins par rangée
   brickPauseChance: 0.25, // chance de ne rien spawner pour faire une pause
-  bonusChance: 0.15
+  bonusChance: 0.15,
+  bonusCooldownMs: 5000
 };
 
 CONFIG.brickSpawnInterval = (CONFIG.brickHeight + CONFIG.brickPadding) / CONFIG.brickDriftSpeed;
@@ -62,6 +63,10 @@ const state = {
   lastLaunch: 0,
   spawnTimer: 0,
   rowIndex: 0
+};
+
+const bonusState = {
+  lastBonus: 0
 };
 
 function degToRad(deg) {
@@ -102,11 +107,13 @@ function spawnBrickRow() {
 
   const bricks = [];
   let spawned = 0;
+  const now = performance.now ? performance.now() : Date.now();
+  const allowBonus = now - bonusState.lastBonus >= CONFIG.bonusCooldownMs;
   for (let col = 0; col < brickCols; col += 1) {
     if (Math.random() > brickRowFillRate) continue;
     const x = startX + col * (brickWidthBase + brickPadding);
     const y = -brickHeight - brickTopOffset;
-    const bonus = Math.random() < bonusChance;
+    const bonus = allowBonus && Math.random() < bonusChance;
     bricks.push({
       x,
       y,
@@ -114,7 +121,8 @@ function spawnBrickRow() {
       h: brickHeight,
       alive: true,
       row: state.rowIndex,
-      bonus
+      bonus,
+      deathTime: null
     });
     spawned += 1;
   }
@@ -131,7 +139,8 @@ function spawnBrickRow() {
       h: brickHeight,
       alive: true,
       row: state.rowIndex,
-      bonus: Math.random() < bonusChance
+      bonus: allowBonus && Math.random() < bonusChance,
+      deathTime: null
     });
   }
 
@@ -417,8 +426,10 @@ function update(dt) {
 
       if (withinX && withinY) {
         brick.alive = false;
+        brick.deathTime = performance.now ? performance.now() : Date.now();
         state.score += 50 + brick.row * 10;
         if (brick.bonus) {
+          bonusState.lastBonus = brick.deathTime;
           spawnRewardBall(brick);
         }
 
@@ -469,28 +480,47 @@ function renderBackground() {
 
 function renderBricks() {
   for (const brick of state.bricks) {
-    if (!brick.alive) continue;
-    const hue = 200 + brick.row * 12;
-    ctx.fillStyle = `hsl(${hue}, 70%, 60%)`;
-    ctx.fillRect(brick.x, brick.y, brick.w, brick.h);
-    ctx.strokeStyle = 'rgba(15, 23, 42, 0.4)';
-    ctx.strokeRect(brick.x, brick.y, brick.w, brick.h);
+    const baseHue = 200 + brick.row * 12;
+    const now = performance.now ? performance.now() : Date.now();
+    let alpha = 1;
+    let scale = 1;
+    let explode = false;
+
+    if (!brick.alive && brick.deathTime) {
+      const t = Math.min((now - brick.deathTime) / 180, 1); // 180 ms
+      alpha = 1 - t;
+      scale = 1 + 0.3 * t;
+      explode = true;
+    } else if (!brick.alive) {
+      continue;
+    }
+
+    const drawX = brick.x - (scale - 1) * brick.w / 2;
+    const drawY = brick.y - (scale - 1) * brick.h / 2;
+    const drawW = brick.w * scale;
+    const drawH = brick.h * scale;
+
+    ctx.fillStyle = `hsla(${baseHue}, 70%, 60%, ${alpha})`;
+    ctx.fillRect(drawX, drawY, drawW, drawH);
+    ctx.strokeStyle = `rgba(15, 23, 42, ${0.4 * alpha})`;
+    ctx.lineWidth = 1.5;
+    ctx.strokeRect(drawX, drawY, drawW, drawH);
 
     if (brick.bonus) {
-      const inset = 6;
-      const innerX = brick.x + inset;
-      const innerY = brick.y + inset;
-      const innerW = brick.w - inset * 2;
-      const innerH = brick.h - inset * 2;
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
+      const inset = 6 * scale;
+      const innerX = drawX + inset;
+      const innerY = drawY + inset;
+      const innerW = drawW - inset * 2;
+      const innerH = drawH - inset * 2;
+      ctx.strokeStyle = `rgba(255, 255, 255, ${0.8 * alpha})`;
       ctx.lineWidth = 2;
       ctx.strokeRect(innerX, innerY, innerW, innerH);
 
-      // Icône minimaliste: cercle + "+1" horizontal stylisé.
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.9)';
+      // Icône minimaliste: cercle + "+1".
+      ctx.strokeStyle = `rgba(255, 255, 255, ${0.9 * alpha})`;
       ctx.lineWidth = 2;
-      const cx = brick.x + brick.w / 2;
-      const cy = brick.y + brick.h / 2;
+      const cx = drawX + drawW / 2;
+      const cy = drawY + drawH / 2;
       const r = Math.min(innerW, innerH) * 0.18;
       ctx.beginPath();
       ctx.arc(cx, cy, r, 0, Math.PI * 2);
@@ -501,6 +531,13 @@ function renderBricks() {
       ctx.moveTo(cx, cy - r * 1.1);
       ctx.lineTo(cx, cy + r * 1.1);
       ctx.stroke();
+    }
+
+    if (explode && alpha > 0) {
+      ctx.fillStyle = `rgba(255, 255, 255, ${0.22 * alpha})`;
+      ctx.beginPath();
+      ctx.arc(drawX + drawW / 2, drawY + drawH / 2, Math.max(drawW, drawH) * 0.35, 0, Math.PI * 2);
+      ctx.fill();
     }
   }
 }
