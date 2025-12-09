@@ -37,6 +37,8 @@ const CONFIG = {
   xpSize: 7
 };
 
+const BASE_BALL_SPEED = CONFIG.ballSpeed;
+
 CONFIG.brickSpawnInterval = (CONFIG.brickHeight + CONFIG.brickPadding) / CONFIG.brickDriftSpeed;
 
 const state = {
@@ -350,12 +352,16 @@ function resetGame() {
   state.xpNeeded = xpForLevel(1);
   state.ballCount = 1;
   state.balls = [];
+  state.lastLaunch = 0;
+  CONFIG.ballSpeed = BASE_BALL_SPEED;
+  bonusState.lastBonus = 0;
   placeBallOnPaddle({ centerPaddle: true });
   spawnBrickRow();
 }
 
 function update(dt) {
   if (!state.running) return;
+  const now = performance.now ? performance.now() : Date.now();
   const { paddle, heldBall, keys } = state;
   const speedInterval = CONFIG.speedIncreaseInterval;
   state.speedTimer += dt;
@@ -399,7 +405,12 @@ function update(dt) {
   }
 
   // Nettoyage des briques sorties ou détruites pour éviter l'accumulation.
-  state.bricks = state.bricks.filter((b) => b.alive || b.y < CONFIG.height + 120);
+  const deathTTL = 240; // ms de rémanence pour l'animation d'explosion
+  state.bricks = state.bricks.filter((b) => {
+    if (b.alive) return b.y < CONFIG.height + 120;
+    if (b.deathTime) return now - b.deathTime < deathTTL;
+    return false;
+  });
 
   if (state.ballHeld) {
     // Garde la balle dans la "poche" au-dessus du paddle.
