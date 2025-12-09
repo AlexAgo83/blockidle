@@ -99,8 +99,17 @@
       box-shadow: 0 16px 40px rgba(0, 0, 0, 0.4);
     }
     .modal h2 {
-      margin: 0 0 10px;
-      font-size: 1.2rem;
+      margin: 0 0 6px;
+      font-size: 1.25rem;
+      letter-spacing: 0.02em;
+      color: #e0f2fe;
+      text-transform: uppercase;
+    }
+    .modal .subtitle {
+      margin: 0 0 12px;
+      color: #cbd5e1;
+      line-height: 1.45;
+      font-size: 0.96rem;
       letter-spacing: 0.01em;
     }
     .power-grid {
@@ -130,6 +139,52 @@
       transform: translateY(0);
       box-shadow: 0 8px 16px rgba(0, 0, 0, 0.28);
     }
+    .power-preview {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-top: 14px;
+      padding: 10px;
+      border: 1px solid #334155;
+      border-radius: 10px;
+      background: rgba(15, 23, 42, 0.7);
+    }
+    .power-preview-icon {
+      width: 54px;
+      height: 54px;
+      border-radius: 10px;
+      background: linear-gradient(145deg, #1e293b, #0f172a);
+      border: 1px solid #334155;
+      display: grid;
+      place-items: center;
+      color: #e2e8f0;
+      font-weight: 800;
+      letter-spacing: 0.02em;
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,0.04);
+    }
+    .power-preview-text {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .power-preview-name {
+      font-weight: 700;
+      letter-spacing: 0.02em;
+      margin: 0;
+    }
+    .power-preview-desc {
+      margin: 0;
+      color: #cbd5e1;
+      line-height: 1.45;
+      font-size: 0.95rem;
+    }
+    .power-desc-accent {
+      color: #fbbf24;
+      font-weight: 800;
+    }
+    .power-desc-muted {
+      color: #94a3b8;
+    }
     canvas {
       width: 100%;
       height: auto;
@@ -145,9 +200,7 @@
   <div id="app">
     <header>
       <h1>BrickIdle</h1>
-      <p>Mini moteur canvas pour un casse-brique.</p>
       <div class="controls">
-        <p class="hint">Flèches gauche/droite pour jouer.</p>
         <button id="auto-toggle" type="button">Activer auto-visée</button>
         <label class="checkbox">
           <input id="aim-toggle" type="checkbox" />
@@ -164,12 +217,19 @@
   <div id="power-modal-backdrop" class="modal-backdrop">
     <div class="modal">
       <h2>Choisissez un pouvoir</h2>
-      <p>Chaque niveau vous donne un pouvoir. Choisissez-en un :</p>
+      <p class="subtitle">Chaque niveau vous accorde une amélioration. Sélectionnez l’option qui vous convient :</p>
       <div class="power-grid">
         <button class="power-btn" data-power="Pouvoir 1">Pouvoir 1</button>
         <button class="power-btn" data-power="Pouvoir 2">Pouvoir 2</button>
         <button class="power-btn" data-power="Pouvoir 3">Pouvoir 3</button>
         <button class="power-btn" data-power="Pouvoir 4">Pouvoir 4</button>
+      </div>
+      <div class="power-preview" id="power-preview">
+        <div class="power-preview-icon" id="power-preview-icon">?</div>
+        <div class="power-preview-text">
+          <p class="power-preview-name" id="power-preview-name">Pouvoir</p>
+          <p class="power-preview-desc" id="power-preview-desc">Survolez un pouvoir pour voir ses effets.</p>
+        </div>
       </div>
     </div>
   </div>
