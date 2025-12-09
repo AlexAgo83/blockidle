@@ -6,15 +6,15 @@ const autoFireToggle = document.getElementById('autofire-toggle');
 const powerModalBackdrop = document.getElementById('power-modal-backdrop');
 const powerButtons = Array.from(document.querySelectorAll('.power-btn'));
 
-const ALL_POWERS = [
-  'Boule de feu',
-  'Glace',
-  'Poison',
-  'Metal',
-  'Vampire',
-  'Lumière',
-  'Epine',
-  'Malediction'
+const POWER_DEFS = [
+  { name: 'Boule de feu', maxLevel: 3 },
+  { name: 'Glace', maxLevel: 3 },
+  { name: 'Poison', maxLevel: 3 },
+  { name: 'Metal', maxLevel: 3 },
+  { name: 'Vampire', maxLevel: 3 },
+  { name: 'Lumière', maxLevel: 3 },
+  { name: 'Epine', maxLevel: 3 },
+  { name: 'Malediction', maxLevel: 3 }
 ];
 
 const CONFIG = {
@@ -116,6 +116,25 @@ function clamp(value, min, max) {
   return Math.min(Math.max(value, min), max);
 }
 
+function getPowerDef(name) {
+  return POWER_DEFS.find((p) => p.name === name) || { name, maxLevel: 1 };
+}
+
+function getPowerLevel(name) {
+  const existing = state.powers.find((p) => p.name === name);
+  return existing ? existing.level : 0;
+}
+
+function canUpgradePower(name) {
+  const def = getPowerDef(name);
+  return getPowerLevel(name) < def.maxLevel;
+}
+
+function nextPowerLevel(name) {
+  const def = getPowerDef(name);
+  return Math.min(getPowerLevel(name) + 1, def.maxLevel);
+}
+
 function withAimJitter(vx, vy) {
   const angle = Math.atan2(vy, vx);
   const jitter = degToRad(CONFIG.aimJitterDeg);
@@ -178,7 +197,7 @@ function gainXp(amount) {
 
 function tryOpenPowerModal() {
   if (state.powerModalOpen || state.pendingPowerChoices <= 0) return;
-  const available = ALL_POWERS.filter((p) => !state.powers.includes(p));
+  const available = POWER_DEFS.map((p) => p.name).filter((name) => canUpgradePower(name));
   if (!available.length) {
     state.pendingPowerChoices = 0;
     state.paused = false;
@@ -193,15 +212,21 @@ function tryOpenPowerModal() {
 }
 
 function handlePowerSelect(powerName) {
-  if (state.powers.includes(powerName)) {
-    state.pendingPowerChoices = Math.max(0, state.pendingPowerChoices - 1);
-    state.powerModalOpen = false;
-    powerModalBackdrop.classList.remove('open');
-    state.paused = state.pendingPowerChoices > 0;
-    if (state.paused) tryOpenPowerModal();
-    return;
+  const def = getPowerDef(powerName);
+  const existing = state.powers.find((p) => p.name === powerName);
+  if (existing) {
+    if (existing.level >= def.maxLevel) {
+      state.pendingPowerChoices = Math.max(0, state.pendingPowerChoices - 1);
+      state.powerModalOpen = false;
+      powerModalBackdrop.classList.remove('open');
+      state.paused = state.pendingPowerChoices > 0;
+      if (state.paused) tryOpenPowerModal();
+      return;
+    }
+    existing.level = Math.min(existing.level + 1, def.maxLevel);
+  } else {
+    state.powers.push({ name: powerName, level: 1 });
   }
-  state.powers.push(powerName);
   state.specialPocket.push(powerName);
   state.pendingPowerChoices = Math.max(0, state.pendingPowerChoices - 1);
   powerModalBackdrop.classList.remove('open');
@@ -218,7 +243,8 @@ function renderPowerModal(options) {
     const power = options[idx];
     if (power) {
       btn.style.display = 'block';
-      btn.textContent = power;
+      const nextLv = nextPowerLevel(power);
+      btn.textContent = `${power} (Lv. ${nextLv})`;
       btn.dataset.power = power;
     } else {
       btn.style.display = 'none';
@@ -1074,7 +1100,7 @@ function renderHUD() {
   ctx.fillText('Pouvoirs:', xpBarX, xpBarY + 28);
   const powerLines = state.powers.slice(-5); // affiche les 5 derniers
   powerLines.forEach((p, idx) => {
-    ctx.fillText(`- ${p}`, xpBarX, xpBarY + 48 + idx * 18);
+    ctx.fillText(`- ${p.name} (Lv. ${p.level})`, xpBarX, xpBarY + 48 + idx * 18);
   });
 
   if (!state.running) {
