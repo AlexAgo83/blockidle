@@ -137,6 +137,29 @@ function nextPowerLevel(name) {
   return Math.min(getPowerLevel(name) + 1, def.maxLevel);
 }
 
+function getPowerColor(name) {
+  switch (name) {
+    case 'Boule de feu':
+      return 'rgba(255, 215, 0, 0.35)';
+    case 'Glace':
+      return 'rgba(96, 165, 250, 0.35)';
+    case 'Poison':
+      return 'rgba(52, 211, 153, 0.35)';
+    case 'Metal':
+      return 'rgba(226, 232, 240, 0.35)';
+    case 'Vampire':
+      return 'rgba(239, 68, 68, 0.35)';
+    case 'Lumière':
+      return 'rgba(255, 255, 255, 0.35)';
+    case 'Epine':
+      return 'rgba(120, 72, 48, 0.35)';
+    case 'Malediction':
+      return 'rgba(139, 92, 246, 0.35)';
+    default:
+      return 'rgba(255,255,255,0.25)';
+  }
+}
+
 function withAimJitter(vx, vy) {
   const angle = Math.atan2(vy, vx);
   const jitter = degToRad(CONFIG.aimJitterDeg);
@@ -297,7 +320,9 @@ function spawnBrickRow() {
       flashTime: null,
       slowUntil: 0,
       poisonNextTick: 0,
-      poisonActive: false
+      poisonActive: false,
+      effectColor: null,
+      effectUntil: 0
     });
     spawned += 1;
   }
@@ -328,7 +353,9 @@ function spawnBrickRow() {
       flashTime: null,
       slowUntil: 0,
       poisonNextTick: 0,
-      poisonActive: false
+      poisonActive: false,
+      effectColor: null,
+      effectUntil: 0
     });
   }
 
@@ -525,48 +552,29 @@ function update(dt) {
   // Descente lente des briques façon tapis roulant.
   for (const brick of state.bricks) {
     if (brick.alive) {
-      brick.prevY = brick.y;
       const slowFactor = brick.slowUntil && brick.slowUntil > now ? 0.5 : 1;
       brick.y += state.brickSpeed * slowFactor * dt;
     }
   }
 
-  // Collisions entre briques (empêche le chevauchement). Si l'une est gelée, elle est immobile.
+  // Collisions entre briques (empêche le chevauchement). Une brique gelée reste immobile.
   const isFrozen = (b) => b.alive && b.slowUntil && b.slowUntil > now;
-  const separateAbove = (upper, lower) => {
-    upper.y = Math.min(upper.y, lower.y - upper.h - 0.01);
-  };
-  // Plusieurs passes pour propager le blocage en colonne
-  for (let pass = 0; pass < 4; pass += 1) {
-    let moved = false;
-    for (let i = 0; i < state.bricks.length; i += 1) {
-      const a = state.bricks[i];
-      if (!a.alive) continue;
-      for (let j = i + 1; j < state.bricks.length; j += 1) {
-        const b = state.bricks[j];
-        if (!b.alive) continue;
-        const overlapX = a.x < b.x + b.w && a.x + a.w > b.x;
-        const overlapY = a.y < b.y + b.h && a.y + a.h > b.y;
-        if (!overlapX || !overlapY) continue;
-
-        const aFrozen = isFrozen(a);
-        const bFrozen = isFrozen(b);
-        const aWasAbove = (a.prevY ?? a.y) + a.h <= (b.prevY ?? b.y) + b.h;
-
-        if (aFrozen && !bFrozen) {
-          separateAbove(b, a); // ne bouge pas la brique gelée
-          moved = true;
-        } else if (bFrozen && !aFrozen) {
-          separateAbove(a, b); // ne bouge pas la brique gelée
-          moved = true;
-        } else if (!aFrozen && !bFrozen) {
-          if (aWasAbove) separateAbove(b, a);
-          else separateAbove(a, b);
-          moved = true;
-        }
+  const activeBricks = state.bricks.filter((b) => b.alive).sort((a, b) => a.y - b.y);
+  for (let i = 0; i < activeBricks.length; i += 1) {
+    const upper = activeBricks[i];
+    for (let j = i + 1; j < activeBricks.length; j += 1) {
+      const lower = activeBricks[j];
+      const overlapX = upper.x < lower.x + lower.w && upper.x + upper.w > lower.x;
+      if (!overlapX) continue;
+      const overlapY = upper.y < lower.y + lower.h && upper.y + upper.h > lower.y;
+      if (!overlapY) continue;
+      if (isFrozen(lower)) {
+        upper.y = Math.min(upper.y, lower.y - upper.h - 0.01);
+      } else {
+        upper.y = Math.min(upper.y, lower.y - upper.h - 0.01);
       }
+      break; // premier support suffisant
     }
-    if (!moved) break;
   }
 
   // Si une brique atteint le bas, perte de vie.
@@ -955,6 +963,16 @@ function renderBricks() {
       ctx.arc(drawX + drawW / 2, drawY + drawH / 2, Math.max(drawW, drawH) * 0.35, 0, Math.PI * 2);
       ctx.fill();
     }
+
+    // Halo d'effet (pouvoirs)
+    const haloActive = brick.effectColor && brick.effectUntil > now;
+    if (haloActive) {
+      const pad = 4;
+      ctx.save();
+      ctx.fillStyle = brick.effectColor;
+      ctx.fillRect(drawX - pad, drawY - pad, drawW + pad * 2, drawH + pad * 2);
+      ctx.restore();
+    }
   }
 }
 
@@ -1233,10 +1251,20 @@ function applyPowerOnHit(ball, brick, now) {
   if (!brick.alive) return;
   const power = ball.specialPower;
   if (power === 'Glace') {
-    brick.slowUntil = Math.max(brick.slowUntil || 0, now + 5000);
+    brick.slowUntil = Math.max(brick.slowUntil || 0, now + 3000); // 3s de gel
+    brick.effectColor = getPowerColor(power);
+    brick.effectUntil = brick.slowUntil;
   } else if (power === 'Poison') {
     brick.poisonActive = true;
     brick.poisonNextTick = now + 5000;
+    brick.effectColor = getPowerColor(power);
+    brick.effectUntil = Number.POSITIVE_INFINITY;
+  } else if (power === 'Boule de feu') {
+    brick.effectColor = getPowerColor(power);
+    brick.effectUntil = now + 700;
+  } else if (power === 'Metal') {
+    brick.effectColor = getPowerColor(power);
+    brick.effectUntil = now + 500;
   }
 }
 
