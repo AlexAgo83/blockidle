@@ -1169,65 +1169,29 @@ function renderAimCone() {
   const originX = paddle.x + paddle.w / 2;
   const originY = paddle.y;
 
-  // Direction d'intention: auto vers la brique la plus haute, sinon vers la souris si dispo, sinon vers le haut.
-  let dirX = 0;
-  let dirY = -1;
   let targetPoint = null;
   if (!state.autoPlay && state.aimPos) {
     targetPoint = { x: state.aimPos.x, y: state.aimPos.y };
-    dirX = targetPoint.x - originX;
-    dirY = targetPoint.y - originY;
-    const len = Math.hypot(dirX, dirY) || 1;
-    dirX /= len;
-    dirY /= len;
   } else if (state.autoPlay) {
     const target = selectTargetBrick();
     if (target) {
       targetPoint = { x: target.x + target.w / 2, y: target.y + target.h / 2 };
-      dirX = targetPoint.x - originX;
-      dirY = targetPoint.y - originY;
-      const len = Math.hypot(dirX, dirY) || 1;
-      dirX /= len;
-      dirY /= len;
     }
   }
 
-  const baseAngle = Math.atan2(dirY, dirX);
-  const jitter = degToRad(CONFIG.aimJitterDeg);
-  const len = 100;
-
-  ctx.strokeStyle = 'rgba(99, 102, 241, 0.45)';
-  ctx.lineWidth = 2;
-  ctx.beginPath();
-  ctx.moveTo(originX, originY);
-  ctx.lineTo(originX + Math.cos(baseAngle - jitter) * len, originY + Math.sin(baseAngle - jitter) * len);
-  ctx.stroke();
-
-  ctx.beginPath();
-  ctx.moveTo(originX, originY);
-  ctx.lineTo(originX + Math.cos(baseAngle + jitter) * len, originY + Math.sin(baseAngle + jitter) * len);
-  ctx.stroke();
-
   if (targetPoint) {
     ctx.save();
-    ctx.setLineDash([6, 6]);
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.65)';
-    ctx.lineWidth = 1.5;
+    ctx.setLineDash([6, 4]);
+    ctx.strokeStyle = 'rgba(239, 68, 68, 0.9)'; // rouge
+    ctx.lineWidth = 2;
     ctx.beginPath();
     ctx.moveTo(originX, originY);
     ctx.lineTo(targetPoint.x, targetPoint.y);
     ctx.stroke();
     ctx.restore();
   }
-
-  ctx.fillStyle = 'rgba(99, 102, 241, 0.08)';
-  ctx.beginPath();
-  ctx.moveTo(originX, originY);
-  ctx.lineTo(originX + Math.cos(baseAngle - jitter) * len, originY + Math.sin(baseAngle - jitter) * len);
-  ctx.lineTo(originX + Math.cos(baseAngle + jitter) * len, originY + Math.sin(baseAngle + jitter) * len);
-  ctx.closePath();
-  ctx.fill();
 }
+
 
 function renderBalls() {
   for (const ball of state.balls) {
