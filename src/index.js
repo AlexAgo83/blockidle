@@ -7,8 +7,8 @@ const powerModalBackdrop = document.getElementById('power-modal-backdrop');
 const powerButtons = Array.from(document.querySelectorAll('.power-btn'));
 
 const ALL_POWERS = [
-  'Pouvoir 1',
-  'Pouvoir 2',
+  'Boule de feu',
+  'Glace',
   'Pouvoir 3',
   'Pouvoir 4',
   'Pouvoir 5',
@@ -96,6 +96,7 @@ const state = {
   xpDrops: [],
   paused: false,
   powers: [],
+  specialPocket: [],
   pendingPowerChoices: 0,
   powerModalOpen: false,
   currentPowerOptions: []
@@ -203,6 +204,7 @@ function handlePowerSelect(powerName) {
     return;
   }
   state.powers.push(powerName);
+  state.specialPocket.push(powerName);
   state.pendingPowerChoices = Math.max(0, state.pendingPowerChoices - 1);
   powerModalBackdrop.classList.remove('open');
   state.powerModalOpen = false;
@@ -373,6 +375,7 @@ function placeBallOnPaddle({ centerPaddle = false, refill = false } = {}) {
   heldBall.y = paddle.y - heldBall.r - 2;
   heldBall.vx = 0;
   heldBall.vy = 0;
+  heldBall.specialPower = null;
   state.ballHeld = true;
   if (refill) {
     state.ballCount = Math.min(CONFIG.maxBalls, state.ballCount + 1);
@@ -380,12 +383,20 @@ function placeBallOnPaddle({ centerPaddle = false, refill = false } = {}) {
 }
 
 function launchBall() {
-  if (!state.ballHeld || state.ballCount <= 0) return;
+  if (!state.ballHeld) return;
+  const available = state.ballCount + state.specialPocket.length;
+  if (available <= 0) return;
   const now = performance.now ? performance.now() : Date.now();
   if (now - state.lastLaunch < CONFIG.launchCooldownMs) return;
-  state.ballCount -= 1;
   state.ballHeld = false;
   state.lastLaunch = now;
+  let specialPower = null;
+  if (state.specialPocket.length > 0) {
+    // Priorité aux balles spéciales
+    specialPower = state.specialPocket.shift();
+  } else {
+    state.ballCount -= 1;
+  }
   const speed = CONFIG.ballSpeed;
   const originX = state.heldBall.x;
   const originY = state.heldBall.y;
@@ -420,7 +431,8 @@ function launchBall() {
     r: CONFIG.ballRadius,
     vx,
     vy,
-    returning: false
+    returning: false,
+    specialPower
   });
 }
 
@@ -443,6 +455,7 @@ function resetGame() {
   bonusState.lastBonus = 0;
   state.paused = false;
   state.powers = [];
+  state.specialPocket = [];
   state.pendingPowerChoices = 0;
   state.powerModalOpen = false;
   state.currentPowerOptions = [];
@@ -463,7 +476,7 @@ function update(dt) {
     state.level += 1;
   }
 
-  if (!state.ballHeld && state.ballCount > 0) {
+  if (!state.ballHeld && (state.ballCount > 0 || state.specialPocket.length > 0)) {
     placeBallOnPaddle();
   }
 
@@ -962,7 +975,17 @@ function renderBalls() {
     if (ball.returning) {
       ctx.fillStyle = 'rgba(255, 255, 255, 0.35)';
     } else {
-      ctx.fillStyle = '#f472b6';
+      if (ball.specialPower === 'Boule de feu') {
+        const blink = (Math.sin(performance.now() / 80) + 1) / 2; // plus rapide
+        const alpha = 0.35 + 0.65 * blink;
+        ctx.fillStyle = `rgba(255, 215, 0, ${alpha.toFixed(2)})`; // jaune doré
+      } else if (ball.specialPower === 'Glace') {
+        const blink = (Math.sin(performance.now() / 90) + 1) / 2;
+        const alpha = 0.35 + 0.65 * blink;
+        ctx.fillStyle = `rgba(96, 165, 250, ${alpha.toFixed(2)})`; // bleu lumineux animé
+      } else {
+        ctx.fillStyle = '#f472b6';
+      }
     }
     ctx.beginPath();
     ctx.arc(ball.x, ball.y, ball.r, 0, Math.PI * 2);
@@ -981,7 +1004,7 @@ function renderHUD() {
   ctx.font = '18px "Segoe UI", sans-serif';
   ctx.fillText(`Score: ${state.score}`, 14, 24);
   ctx.fillText(state.autoPlay ? 'Auto: ON' : 'Auto: OFF', 14, 46);
-  const availableBalls = state.ballCount + (state.ballHeld ? 1 : 0);
+  const availableBalls = state.ballCount + state.specialPocket.length + (state.ballHeld ? 1 : 0);
   const totalBalls = availableBalls + state.balls.length;
   ctx.fillText(`Balles: ${availableBalls}/${totalBalls}`, 14, 68);
   ctx.fillText(`Vitesse: ${Math.round(CONFIG.ballSpeed)} px/s`, 14, 90);
