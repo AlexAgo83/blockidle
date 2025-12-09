@@ -176,6 +176,7 @@ function spawnBrickRow() {
       y,
       w: brickWidth,
       h: brickHeight,
+      hue: 200 + state.rowIndex * 12, // couleur figée à la création
       alive: true,
       row: state.rowIndex,
       type,
@@ -203,6 +204,7 @@ function spawnBrickRow() {
       y,
       w: brickWidth,
       h: brickHeight,
+      hue: 200 + state.rowIndex * 12, // couleur figée à la création
       alive: true,
       row: state.rowIndex,
       type,
@@ -668,9 +670,11 @@ function renderWalls() {
 }
 
 function renderBricks() {
+  const timeNow = performance.now ? performance.now() : Date.now();
+  const hueShift = (timeNow / 50) % 360; // variation progressive des teintes
   for (const brick of state.bricks) {
-    const baseHue = 200 + brick.row * 12;
-    const now = performance.now ? performance.now() : Date.now();
+    const baseHue = ((brick.hue ?? (200 + brick.row * 12)) + hueShift) % 360;
+    const now = timeNow;
     if (!brick.alive && !brick.deathTime) continue;
     let alpha = 1;
     let scale = 1;
