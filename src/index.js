@@ -446,7 +446,9 @@ function launchBall() {
   const available = state.ballCount + state.specialPocket.length;
   if (available <= 0) return;
   const now = performance.now ? performance.now() : Date.now();
-  if (now - state.lastLaunch < CONFIG.launchCooldownMs) return;
+  const nextIsSpecial = state.specialPocket.length > 0;
+  const cooldown = nextIsSpecial ? CONFIG.launchCooldownMs * 2 : CONFIG.launchCooldownMs;
+  if (now - state.lastLaunch < cooldown) return;
   state.ballHeld = false;
   state.lastLaunch = now;
   let specialPower = null;
@@ -1261,7 +1263,7 @@ function applyPowerOnHit(ball, brick, now) {
     brick.effectUntil = Number.POSITIVE_INFINITY;
   } else if (power === 'Boule de feu') {
     brick.effectColor = getPowerColor(power);
-    brick.effectUntil = now + 700;
+    brick.effectUntil = now + 3000; // halo feu 3s
   } else if (power === 'Metal') {
     brick.effectColor = getPowerColor(power);
     brick.effectUntil = now + 500;
@@ -1289,17 +1291,25 @@ function damageBrick(brick, amount, now) {
 
 function applyFireSplash(ball, hitBrick, now, baseDamage) {
   if (ball.specialPower !== 'Boule de feu') return;
-  const radius = Math.max(hitBrick.w, hitBrick.h) * 1.2;
   const cx = hitBrick.x + hitBrick.w / 2;
   const cy = hitBrick.y + hitBrick.h / 2;
-  for (const b of state.bricks) {
-    if (!b.alive || b === hitBrick) continue;
-    const bx = b.x + b.w / 2;
-    const by = b.y + b.h / 2;
-    const dist = Math.hypot(bx - cx, by - cy);
-    if (dist <= radius) {
-      applyPowerOnHit(ball, b, now);
-      damageBrick(b, baseDamage, now);
-    }
+  const candidates = state.bricks
+    .filter((b) => b.alive && b !== hitBrick)
+    .map((b) => {
+      const bx = b.x + b.w / 2;
+      const by = b.y + b.h / 2;
+      return { brick: b, dist: Math.hypot(bx - cx, by - cy) };
+    })
+    .sort((a, b) => a.dist - b.dist);
+  // Sélection aléatoire parmi les plus proches
+  const nearest = candidates.slice(0, 8); // proche échantillon
+  for (let i = nearest.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [nearest[i], nearest[j]] = [nearest[j], nearest[i]];
+  }
+  const targets = nearest.slice(0, 3);
+  for (const { brick } of targets) {
+    applyPowerOnHit(ball, brick, now);
+    damageBrick(brick, baseDamage, now);
   }
 }
