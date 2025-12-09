@@ -5,6 +5,7 @@ const aimToggle = document.getElementById('aim-toggle');
 const autoFireToggle = null;
 const powerModalBackdrop = document.getElementById('power-modal-backdrop');
 const powerButtons = Array.from(document.querySelectorAll('.power-btn'));
+const talentButtons = Array.from(document.querySelectorAll('.talent-btn'));
 const powerPreviewName = document.getElementById('power-preview-name');
 const powerPreviewDesc = document.getElementById('power-preview-desc');
 const powerPreviewIcon = document.getElementById('power-preview-icon');
@@ -18,6 +19,12 @@ const POWER_DEFS = [
   { name: 'Lumière', maxLevel: 3 },
   { name: 'Epine', maxLevel: 3 },
   { name: 'Malediction', maxLevel: 3 }
+];
+
+const TALENT_DEFS = [
+  { name: 'Bottes', maxLevel: 3 },
+  { name: 'Plume', maxLevel: 3 },
+  { name: 'Gants', maxLevel: 3 }
 ];
 
 const CONFIG = {
@@ -105,10 +112,12 @@ const state = {
   xpDrops: [],
   paused: false,
   powers: [],
+  talents: [],
   specialPocket: [],
   pendingPowerChoices: 0,
   powerModalOpen: false,
   currentPowerOptions: [],
+  currentTalentOptions: [],
   lastHitSpecial: null,
   lastVampireHeal: 0,
   lastBossLevelSpawned: 0
@@ -132,7 +141,9 @@ function clamp(value, min, max) {
 
 function getBallSpeed(isSpecial) {
   const base = CONFIG.ballSpeed;
-  return isSpecial ? base : base * CONFIG.standardBallSpeedMultiplier;
+  const plumeLevel = getTalentLevel('Plume');
+  const mult = 1 + 0.1 * plumeLevel;
+  return (isSpecial ? base : base * CONFIG.standardBallSpeedMultiplier) * mult;
 }
 
 function getBallRadius(isSpecial) {
@@ -140,8 +151,31 @@ function getBallRadius(isSpecial) {
   return isSpecial ? base : base * CONFIG.standardBallRadiusMultiplier;
 }
 
+function getPaddleSpeed() {
+  const level = getTalentLevel('Bottes');
+  const mult = 1 + 0.1 * level;
+  return CONFIG.paddleSpeed * mult;
+}
+
+function getPaddleMaxSpeed() {
+  const level = getTalentLevel('Bottes');
+  const mult = 1 + 0.1 * level;
+  return CONFIG.paddleMaxSpeed * mult;
+}
+
+function getCooldowns(nextIsSpecial) {
+  const level = getTalentLevel('Gants');
+  const mult = 1 / (1 + 0.1 * level);
+  const base = nextIsSpecial ? CONFIG.specialShotCooldownMs : CONFIG.normalShotCooldownMs;
+  return base * mult;
+}
+
 function getPowerDef(name) {
   return POWER_DEFS.find((p) => p.name === name) || { name, maxLevel: 1 };
+}
+
+function getTalentDef(name) {
+  return TALENT_DEFS.find((t) => t.name === name) || { name, maxLevel: 1 };
 }
 
 function getPowerDescription(name) {
@@ -191,8 +225,35 @@ function getPowerDescription(name) {
   }
 }
 
+function getTalentDescription(name) {
+  switch (name) {
+    case 'Bottes':
+      return {
+        plain: 'Augmente la vitesse du paddle de 10% par niveau',
+        rich: 'Vitesse du paddle <span class="power-desc-accent">+10%</span> par niveau'
+      };
+    case 'Plume':
+      return {
+        plain: 'Augmente la vitesse des balles de 10% par niveau',
+        rich: 'Vitesse des balles <span class="power-desc-accent">+10%</span> par niveau'
+      };
+    case 'Gants':
+      return {
+        plain: 'Augmente la cadence de tir de 10% par niveau',
+        rich: 'Cadence de tir <span class="power-desc-accent">+10%</span> par niveau'
+      };
+    default:
+      return { plain: '', rich: '' };
+  }
+}
+
 function getPowerLevel(name) {
   const existing = state.powers.find((p) => p.name === name);
+  return existing ? existing.level : 0;
+}
+
+function getTalentLevel(name) {
+  const existing = state.talents.find((t) => t.name === name);
   return existing ? existing.level : 0;
 }
 
@@ -201,9 +262,19 @@ function canUpgradePower(name) {
   return getPowerLevel(name) < def.maxLevel;
 }
 
+function canUpgradeTalent(name) {
+  const def = getTalentDef(name);
+  return getTalentLevel(name) < def.maxLevel;
+}
+
 function nextPowerLevel(name) {
   const def = getPowerDef(name);
   return Math.min(getPowerLevel(name) + 1, def.maxLevel);
+}
+
+function nextTalentLevel(name) {
+  const def = getTalentDef(name);
+  return Math.min(getTalentLevel(name) + 1, def.maxLevel);
 }
 
 function getPowerColor(name) {
@@ -291,15 +362,20 @@ function gainXp(amount) {
 
 function tryOpenPowerModal() {
   if (state.powerModalOpen || state.pendingPowerChoices <= 0) return;
-  const available = POWER_DEFS.map((p) => p.name).filter((name) => canUpgradePower(name));
-  if (!available.length) {
+  const availablePowers = POWER_DEFS.map((p) => p.name).filter((name) => canUpgradePower(name));
+  const availableTalents = TALENT_DEFS.map((t) => t.name).filter((name) => canUpgradeTalent(name));
+
+  if (!availablePowers.length && !availableTalents.length) {
     state.pendingPowerChoices = 0;
     state.paused = false;
     return;
   }
-  const options = sampleOptions(available, 4);
-  state.currentPowerOptions = options;
-  renderPowerModal(options);
+
+  const powerOptions = sampleOptions(availablePowers, 4);
+  const talentOptions = sampleOptions(availableTalents, 3);
+  state.currentPowerOptions = powerOptions;
+  state.currentTalentOptions = talentOptions;
+  renderPowerModal(powerOptions, talentOptions);
   state.paused = true;
   state.powerModalOpen = true;
   powerModalBackdrop.classList.add('open');
@@ -325,6 +401,29 @@ function handlePowerSelect(powerName) {
   state.pendingPowerChoices = Math.max(0, state.pendingPowerChoices - 1);
   powerModalBackdrop.classList.remove('open');
   state.powerModalOpen = false;
+  if (state.pendingPowerChoices > 0 || state.pendingTalentChoices > 0) {
+    tryOpenPowerModal();
+  } else {
+    state.paused = false;
+  }
+}
+
+function handleTalentSelect(talentName) {
+  const def = getTalentDef(talentName);
+  const existing = state.talents.find((t) => t.name === talentName);
+  if (existing) {
+    if (existing.level >= def.maxLevel) {
+      state.pendingPowerChoices = Math.max(0, state.pendingPowerChoices - 1);
+    } else {
+      existing.level = Math.min(existing.level + 1, def.maxLevel);
+      state.pendingPowerChoices = Math.max(0, state.pendingPowerChoices - 1);
+    }
+  } else {
+    state.talents.push({ name: talentName, level: 1 });
+    state.pendingPowerChoices = Math.max(0, state.pendingPowerChoices - 1);
+  }
+  powerModalBackdrop.classList.remove('open');
+  state.powerModalOpen = false;
   if (state.pendingPowerChoices > 0) {
     tryOpenPowerModal();
   } else {
@@ -332,9 +431,9 @@ function handlePowerSelect(powerName) {
   }
 }
 
-function renderPowerModal(options) {
+function renderPowerModal(powerOptions, talentOptions) {
   powerButtons.forEach((btn, idx) => {
-    const power = options[idx];
+    const power = powerOptions[idx];
     if (power) {
       btn.style.display = 'block';
       const currentLv = getPowerLevel(power);
@@ -345,16 +444,42 @@ function renderPowerModal(options) {
       btn.textContent = label;
       btn.dataset.power = power;
       btn.title = getPowerDescription(power).plain;
-      btn.onmouseenter = () => updatePowerPreview(power, label);
-      btn.onfocus = () => updatePowerPreview(power, label);
+      btn.onmouseenter = () => updatePowerPreview(power, label, 'power');
+      btn.onfocus = () => updatePowerPreview(power, label, 'power');
+      btn.onclick = () => handlePowerSelect(power);
     } else {
       btn.style.display = 'none';
     }
   });
-  const first = options.find(Boolean);
-  if (first) {
-    const firstLabel = powerButtons.find((b) => b.dataset.power === first)?.textContent || first;
-    updatePowerPreview(first, firstLabel);
+
+  talentButtons.forEach((btn, idx) => {
+    const talent = talentOptions[idx];
+    if (talent) {
+      btn.style.display = 'block';
+      const currentLv = getTalentLevel(talent);
+      const nextLv = nextTalentLevel(talent);
+      const label = currentLv === 0
+        ? `${talent} (New)`
+        : `${talent} (Lv. ${currentLv} → ${nextLv})`;
+      btn.textContent = label;
+      btn.dataset.talent = talent;
+      btn.title = getTalentDescription(talent).plain;
+      btn.onmouseenter = () => updatePowerPreview(talent, label, 'talent');
+      btn.onfocus = () => updatePowerPreview(talent, label, 'talent');
+      btn.onclick = () => handleTalentSelect(talent);
+    } else {
+      btn.style.display = 'none';
+    }
+  });
+
+  const firstPower = powerOptions && powerOptions.find(Boolean);
+  const firstTalent = talentOptions && talentOptions.find(Boolean);
+  if (firstPower) {
+    const label = powerButtons.find((b) => b.dataset.power === firstPower)?.textContent || firstPower;
+    updatePowerPreview(firstPower, label, 'power');
+  } else if (firstTalent) {
+    const label = talentButtons.find((b) => b.dataset.talent === firstTalent)?.textContent || firstTalent;
+    updatePowerPreview(firstTalent, label, 'talent');
   }
 }
 
@@ -367,14 +492,15 @@ function sampleOptions(list, count) {
   return pool.slice(0, count);
 }
 
-function updatePowerPreview(power, labelOverride) {
-  if (!power) return;
-  const desc = getPowerDescription(power);
-  const color = getPowerColor(power);
-  if (powerPreviewName) powerPreviewName.textContent = labelOverride || power;
+function updatePowerPreview(name, labelOverride, kind = 'power') {
+  if (!name) return;
+  const isPower = kind === 'power';
+  const desc = isPower ? getPowerDescription(name) : getTalentDescription(name);
+  const color = isPower ? getPowerColor(name) : 'rgba(148, 163, 184, 0.4)';
+  if (powerPreviewName) powerPreviewName.textContent = labelOverride || name;
   if (powerPreviewDesc) powerPreviewDesc.innerHTML = desc.rich || desc.plain || 'Aucun détail disponible.';
   if (powerPreviewIcon) {
-    powerPreviewIcon.textContent = power.slice(0, 2).toUpperCase();
+    powerPreviewIcon.textContent = name.slice(0, 2).toUpperCase();
     powerPreviewIcon.style.background = color.replace('0.35', '0.55');
     powerPreviewIcon.style.boxShadow = `0 0 12px ${color}`;
   }
@@ -644,7 +770,7 @@ function launchBall() {
   if (available <= 0) return;
   const now = performance.now ? performance.now() : Date.now();
   const nextIsSpecial = state.specialPocket.length > 0;
-  const cooldown = nextIsSpecial ? CONFIG.specialShotCooldownMs : CONFIG.normalShotCooldownMs;
+  const cooldown = getCooldowns(nextIsSpecial);
   if (now - state.lastLaunch < cooldown) return;
   state.ballHeld = false;
   state.lastLaunch = now;
@@ -724,6 +850,7 @@ function resetGame() {
   state.pendingPowerChoices = 0;
   state.powerModalOpen = false;
   state.currentPowerOptions = [];
+  state.currentTalentOptions = [];
   state.lastHitSpecial = null;
   state.lastVampireHeal = 0;
   state.lastBossLevelSpawned = 0;
@@ -832,15 +959,16 @@ function update(dt) {
       ? refBall.x - paddle.w / 2
       : CONFIG.width / 2 - paddle.w / 2;
     const smoothing = 8; // plus élevé = plus réactif
-    const maxStep = CONFIG.paddleMaxSpeed * dt;
+    const maxStep = getPaddleMaxSpeed() * dt;
     const delta = (targetX - paddle.x) * smoothing * dt;
     paddle.x += clamp(delta, -maxStep, maxStep);
   } else {
+    const paddleSpeed = getPaddleSpeed();
     if (keys.left) {
-      paddle.x -= CONFIG.paddleSpeed * dt;
+      paddle.x -= paddleSpeed * dt;
     }
     if (keys.right) {
-      paddle.x += CONFIG.paddleSpeed * dt;
+      paddle.x += paddleSpeed * dt;
     }
   }
   paddle.x = clamp(paddle.x, 0, CONFIG.width - paddle.w);
@@ -1396,6 +1524,14 @@ function renderHUD() {
     ctx.fillText(`- ${p.name} (Lv. ${p.level})`, barX, powersY + 20 + idx * 18);
   });
 
+  // Talents
+  const talentsY = powersY + 20 + powerLines.length * 18 + 10;
+  ctx.fillText('Talents:', barX, talentsY);
+  const talentLines = state.talents.slice(-5);
+  talentLines.forEach((t, idx) => {
+    ctx.fillText(`- ${t.name} (Lv. ${t.level})`, barX, talentsY + 20 + idx * 18);
+  });
+
   if (!state.running) {
     ctx.fillStyle = 'rgba(0,0,0,0.6)';
     ctx.fillRect(0, 0, CONFIG.width, CONFIG.height);
@@ -1466,12 +1602,6 @@ function bindControls() {
       x: ((event.clientX - rect.left) / rect.width) * CONFIG.width,
       y: ((event.clientY - rect.top) / rect.height) * CONFIG.height
     };
-  });
-  powerButtons.forEach((btn) => {
-    btn.addEventListener('click', () => {
-      const name = btn.dataset.power || btn.textContent.trim();
-      handlePowerSelect(name);
-    });
   });
 }
 
