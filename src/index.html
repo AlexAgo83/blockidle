@@ -74,6 +74,62 @@
       transform: translateY(0);
       box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
     }
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.75);
+      display: grid;
+      place-items: center;
+      z-index: 10;
+      backdrop-filter: blur(2px);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 150ms ease;
+    }
+    .modal-backdrop.open {
+      opacity: 1;
+      pointer-events: auto;
+    }
+    .modal {
+      background: #0b1223;
+      border: 1px solid #334155;
+      border-radius: 12px;
+      padding: 18px 18px 14px;
+      width: min(90vw, 360px);
+      box-shadow: 0 16px 40px rgba(0, 0, 0, 0.4);
+    }
+    .modal h2 {
+      margin: 0 0 10px;
+      font-size: 1.2rem;
+      letter-spacing: 0.01em;
+    }
+    .power-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-top: 12px;
+    }
+    .power-btn {
+      background: linear-gradient(135deg, #38bdf8, #6366f1);
+      color: #0b1223;
+      border: none;
+      border-radius: 10px;
+      padding: 12px 10px;
+      text-align: left;
+      cursor: pointer;
+      box-shadow: 0 10px 20px rgba(0, 0, 0, 0.25);
+      transition: transform 120ms ease, box-shadow 120ms ease;
+      font-weight: 700;
+      letter-spacing: 0.01em;
+    }
+    .power-btn:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 12px 24px rgba(0, 0, 0, 0.3);
+    }
+    .power-btn:active {
+      transform: translateY(0);
+      box-shadow: 0 8px 16px rgba(0, 0, 0, 0.28);
+    }
     canvas {
       width: 100%;
       height: auto;
@@ -104,6 +160,18 @@
       </div>
     </header>
     <canvas id="game" width="800" height="600"></canvas>
+  </div>
+  <div id="power-modal-backdrop" class="modal-backdrop">
+    <div class="modal">
+      <h2>Choisissez un pouvoir</h2>
+      <p>Chaque niveau vous donne un pouvoir. Choisissez-en un :</p>
+      <div class="power-grid">
+        <button class="power-btn" data-power="Pouvoir 1">Pouvoir 1</button>
+        <button class="power-btn" data-power="Pouvoir 2">Pouvoir 2</button>
+        <button class="power-btn" data-power="Pouvoir 3">Pouvoir 3</button>
+        <button class="power-btn" data-power="Pouvoir 4">Pouvoir 4</button>
+      </div>
+    </div>
   </div>
   <script type="module" src="./index.js"></script>
 </body>

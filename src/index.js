@@ -3,11 +3,13 @@ const ctx = canvas.getContext('2d');
 const autoBtn = document.getElementById('auto-toggle');
 const aimToggle = document.getElementById('aim-toggle');
 const autoFireToggle = document.getElementById('autofire-toggle');
+const powerModalBackdrop = document.getElementById('power-modal-backdrop');
+const powerButtons = Array.from(document.querySelectorAll('.power-btn'));
 
 const CONFIG = {
   width: 1600,
   height: 1200,
-  paddleWidth: 120,
+  paddleWidth: 80,
   paddleHeight: 16,
   paddleSpeed: 600,
   paddleMaxSpeed: 600, // vitesse max (légèrement supérieure à la balle)
@@ -78,7 +80,11 @@ const state = {
   playerLevel: 1,
   xp: 0,
   xpNeeded: 10,
-  xpDrops: []
+  xpDrops: [],
+  paused: false,
+  powers: [],
+  pendingPowerChoices: 0,
+  powerModalOpen: false
 };
 
 const bonusState = {
@@ -144,10 +150,35 @@ function xpForLevel(level) {
 
 function gainXp(amount) {
   state.xp += amount;
+  let leveled = false;
   while (state.xp >= state.xpNeeded) {
     state.xp -= state.xpNeeded;
     state.playerLevel += 1;
     state.xpNeeded = xpForLevel(state.playerLevel);
+    state.pendingPowerChoices += 1;
+    leveled = true;
+  }
+  if (leveled) {
+    tryOpenPowerModal();
+  }
+}
+
+function tryOpenPowerModal() {
+  if (state.powerModalOpen || state.pendingPowerChoices <= 0) return;
+  state.paused = true;
+  state.powerModalOpen = true;
+  powerModalBackdrop.classList.add('open');
+}
+
+function handlePowerSelect(powerName) {
+  state.powers.push(powerName);
+  state.pendingPowerChoices = Math.max(0, state.pendingPowerChoices - 1);
+  powerModalBackdrop.classList.remove('open');
+  state.powerModalOpen = false;
+  if (state.pendingPowerChoices > 0) {
+    tryOpenPowerModal();
+  } else {
+    state.paused = false;
   }
 }
 
@@ -357,12 +388,17 @@ function resetGame() {
   state.lastLaunch = 0;
   CONFIG.ballSpeed = BASE_BALL_SPEED;
   bonusState.lastBonus = 0;
+  state.paused = false;
+  state.powers = [];
+  state.pendingPowerChoices = 0;
+  state.powerModalOpen = false;
+  powerModalBackdrop.classList.remove('open');
   placeBallOnPaddle({ centerPaddle: true });
   spawnBrickRow();
 }
 
 function update(dt) {
-  if (!state.running) return;
+  if (!state.running || state.paused) return;
   const now = performance.now ? performance.now() : Date.now();
   const { paddle, heldBall, keys } = state;
   const speedInterval = CONFIG.speedIncreaseInterval;
@@ -931,6 +967,13 @@ function renderHUD() {
   ctx.strokeRect(xpBarX, xpBarY, xpBarW, xpBarH);
   ctx.fillText(`${Math.floor(state.xp)}/${state.xpNeeded}`, xpBarX + xpBarW - 70, xpBarY - 8);
 
+  // Liste des pouvoirs acquis (à droite, sous les infos).
+  ctx.fillText('Pouvoirs:', xpBarX, xpBarY + 28);
+  const powerLines = state.powers.slice(-5); // affiche les 5 derniers
+  powerLines.forEach((p, idx) => {
+    ctx.fillText(`- ${p}`, xpBarX, xpBarY + 48 + idx * 18);
+  });
+
   if (!state.running) {
     ctx.fillStyle = 'rgba(0,0,0,0.6)';
     ctx.fillRect(0, 0, CONFIG.width, CONFIG.height);
@@ -992,6 +1035,12 @@ function bindControls() {
   });
   canvas.addEventListener('click', () => {
     if (state.ballHeld) launchBall();
+  });
+  powerButtons.forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const name = btn.dataset.power || btn.textContent.trim();
+      handlePowerSelect(name);
+    });
   });
 }
 
