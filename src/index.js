@@ -2,7 +2,7 @@ const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
 const autoBtn = document.getElementById('auto-toggle');
 const aimToggle = document.getElementById('aim-toggle');
-const autoFireToggle = document.getElementById('autofire-toggle');
+const autoFireToggle = null;
 const powerModalBackdrop = document.getElementById('power-modal-backdrop');
 const powerButtons = Array.from(document.querySelectorAll('.power-btn'));
 const powerPreviewName = document.getElementById('power-preview-name');
@@ -10,7 +10,7 @@ const powerPreviewDesc = document.getElementById('power-preview-desc');
 const powerPreviewIcon = document.getElementById('power-preview-icon');
 
 const POWER_DEFS = [
-  { name: 'Boule de feu', maxLevel: 3 },
+  { name: 'Feu', maxLevel: 3 },
   { name: 'Glace', maxLevel: 3 },
   { name: 'Poison', maxLevel: 3 },
   { name: 'Metal', maxLevel: 3 },
@@ -110,7 +110,8 @@ const state = {
   powerModalOpen: false,
   currentPowerOptions: [],
   lastHitSpecial: null,
-  lastVampireHeal: 0
+  lastVampireHeal: 0,
+  lastBossLevelSpawned: 0
 };
 
 const bonusState = {
@@ -145,7 +146,7 @@ function getPowerDef(name) {
 
 function getPowerDescription(name) {
   switch (name) {
-    case 'Boule de feu':
+    case 'Feu':
       return {
         plain: 'Propage les dégâts reçus à 3 briques proches (ex: 3 dégâts deviennent 3x3)',
         rich: 'Propage les dégâts reçus à <span class="power-desc-accent">3</span> briques proches <span class="power-desc-muted">(ex: <span class="power-desc-accent">3</span> dégâts deviennent <span class="power-desc-accent">3×3</span>)</span>'
@@ -207,7 +208,7 @@ function nextPowerLevel(name) {
 
 function getPowerColor(name) {
   switch (name) {
-    case 'Boule de feu':
+    case 'Feu':
       return 'rgba(255, 215, 0, 0.35)';
     case 'Glace':
       return 'rgba(96, 165, 250, 0.35)';
@@ -413,6 +414,12 @@ function spawnBrickRow() {
   const { brickCols, brickPadding, brickHeight, brickTopOffset, brickRowFillRate, bonusChance, speedBonusChance } = CONFIG;
   const { brickWidth, startX } = computeBrickLayout();
 
+  // Si un boss est proche du haut, on évite de spawner une rangée pour ne pas chevaucher.
+  const boss = state.bricks.find((b) => b.alive && b.type === 'boss');
+  if (boss && boss.y < brickHeight * 3) {
+    return;
+  }
+
   const bricks = [];
   let spawned = 0;
   const now = performance.now ? performance.now() : Date.now();
@@ -422,6 +429,16 @@ function spawnBrickRow() {
     if (Math.random() > brickRowFillRate) continue;
     const x = startX + col * (brickWidth + brickPadding);
     const y = -brickHeight - brickTopOffset;
+    if (boss) {
+      const margin = brickPadding * 2;
+      const overlapsBoss = (
+        x < boss.x + boss.w + margin &&
+        x + brickWidth + margin > boss.x &&
+        y < boss.y + boss.h + margin &&
+        y + brickHeight + margin > boss.y
+      );
+      if (overlapsBoss) continue;
+    }
     const roll = Math.random();
     let type = 'normal';
     if (allowBonus && roll < bonusChance) {
@@ -448,6 +465,7 @@ function spawnBrickRow() {
       thornNextTick: 0,
       thornActive: false,
       thornExpire: 0,
+      curseTick: null,
       effectColor: null,
       effectUntil: 0
     });
@@ -485,6 +503,7 @@ function spawnBrickRow() {
       thornNextTick: 0,
       thornActive: false,
       thornExpire: 0,
+      curseTick: null,
       effectColor: null,
       effectUntil: 0
     });
@@ -492,6 +511,51 @@ function spawnBrickRow() {
 
   state.rowIndex += 1;
   state.bricks.push(...bricks);
+}
+
+function spawnBossBrick(level) {
+  const { brickPadding, brickHeight, brickTopOffset } = CONFIG;
+  const { brickWidth, startX } = computeBrickLayout();
+  const totalWidth = CONFIG.brickCols * brickWidth + brickPadding * (CONFIG.brickCols - 1);
+  const w = brickWidth * 2;
+  const h = brickHeight * 2;
+  const x = startX + (totalWidth - w) / 2;
+  const y = -h - brickTopOffset;
+  // Libère l'espace pour le boss en supprimant les briques qui chevauchent sa zone
+  const margin = brickPadding * 2;
+  state.bricks = state.bricks.filter((b) => {
+    if (!b.alive || b.type === 'boss') return true;
+    const overlap = (
+      b.x < x + w + margin &&
+      b.x + b.w + margin > x &&
+      b.y < y + h + margin &&
+      b.y + b.h + margin > y
+    );
+    return !overlap;
+  });
+  state.bricks.push({
+    x,
+    y,
+    w,
+    h,
+    hue: 0,
+    alive: true,
+    row: level,
+    type: 'boss',
+    hp: 20,
+    deathTime: null,
+    flashTime: null,
+    slowUntil: 0,
+    freezeUntil: 0,
+    poisonNextTick: 0,
+    poisonActive: false,
+    thornNextTick: 0,
+    thornActive: false,
+    thornExpire: 0,
+    curseTick: null,
+    effectColor: 'rgba(248, 113, 113, 0.35)',
+    effectUntil: Number.POSITIVE_INFINITY
+  });
 }
 
 function spawnRewardBall(brick) {
@@ -662,6 +726,7 @@ function resetGame() {
   state.currentPowerOptions = [];
   state.lastHitSpecial = null;
   state.lastVampireHeal = 0;
+  state.lastBossLevelSpawned = 0;
   powerModalBackdrop.classList.remove('open');
   placeBallOnPaddle({ centerPaddle: true });
   spawnBrickRow();
@@ -677,6 +742,10 @@ function update(dt) {
     state.speedTimer -= speedInterval;
     state.brickSpeed *= CONFIG.speedIncreaseMultiplier;
     state.level += 1;
+    if (state.level > state.lastBossLevelSpawned) {
+      spawnBossBrick(state.level);
+      state.lastBossLevelSpawned = state.level;
+    }
   }
 
   if (!state.ballHeld && (state.ballCount > 0 || state.specialPocket.length > 0)) {
@@ -1211,7 +1280,7 @@ function renderBalls() {
     if (ball.returning) {
       ctx.fillStyle = 'rgba(255, 255, 255, 0.35)';
     } else {
-      if (ball.specialPower === 'Boule de feu') {
+      if (ball.specialPower === 'Feu') {
         const blink = (Math.sin(performance.now() / 80) + 1) / 2; // plus rapide
         const alpha = 0.35 + 0.65 * blink;
         ctx.fillStyle = `rgba(255, 215, 0, ${alpha.toFixed(2)})`; // jaune doré
@@ -1271,15 +1340,30 @@ function renderHUD() {
   ctx.fillText(`Cadence: ${(1000 / CONFIG.normalShotCooldownMs).toFixed(1)} /s`, 14, 112);
   ctx.fillText(`Cadence spé: ${(1000 / CONFIG.specialShotCooldownMs).toFixed(1)} /s`, 14, 134);
   ctx.fillText(`Briques: ${state.brickSpeed.toFixed(1)} px/s`, 14, 156);
-  ctx.fillText(`Vies: ${state.lives}/${CONFIG.maxLives}`, CONFIG.width - 110, 24);
-
-  // Barre de progression pour l'évolution de vitesse.
-  const interval = CONFIG.speedIncreaseInterval;
-  const progress = Math.min(state.speedTimer / interval, 1);
+  // Barres de progression (ordre: Vies, Stage, Level)
   const barW = 180;
   const barH = 8;
   const barX = CONFIG.width - barW - 20;
-  const barY = 40;
+  const spacing = 32;
+  let barY = 30;
+
+  // Vies
+  const lifeProgress = Math.min(state.lives / CONFIG.maxLives, 1);
+  ctx.fillStyle = '#34d399';
+  ctx.fillText(`Vies: ${state.lives}/${CONFIG.maxLives}`, barX, barY - 8);
+  ctx.fillStyle = 'rgba(255,255,255,0.12)';
+  ctx.fillRect(barX, barY, barW, barH);
+  ctx.fillStyle = '#34d399';
+  ctx.fillRect(barX, barY, barW * lifeProgress, barH);
+  ctx.strokeStyle = 'rgba(255,255,255,0.5)';
+  ctx.lineWidth = 1;
+  ctx.strokeRect(barX, barY, barW, barH);
+
+  // Stage
+  barY += spacing;
+  const interval = CONFIG.speedIncreaseInterval;
+  const progress = Math.min(state.speedTimer / interval, 1);
+  ctx.fillStyle = '#38bdf8';
   ctx.fillText(`Stage: ${state.level}`, barX, barY - 8);
   ctx.fillStyle = 'rgba(255,255,255,0.12)';
   ctx.fillRect(barX, barY, barW, barH);
@@ -1289,27 +1373,27 @@ function renderHUD() {
   ctx.lineWidth = 1;
   ctx.strokeRect(barX, barY, barW, barH);
 
-  // Barre de progression XP / Level joueur.
-  const xpBarW = 180;
-  const xpBarH = 8;
-  const xpBarX = CONFIG.width - xpBarW - 20;
-  const xpBarY = barY + 36;
+  // Level (XP joueur)
+  barY += spacing;
   const xpProgress = Math.min(state.xp / state.xpNeeded, 1);
-  ctx.fillText(`Level ${state.playerLevel}`, xpBarX, xpBarY - 8);
-  ctx.fillStyle = 'rgba(255,255,255,0.12)';
-  ctx.fillRect(xpBarX, xpBarY, xpBarW, xpBarH);
   ctx.fillStyle = '#f472b6';
-  ctx.fillRect(xpBarX, xpBarY, xpBarW * xpProgress, xpBarH);
+  ctx.fillText(`Level ${state.playerLevel}`, barX, barY - 8);
+  ctx.fillStyle = 'rgba(255,255,255,0.12)';
+  ctx.fillRect(barX, barY, barW, barH);
+  ctx.fillStyle = '#f472b6';
+  ctx.fillRect(barX, barY, barW * xpProgress, barH);
   ctx.strokeStyle = 'rgba(255,255,255,0.5)';
   ctx.lineWidth = 1;
-  ctx.strokeRect(xpBarX, xpBarY, xpBarW, xpBarH);
-  ctx.fillText(`${Math.floor(state.xp)}/${state.xpNeeded}`, xpBarX + xpBarW - 70, xpBarY - 8);
+  ctx.strokeRect(barX, barY, barW, barH);
+  ctx.fillText(`${Math.floor(state.xp)}/${state.xpNeeded}`, barX + barW - 70, barY - 8);
 
   // Liste des pouvoirs acquis (à droite, sous les infos).
-  ctx.fillText('Pouvoirs:', xpBarX, xpBarY + 28);
+  ctx.fillStyle = '#e2e8f0';
+  const powersY = barY + 28;
+  ctx.fillText('Pouvoirs:', barX, powersY);
   const powerLines = state.powers.slice(-5); // affiche les 5 derniers
   powerLines.forEach((p, idx) => {
-    ctx.fillText(`- ${p.name} (Lv. ${p.level})`, xpBarX, xpBarY + 48 + idx * 18);
+    ctx.fillText(`- ${p.name} (Lv. ${p.level})`, barX, powersY + 20 + idx * 18);
   });
 
   if (!state.running) {
@@ -1368,9 +1452,11 @@ function bindControls() {
   aimToggle.addEventListener('change', (event) => {
     state.showAim = event.target.checked;
   });
-  autoFireToggle.addEventListener('change', (event) => {
-    state.autoFire = event.target.checked;
-  });
+  if (autoFireToggle) {
+    autoFireToggle.addEventListener('change', (event) => {
+      state.autoFire = event.target.checked;
+    });
+  }
   canvas.addEventListener('click', () => {
     if (state.ballHeld) launchBall();
   });
@@ -1394,7 +1480,7 @@ function init() {
   bindControls();
   autoBtn.textContent = state.autoPlay ? 'Désactiver auto-visée' : 'Activer auto-visée';
   aimToggle.checked = state.showAim;
-  autoFireToggle.checked = state.autoFire;
+  if (autoFireToggle) autoFireToggle.checked = state.autoFire;
   resetGame();
   requestAnimationFrame(loop);
 }
@@ -1412,7 +1498,7 @@ function applyPowerOnHit(ball, brick, now) {
     brick.poisonNextTick = now + 2500;
     brick.effectColor = getPowerColor(power);
     brick.effectUntil = Number.POSITIVE_INFINITY;
-  } else if (power === 'Boule de feu') {
+  } else if (power === 'Feu') {
     brick.effectColor = getPowerColor(power);
     brick.effectUntil = now + 3000; // halo feu 3s
   } else if (power === 'Metal') {
@@ -1460,7 +1546,7 @@ function damageBrick(brick, amount, now) {
 }
 
 function applyFireSplash(ball, hitBrick, now, baseDamage) {
-  if (ball.specialPower !== 'Boule de feu') return;
+  if (ball.specialPower !== 'Feu') return;
   const cx = hitBrick.x + hitBrick.w / 2;
   const cy = hitBrick.y + hitBrick.h / 2;
   const candidates = state.bricks
