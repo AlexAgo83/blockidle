@@ -9,14 +9,12 @@ const powerButtons = Array.from(document.querySelectorAll('.power-btn'));
 const ALL_POWERS = [
   'Boule de feu',
   'Glace',
-  'Pouvoir 3',
-  'Pouvoir 4',
-  'Pouvoir 5',
-  'Pouvoir 6',
-  'Pouvoir 7',
-  'Pouvoir 8',
-  'Pouvoir 9',
-  'Pouvoir 10'
+  'Poison',
+  'Metal',
+  'Vampire',
+  'Lumière',
+  'Epine',
+  'Malediction'
 ];
 
 const CONFIG = {
@@ -987,6 +985,30 @@ function renderBalls() {
         const blink = (Math.sin(performance.now() / 90) + 1) / 2;
         const alpha = 0.35 + 0.65 * blink;
         ctx.fillStyle = `rgba(96, 165, 250, ${alpha.toFixed(2)})`; // bleu lumineux animé
+      } else if (ball.specialPower === 'Poison') {
+        const blink = (Math.sin(performance.now() / 85) + 1) / 2;
+        const alpha = 0.35 + 0.65 * blink;
+        ctx.fillStyle = `rgba(52, 211, 153, ${alpha.toFixed(2)})`; // vert poison animé
+      } else if (ball.specialPower === 'Metal') {
+        const blink = (Math.sin(performance.now() / 95) + 1) / 2;
+        const alpha = 0.35 + 0.65 * blink;
+        ctx.fillStyle = `rgba(226, 232, 240, ${alpha.toFixed(2)})`; // gris clair animé
+      } else if (ball.specialPower === 'Vampire') {
+        const blink = (Math.sin(performance.now() / 85) + 1) / 2;
+        const alpha = 0.35 + 0.65 * blink;
+        ctx.fillStyle = `rgba(239, 68, 68, ${alpha.toFixed(2)})`; // rouge vif animé
+      } else if (ball.specialPower === 'Lumière') {
+        const blink = (Math.sin(performance.now() / 80) + 1) / 2;
+        const alpha = 0.3 + 0.7 * blink;
+        ctx.fillStyle = `rgba(255, 255, 255, ${alpha.toFixed(2)})`; // blanc pulsé
+      } else if (ball.specialPower === 'Epine') {
+        const blink = (Math.sin(performance.now() / 100) + 1) / 2;
+        const alpha = 0.35 + 0.65 * blink;
+        ctx.fillStyle = `rgba(120, 72, 48, ${alpha.toFixed(2)})`; // marron pulsé
+      } else if (ball.specialPower === 'Malediction') {
+        const blink = (Math.sin(performance.now() / 90) + 1) / 2;
+        const alpha = 0.35 + 0.65 * blink;
+        ctx.fillStyle = `rgba(139, 92, 246, ${alpha.toFixed(2)})`; // violet pulsé
       } else {
         ctx.fillStyle = '#f472b6';
       }
