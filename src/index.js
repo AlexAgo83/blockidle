@@ -589,6 +589,10 @@ function update(dt) {
         state.balls.splice(i, 1);
         if (ball.reward) {
           state.ballCount = Math.min(CONFIG.maxBalls, state.ballCount + 1);
+          if (!state.ballHeld) placeBallOnPaddle();
+        } else if (ball.specialPower) {
+          state.specialPocket.push(ball.specialPower);
+          placeBallOnPaddle();
         } else {
           placeBallOnPaddle({ refill: true });
         }
