@@ -32,7 +32,9 @@ const CONFIG = {
   speedBoostMultiplier: 1.05,
   ballSpeedCap: 1500,
   speedIncreaseInterval: 30,
-  speedIncreaseMultiplier: 1.05
+  speedIncreaseMultiplier: 1.05,
+  xpSpeed: 1200,
+  xpSize: 7
 };
 
 CONFIG.brickSpawnInterval = (CONFIG.brickHeight + CONFIG.brickPadding) / CONFIG.brickDriftSpeed;
@@ -243,7 +245,7 @@ function spawnXpDrop(brick) {
     y: brick.y + brick.h / 2,
     vx: (dx / dist) * speed,
     vy: (dy / dist) * speed,
-    size: 10
+    size: CONFIG.xpSize
   });
 }
 
@@ -448,7 +450,7 @@ function update(dt) {
       continue;
     }
     if (dist > 0.001) {
-      const speed = 800;
+      const speed = CONFIG.xpSpeed;
       const scale = speed / dist;
       drop.vx = dx * scale;
       drop.vy = dy * scale;
