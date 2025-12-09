@@ -6,6 +6,19 @@ const autoFireToggle = document.getElementById('autofire-toggle');
 const powerModalBackdrop = document.getElementById('power-modal-backdrop');
 const powerButtons = Array.from(document.querySelectorAll('.power-btn'));
 
+const ALL_POWERS = [
+  'Pouvoir 1',
+  'Pouvoir 2',
+  'Pouvoir 3',
+  'Pouvoir 4',
+  'Pouvoir 5',
+  'Pouvoir 6',
+  'Pouvoir 7',
+  'Pouvoir 8',
+  'Pouvoir 9',
+  'Pouvoir 10'
+];
+
 const CONFIG = {
   width: 1600,
   height: 1200,
@@ -84,7 +97,8 @@ const state = {
   paused: false,
   powers: [],
   pendingPowerChoices: 0,
-  powerModalOpen: false
+  powerModalOpen: false,
+  currentPowerOptions: []
 };
 
 const bonusState = {
@@ -165,12 +179,29 @@ function gainXp(amount) {
 
 function tryOpenPowerModal() {
   if (state.powerModalOpen || state.pendingPowerChoices <= 0) return;
+  const available = ALL_POWERS.filter((p) => !state.powers.includes(p));
+  if (!available.length) {
+    state.pendingPowerChoices = 0;
+    state.paused = false;
+    return;
+  }
+  const options = sampleOptions(available, 4);
+  state.currentPowerOptions = options;
+  renderPowerModal(options);
   state.paused = true;
   state.powerModalOpen = true;
   powerModalBackdrop.classList.add('open');
 }
 
 function handlePowerSelect(powerName) {
+  if (state.powers.includes(powerName)) {
+    state.pendingPowerChoices = Math.max(0, state.pendingPowerChoices - 1);
+    state.powerModalOpen = false;
+    powerModalBackdrop.classList.remove('open');
+    state.paused = state.pendingPowerChoices > 0;
+    if (state.paused) tryOpenPowerModal();
+    return;
+  }
   state.powers.push(powerName);
   state.pendingPowerChoices = Math.max(0, state.pendingPowerChoices - 1);
   powerModalBackdrop.classList.remove('open');
@@ -180,6 +211,28 @@ function handlePowerSelect(powerName) {
   } else {
     state.paused = false;
   }
+}
+
+function renderPowerModal(options) {
+  powerButtons.forEach((btn, idx) => {
+    const power = options[idx];
+    if (power) {
+      btn.style.display = 'block';
+      btn.textContent = power;
+      btn.dataset.power = power;
+    } else {
+      btn.style.display = 'none';
+    }
+  });
+}
+
+function sampleOptions(list, count) {
+  const pool = [...list];
+  for (let i = pool.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [pool[i], pool[j]] = [pool[j], pool[i]];
+  }
+  return pool.slice(0, count);
 }
 
 function spawnBrickRow() {
@@ -392,6 +445,7 @@ function resetGame() {
   state.powers = [];
   state.pendingPowerChoices = 0;
   state.powerModalOpen = false;
+  state.currentPowerOptions = [];
   powerModalBackdrop.classList.remove('open');
   placeBallOnPaddle({ centerPaddle: true });
   spawnBrickRow();
