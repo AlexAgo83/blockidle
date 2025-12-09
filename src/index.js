@@ -47,7 +47,9 @@ const CONFIG = {
   speedIncreaseInterval: 30,
   speedIncreaseMultiplier: 1.05,
   xpSpeed: 1200,
-  xpSize: 7
+  xpSize: 7,
+  maxLives: 20,
+  startLives: 10
 };
 
 const BASE_BALL_SPEED = CONFIG.ballSpeed;
@@ -75,7 +77,7 @@ const state = {
   balls: [],
   bricks: [],
   score: 0,
-  lives: 3,
+  lives: CONFIG.startLives,
   running: true,
   autoPlay: true,
   showAim: false,
@@ -292,7 +294,10 @@ function spawnBrickRow() {
       type,
       hp,
       deathTime: null,
-      flashTime: null
+      flashTime: null,
+      slowUntil: 0,
+      poisonNextTick: 0,
+      poisonActive: false
     });
     spawned += 1;
   }
@@ -320,7 +325,10 @@ function spawnBrickRow() {
       type,
       hp,
       deathTime: null,
-      flashTime: null
+      flashTime: null,
+      slowUntil: 0,
+      poisonNextTick: 0,
+      poisonActive: false
     });
   }
 
@@ -462,7 +470,7 @@ function launchBall() {
 
 function resetGame() {
   state.score = 0;
-  state.lives = 3;
+  state.lives = CONFIG.startLives;
   state.bricks = [];
   state.rowIndex = 0;
   state.spawnTimer = 0;
@@ -517,8 +525,48 @@ function update(dt) {
   // Descente lente des briques façon tapis roulant.
   for (const brick of state.bricks) {
     if (brick.alive) {
-      brick.y += state.brickSpeed * dt;
+      brick.prevY = brick.y;
+      const slowFactor = brick.slowUntil && brick.slowUntil > now ? 0.5 : 1;
+      brick.y += state.brickSpeed * slowFactor * dt;
     }
+  }
+
+  // Collisions entre briques (empêche le chevauchement). Si l'une est gelée, elle est immobile.
+  const isFrozen = (b) => b.alive && b.slowUntil && b.slowUntil > now;
+  const separateAbove = (upper, lower) => {
+    upper.y = Math.min(upper.y, lower.y - upper.h - 0.01);
+  };
+  // Plusieurs passes pour propager le blocage en colonne
+  for (let pass = 0; pass < 4; pass += 1) {
+    let moved = false;
+    for (let i = 0; i < state.bricks.length; i += 1) {
+      const a = state.bricks[i];
+      if (!a.alive) continue;
+      for (let j = i + 1; j < state.bricks.length; j += 1) {
+        const b = state.bricks[j];
+        if (!b.alive) continue;
+        const overlapX = a.x < b.x + b.w && a.x + a.w > b.x;
+        const overlapY = a.y < b.y + b.h && a.y + a.h > b.y;
+        if (!overlapX || !overlapY) continue;
+
+        const aFrozen = isFrozen(a);
+        const bFrozen = isFrozen(b);
+        const aWasAbove = (a.prevY ?? a.y) + a.h <= (b.prevY ?? b.y) + b.h;
+
+        if (aFrozen && !bFrozen) {
+          separateAbove(b, a); // ne bouge pas la brique gelée
+          moved = true;
+        } else if (bFrozen && !aFrozen) {
+          separateAbove(a, b); // ne bouge pas la brique gelée
+          moved = true;
+        } else if (!aFrozen && !bFrozen) {
+          if (aWasAbove) separateAbove(b, a);
+          else separateAbove(a, b);
+          moved = true;
+        }
+      }
+    }
+    if (!moved) break;
   }
 
   // Si une brique atteint le bas, perte de vie.
@@ -594,6 +642,15 @@ function update(dt) {
       const scale = speed / dist;
       drop.vx = dx * scale;
       drop.vy = dy * scale;
+    }
+  }
+
+  // Tick poison sur les briques
+  for (const brick of state.bricks) {
+    if (!brick.alive || !brick.poisonActive) continue;
+    if (brick.poisonNextTick && brick.poisonNextTick <= now) {
+      brick.poisonNextTick = now + 5000;
+      damageBrick(brick, 1, now);
     }
   }
 
@@ -735,22 +792,10 @@ function update(dt) {
           break;
         }
 
-        brick.flashTime = now;
-        brick.hp = Math.max(0, (brick.hp || 1) - 1);
-        const destroyed = brick.hp <= 0;
-
-        if (destroyed) {
-          brick.alive = false;
-          brick.deathTime = now;
-          state.score += 50 + brick.row * 10;
-          spawnXpDrop(brick);
-          if (brick.type === 'bonus') {
-            bonusState.lastBonus = brick.deathTime;
-            spawnRewardBall(brick);
-          } else if (brick.type === 'speed') {
-            applySpeedBoost();
-          }
-        }
+        const damage = ball.specialPower === 'Metal' ? 2 : 1;
+        applyPowerOnHit(ball, brick, now);
+        damageBrick(brick, damage, now);
+        applyFireSplash(ball, brick, now, damage);
 
         if (minOverlap === overlapLeft || minOverlap === overlapRight) {
           ball.vx *= -1;
@@ -1062,7 +1107,7 @@ function renderHUD() {
   ctx.fillText(`Vitesse: ${Math.round(CONFIG.ballSpeed)} px/s`, 14, 90);
   ctx.fillText(`Cadence: ${(1000 / CONFIG.launchCooldownMs).toFixed(1)} /s`, 14, 112);
   ctx.fillText(`Briques: ${state.brickSpeed.toFixed(1)} px/s`, 14, 134);
-  ctx.fillText(`Vies: ${state.lives}`, CONFIG.width - 80, 24);
+  ctx.fillText(`Vies: ${state.lives}/${CONFIG.maxLives}`, CONFIG.width - 110, 24);
 
   // Barre de progression pour l'évolution de vitesse.
   const interval = CONFIG.speedIncreaseInterval;
@@ -1184,3 +1229,49 @@ function init() {
 }
 
 init();
+function applyPowerOnHit(ball, brick, now) {
+  if (!brick.alive) return;
+  const power = ball.specialPower;
+  if (power === 'Glace') {
+    brick.slowUntil = Math.max(brick.slowUntil || 0, now + 5000);
+  } else if (power === 'Poison') {
+    brick.poisonActive = true;
+    brick.poisonNextTick = now + 5000;
+  }
+}
+
+function damageBrick(brick, amount, now) {
+  brick.flashTime = now;
+  brick.hp = Math.max(0, (brick.hp || 1) - amount);
+  const destroyed = brick.hp <= 0;
+  if (destroyed) {
+    brick.alive = false;
+    brick.deathTime = now;
+    state.score += 50 + brick.row * 10;
+    spawnXpDrop(brick);
+    if (brick.type === 'bonus') {
+      bonusState.lastBonus = brick.deathTime;
+      spawnRewardBall(brick);
+    } else if (brick.type === 'speed') {
+      applySpeedBoost();
+    }
+  }
+  return destroyed;
+}
+
+function applyFireSplash(ball, hitBrick, now, baseDamage) {
+  if (ball.specialPower !== 'Boule de feu') return;
+  const radius = Math.max(hitBrick.w, hitBrick.h) * 1.2;
+  const cx = hitBrick.x + hitBrick.w / 2;
+  const cy = hitBrick.y + hitBrick.h / 2;
+  for (const b of state.bricks) {
+    if (!b.alive || b === hitBrick) continue;
+    const bx = b.x + b.w / 2;
+    const by = b.y + b.h / 2;
+    const dist = Math.hypot(bx - cx, by - cy);
+    if (dist <= radius) {
+      applyPowerOnHit(ball, b, now);
+      damageBrick(b, baseDamage, now);
+    }
+  }
+}
