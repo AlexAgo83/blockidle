@@ -309,6 +309,19 @@
       color: #38bdf8;
       font-weight: 700;
     }
+    .score-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+    .score-filter {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.9rem;
+      color: #e2e8f0;
+    }
     .time-controls {
       margin-top: 10px;
       display: flex;
@@ -370,6 +383,10 @@
     <div class="commits narrow">
       <div class="commit-header">
         <h3 class="commit-title">Top scores</h3>
+        <label class="score-filter">
+          <input type="checkbox" id="score-filter-current" />
+          <span>Current build only</span>
+        </label>
       </div>
       <div id="score-list"></div>
     </div>

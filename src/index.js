@@ -22,6 +22,7 @@ const commitToggle = document.getElementById('commit-toggle');
 const commitChevron = document.getElementById('commit-chevron');
 const commitListEl = document.getElementById('commit-list');
 const scoreListEl = document.getElementById('score-list');
+const scoreFilterCheckbox = document.getElementById('score-filter-current');
 const timeButtons = Array.from(document.querySelectorAll('.time-btn'));
 const hudBuffer = document.createElement('canvas');
 const hudCtx = hudBuffer.getContext('2d');
@@ -176,6 +177,7 @@ const state = {
   scoreSubmitted: false,
   commitExpanded: true,
   commitCache: [],
+  filterCurrentBuild: false,
   timeScale: 1,
   pendingPowerChoices: 0,
   powerModalOpen: false,
@@ -348,6 +350,10 @@ function loadPreferences() {
       state.commitExpanded = data.commitExpanded;
       updateCommitChevron();
     }
+    if (typeof data.filterCurrentBuild === 'boolean') {
+      state.filterCurrentBuild = data.filterCurrentBuild;
+      if (scoreFilterCheckbox) scoreFilterCheckbox.checked = state.filterCurrentBuild;
+    }
   } catch (_) {
     // ignore parsing/storage errors
   }
@@ -358,7 +364,8 @@ function savePreferences() {
     const payload = {
       timeScale: state.timeScale,
       autoPlay: state.autoPlay,
-      commitExpanded: state.commitExpanded
+      commitExpanded: state.commitExpanded,
+      filterCurrentBuild: state.filterCurrentBuild
     };
     localStorage.setItem(PREFS_KEY, JSON.stringify(payload));
   } catch (_) {
@@ -1396,11 +1403,14 @@ function renderTopScoresPanel() {
   const list = (state.backendTopScores && state.backendTopScores.length)
     ? state.backendTopScores
     : getTopScores();
-  if (!list || list.length === 0) {
+  const filtered = state.filterCurrentBuild
+    ? list.filter((entry) => (entry.build || 'Old') === BUILD_LABEL)
+    : list;
+  if (!filtered || filtered.length === 0) {
     scoreListEl.textContent = 'No scores.';
     return;
   }
-  list.slice(0, TOP_LIMIT).forEach((entry, idx) => {
+  filtered.slice(0, TOP_LIMIT).forEach((entry, idx) => {
     const e = typeof entry === 'object' ? entry : { score: entry };
     const item = document.createElement('div');
     item.className = 'score-item';
@@ -1430,6 +1440,16 @@ function bindCommitToggle() {
     }
   });
   updateCommitChevron();
+}
+
+function bindScoreFilter() {
+  if (!scoreFilterCheckbox) return;
+  scoreFilterCheckbox.checked = state.filterCurrentBuild;
+  scoreFilterCheckbox.addEventListener('change', (event) => {
+    state.filterCurrentBuild = event.target.checked;
+    savePreferences();
+    renderTopScoresPanel();
+  });
 }
 
 function triggerGameOver() {
@@ -2340,6 +2360,7 @@ function init() {
     if (state.ballHeld) placeBallOnPaddle({ centerPaddle: true });
   });
   bindCommitToggle();
+  bindScoreFilter();
   const savedName = loadPlayerName();
   resetGame();
   loadPreferences();
