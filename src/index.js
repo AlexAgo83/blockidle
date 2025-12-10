@@ -9,10 +9,20 @@ const talentButtons = Array.from(document.querySelectorAll('.talent-btn'));
 const powerPreviewName = document.getElementById('power-preview-name');
 const powerPreviewDesc = document.getElementById('power-preview-desc');
 const powerPreviewIcon = document.getElementById('power-preview-icon');
-const debugGameOverBtn = document.getElementById('debug-gameover');
 const nameModalBackdrop = document.getElementById('name-modal-backdrop');
 const playerNameInput = document.getElementById('player-name-input');
 const playerNameSubmit = document.getElementById('player-name-submit');
+const debugGameOverBtn = document.getElementById('debug-gameover');
+
+const API_BASE = (() => {
+  const base = (import.meta?.env?.VITE_API_BASE || window.location.origin || '').replace(/\/$/, '');
+  return base || '';
+})();
+
+function apiUrl(path) {
+  if (!path.startsWith('/')) return `${API_BASE}/${path}`;
+  return `${API_BASE}${path}`;
+}
 
 const POWER_DEFS = [
   { name: 'Feu', maxLevel: 3 },
@@ -998,7 +1008,7 @@ async function submitScoreToBackend(payload) {
   if (!payload || state.submittingScore) return null;
   state.submittingScore = true;
   try {
-    const res = await fetch('/scores', {
+    const res = await fetch(apiUrl('/scores'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
@@ -1017,7 +1027,7 @@ async function submitScoreToBackend(payload) {
 
 async function fetchTopScoresFromBackend(limit = 5) {
   try {
-    const res = await fetch(`/scores?limit=${limit}`);
+    const res = await fetch(apiUrl(`/scores?limit=${limit}`));
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
     if (Array.isArray(data)) {
