@@ -261,7 +261,7 @@ function getCooldowns(nextIsSpecial) {
 
 function getPaddleWidth() {
   const level = getTalentLevel('Raquette');
-  const mult = 1 + 0.1 * level;
+  const mult = 1 + 0.2 * level;
   return CONFIG.paddleWidth * mult;
 }
 
