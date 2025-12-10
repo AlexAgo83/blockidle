@@ -187,6 +187,62 @@ function clamp(value, min, max) {
   return Math.min(Math.max(value, min), max);
 }
 
+function clampPaddlePosition() {
+  const { paddle } = state;
+  const mirrorLevel = getTalentLevel('Miroir');
+  const halfWidth = paddle.w * 0.5;
+  const gap = 8;
+  const minOffset = mirrorLevel >= 1 ? -halfWidth - gap : 0;
+  const maxOffset = mirrorLevel >= 2 ? paddle.w + gap + halfWidth : paddle.w;
+
+  // Bordures extérieures
+  paddle.x = clamp(paddle.x, -minOffset, CONFIG.width - maxOffset);
+
+  // Collision avec les murs internes
+  for (const wall of getWalls()) {
+    const minX = paddle.x + minOffset;
+    const maxX = paddle.x + maxOffset;
+    const overlapsWall = maxX > wall.x && minX < wall.x + wall.w;
+    if (!overlapsWall) continue;
+    // Si le centre du paddle est à gauche du mur, on se cale à gauche, sinon à droite.
+    const center = paddle.x + paddle.w / 2;
+    if (center < wall.x) {
+      paddle.x = wall.x - maxOffset;
+    } else if (center > wall.x + wall.w) {
+      paddle.x = wall.x + wall.w - minOffset;
+    } else {
+      // Si on est "dedans", pousse vers le côté le plus proche.
+      const distLeft = Math.abs(minX - wall.x);
+      const distRight = Math.abs(maxX - (wall.x + wall.w));
+      if (distLeft < distRight) {
+        paddle.x = wall.x - maxOffset;
+      } else {
+        paddle.x = wall.x + wall.w - minOffset;
+      }
+    }
+  }
+
+  // Clamp final aux bords après ajustements
+  paddle.x = clamp(paddle.x, -minOffset, CONFIG.width - maxOffset);
+}
+
+function clampBallAgainstWalls(ball) {
+  if (!ball) return;
+  for (const wall of getWalls()) {
+    if (ball.x + ball.r <= wall.x || ball.x - ball.r >= wall.x + wall.w) continue;
+    // ball overlaps wall on X; push to nearest side and flip vx to keep it out.
+    const distLeft = Math.abs(ball.x - (wall.x - ball.r));
+    const distRight = Math.abs(ball.x - (wall.x + wall.w + ball.r));
+    if (distLeft < distRight) {
+      ball.x = wall.x - ball.r;
+      if (ball.vx > 0) ball.vx *= -1;
+    } else {
+      ball.x = wall.x + wall.w + ball.r;
+      if (ball.vx < 0) ball.vx *= -1;
+    }
+  }
+}
+
 function formatScore(value) {
   const n = Number.isFinite(value) ? value : 0;
   return n.toLocaleString('fr-FR');
@@ -774,8 +830,11 @@ function renderPowerModal(powerOptions, talentOptions) {
       btn.textContent = label;
       btn.dataset.power = power;
       btn.title = getPowerDescription(power).plain;
-      btn.onmouseenter = () => updatePowerPreview(power, label, 'power');
-      btn.onfocus = () => updatePowerPreview(power, label, 'power');
+      const showPreview = () => updatePowerPreview(power, label, 'power');
+      btn.onmouseenter = showPreview;
+      btn.onpointerenter = showPreview;
+      btn.ontouchstart = showPreview;
+      btn.onfocus = showPreview;
       btn.onclick = () => handlePowerSelect(power);
     } else {
       btn.style.display = 'none';
@@ -794,8 +853,11 @@ function renderPowerModal(powerOptions, talentOptions) {
       btn.textContent = label;
       btn.dataset.talent = talent;
       btn.title = getTalentDescription(talent).plain;
-      btn.onmouseenter = () => updatePowerPreview(talent, label, 'talent');
-      btn.onfocus = () => updatePowerPreview(talent, label, 'talent');
+      const showPreview = () => updatePowerPreview(talent, label, 'talent');
+      btn.onmouseenter = showPreview;
+      btn.onpointerenter = showPreview;
+      btn.ontouchstart = showPreview;
+      btn.onfocus = showPreview;
       btn.onclick = () => handleTalentSelect(talent);
     } else {
       btn.style.display = 'none';
@@ -1470,7 +1532,7 @@ function update(dt) {
       paddle.x += paddleSpeed * dt;
     }
   }
-  paddle.x = clamp(paddle.x, 0, CONFIG.width - paddle.w);
+  clampPaddlePosition();
 
   // Mouvement des drops d'XP
   for (let i = state.xpDrops.length - 1; i >= 0; i -= 1) {
@@ -1534,6 +1596,8 @@ function update(dt) {
   // Mouvement et collisions pour chaque balle active
   for (let i = state.balls.length - 1; i >= 0; i -= 1) {
     const ball = state.balls[i];
+    const prevX = ball.x;
+    const prevY = ball.y;
     ball.x += ball.vx * dt;
     ball.y += ball.vy * dt;
 
@@ -1579,21 +1643,35 @@ function update(dt) {
       ball.vy *= -1;
     }
 
-    // Murs latéraux internes
+    // Murs latéraux internes (détection traversée, sans tunnel)
     for (const wall of getWalls()) {
-      const hitWall = (
-        ball.x + ball.r >= wall.x &&
-        ball.x - ball.r <= wall.x + wall.w &&
-        ball.y + ball.r >= wall.y &&
-        ball.y - ball.r <= wall.y + wall.h
-      );
-      if (hitWall) {
-        if (ball.x < wall.x) {
+      const yOverlap = ball.y + ball.r >= wall.y && ball.y - ball.r <= wall.y + wall.h;
+      if (!yOverlap) continue;
+
+      const crossedFromLeft = prevX + ball.r <= wall.x && ball.x + ball.r >= wall.x && ball.vx > 0;
+      const crossedFromRight = prevX - ball.r >= wall.x + wall.w && ball.x - ball.r <= wall.x + wall.w && ball.vx < 0;
+      const overlappedX = ball.x + ball.r > wall.x && ball.x - ball.r < wall.x + wall.w;
+
+      if (crossedFromLeft || crossedFromRight || overlappedX) {
+        // Choisir le côté le plus proche en fonction de la position précédente
+        if (prevX < wall.x) {
           ball.x = wall.x - ball.r;
-        } else if (ball.x > wall.x + wall.w) {
+          ball.vx = -Math.abs(ball.vx);
+        } else if (prevX > wall.x + wall.w) {
           ball.x = wall.x + wall.w + ball.r;
+          ball.vx = Math.abs(ball.vx);
+        } else {
+          // Si "dedans", pousser vers le côté le plus proche
+          const distLeft = Math.abs((ball.x - ball.r) - wall.x);
+          const distRight = Math.abs((wall.x + wall.w) - (ball.x + ball.r));
+          if (distLeft <= distRight) {
+            ball.x = wall.x - ball.r;
+            ball.vx = -Math.abs(ball.vx);
+          } else {
+            ball.x = wall.x + wall.w + ball.r;
+            ball.vx = Math.abs(ball.vx);
+          }
         }
-        ball.vx *= -1;
       }
     }
 

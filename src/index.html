@@ -18,7 +18,15 @@
       place-items: center;
     }
     #app {
-      width: min(90vw, 880px);
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+    }
+    .narrow {
+      width: 80%;
+      margin: 0 auto;
     }
     header {
       text-align: center;
@@ -308,11 +316,8 @@
 </head>
 <body>
   <div id="app">
-    <header>
-      <h1>BrickIdle</h1>
-    </header>
-    <canvas id="game" width="800" height="600"></canvas>
-    <div class="time-controls">
+    <canvas id="game" width="800" height="864" class="narrow"></canvas>
+    <div class="time-controls narrow">
       <div class="time-left">
         <button id="auto-toggle" type="button">Activer auto-visée</button>
       </div>
@@ -322,7 +327,7 @@
         <button class="time-btn" data-speed="3" type="button">x3</button>
       </div>
     </div>
-    <div class="commits">
+    <div class="commits narrow">
       <div class="commit-header" id="commit-toggle">
         <span class="commit-chevron" id="commit-chevron">▼</span>
         <h3 class="commit-title">Commits récents</h3>
