@@ -28,6 +28,7 @@ const hudCtx = hudBuffer.getContext('2d');
 let hudSignature = null;
 const TOP_LIMIT = 10;
 const BUILD_LABEL = buildInfo?.build ? `b${buildInfo.build}` : 'Old';
+const API_TOKEN = (import.meta?.env?.VITE_API_TOKEN || '').trim() || null;
 
 const API_BASE = (() => {
   const envBase = (import.meta?.env?.VITE_API_BASE || '').trim();
@@ -45,6 +46,10 @@ const API_BASE = (() => {
 function apiUrl(path) {
   if (!path.startsWith('/')) return `${API_BASE}/${path}`;
   return `${API_BASE}${path}`;
+}
+
+function authHeaders() {
+  return API_TOKEN ? { 'x-api-key': API_TOKEN } : {};
 }
 
 const POWER_DEFS = [
