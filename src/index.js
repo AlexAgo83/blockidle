@@ -9,6 +9,9 @@ const talentButtons = Array.from(document.querySelectorAll('.talent-btn'));
 const powerPreviewName = document.getElementById('power-preview-name');
 const powerPreviewDesc = document.getElementById('power-preview-desc');
 const powerPreviewIcon = document.getElementById('power-preview-icon');
+const nameModalBackdrop = document.getElementById('name-modal-backdrop');
+const playerNameInput = document.getElementById('player-name-input');
+const playerNameSubmit = document.getElementById('player-name-submit');
 
 const POWER_DEFS = [
   { name: 'Feu', maxLevel: 3 },
@@ -117,6 +120,13 @@ const state = {
   powers: [],
   talents: [],
   specialPocket: [],
+  playerName: '',
+  backendTopScores: [],
+  submittingScore: false,
+  gameOverHandled: false,
+  lastEndedAt: null,
+  awaitingName: false,
+  scoreSubmitted: false,
   pendingPowerChoices: 0,
   powerModalOpen: false,
   currentPowerOptions: [],
@@ -141,6 +151,50 @@ function degToRad(deg) {
 
 function clamp(value, min, max) {
   return Math.min(Math.max(value, min), max);
+}
+
+function loadPlayerName() {
+  try {
+    const saved = localStorage.getItem('brickidle_player_name');
+    if (saved && typeof saved === 'string') {
+      state.playerName = saved;
+      if (playerNameInput) playerNameInput.value = saved;
+      return saved;
+    }
+  } catch (_) {
+    // ignore storage errors
+  }
+  return null;
+}
+
+function openNameModal() {
+  state.paused = true;
+  state.awaitingName = true;
+  nameModalBackdrop.classList.add('open');
+  setTimeout(() => playerNameInput?.focus(), 0);
+}
+
+function closeNameModal() {
+  nameModalBackdrop.classList.remove('open');
+  state.awaitingName = false;
+  if (!state.powerModalOpen) {
+    state.paused = false;
+  }
+}
+
+function handleNameSubmit() {
+  const name = (playerNameInput?.value || '').trim();
+  if (!name) {
+    playerNameInput?.focus();
+    return;
+  }
+  state.playerName = name.slice(0, 32);
+  try {
+    localStorage.setItem('brickidle_player_name', state.playerName);
+  } catch (_) {
+    // ignore
+  }
+  closeNameModal();
 }
 
 function getBallSpeed(isSpecial) {
@@ -897,6 +951,10 @@ function resetGame() {
   state.lastVampireHeal = 0;
   state.lastBossLevelSpawned = 0;
   state.damageByPower = {};
+  state.backendTopScores = [];
+  state.gameOverHandled = false;
+  state.lastEndedAt = null;
+  state.scoreSubmitted = false;
   powerModalBackdrop.classList.remove('open');
   placeBallOnPaddle({ centerPaddle: true });
   spawnBrickRow();
@@ -917,7 +975,15 @@ function getTopScores() {
 function saveScore(score) {
   try {
     const scores = getTopScores();
-    const entry = typeof score === 'object' ? score : { score, stage: state.level, level: state.playerLevel };
+    const entry = typeof score === 'object'
+      ? score
+      : {
+          player: state.playerName || 'Anonyme',
+          score,
+          stage: state.level,
+          level: state.playerLevel,
+          endedAt: new Date().toISOString()
+        };
     scores.push(entry);
     scores.sort((a, b) => (b.score || 0) - (a.score || 0));
     const top5 = scores.slice(0, 5);
@@ -925,6 +991,58 @@ function saveScore(score) {
   } catch (_) {
     // ignore storage errors
   }
+}
+
+async function submitScoreToBackend(payload) {
+  if (!payload || state.submittingScore) return null;
+  state.submittingScore = true;
+  try {
+    const res = await fetch('/scores', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    state.scoreSubmitted = true;
+    return data;
+  } catch (err) {
+    console.error('submitScoreToBackend failed', err);
+    return null;
+  } finally {
+    state.submittingScore = false;
+  }
+}
+
+async function fetchTopScoresFromBackend(limit = 5) {
+  try {
+    const res = await fetch(`/scores?limit=${limit}`);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    if (Array.isArray(data)) {
+      state.backendTopScores = data;
+    }
+  } catch (err) {
+    console.error('fetchTopScoresFromBackend failed', err);
+  }
+}
+
+function triggerGameOver() {
+  if (state.gameOverHandled) return;
+  state.running = false;
+  state.gameOverHandled = true;
+  const endedAt = new Date().toISOString();
+  state.lastEndedAt = endedAt;
+  const payload = {
+    player: state.playerName || 'Anonyme',
+    score: state.score,
+    stage: state.level,
+    level: state.playerLevel,
+    endedAt
+  };
+  saveScore(payload);
+  submitScoreToBackend(payload)?.then(() => fetchTopScoresFromBackend().catch(() => {})).catch(() => {});
+  fetchTopScoresFromBackend();
 }
 
 function update(dt) {
@@ -992,8 +1110,7 @@ function update(dt) {
       brick.alive = false;
       state.lives -= 1;
       if (state.lives <= 0) {
-        state.running = false;
-        saveScore({ score: state.score, stage: state.level, level: state.playerLevel });
+        triggerGameOver();
       }
     }
   }
@@ -1551,19 +1668,31 @@ function renderBalls() {
 }
 
 function renderHUD() {
-  ctx.fillStyle = '#e2e8f0';
+  const leftX = 14;
+  let leftY = 26;
   ctx.font = '18px "Segoe UI", sans-serif';
-  ctx.fillText(`Score: ${state.score}`, 14, 24);
-  ctx.fillText(state.autoPlay ? 'Auto: ON' : 'Auto: OFF', 14, 46);
+  ctx.fillStyle = '#7dd3fc';
+  const displayName = state.playerName ? state.playerName : 'Pseudo ?';
+  ctx.fillText(`Joueur: ${displayName}`, leftX, leftY);
+  leftY += 22;
+  ctx.fillStyle = '#e2e8f0';
+  ctx.fillText(`Score: ${state.score}`, leftX, leftY);
+  leftY += 20;
+  ctx.fillText(state.autoPlay ? 'Auto: ON' : 'Auto: OFF', leftX, leftY);
   const availableBalls = state.ballCount + state.specialPocket.length + (state.ballHeld ? 1 : 0);
   const totalBalls = availableBalls + state.balls.length;
-  ctx.fillText(`Balles: ${availableBalls}/${totalBalls}`, 14, 68);
+  leftY += 20;
+  ctx.fillText(`Balles: ${availableBalls}/${totalBalls}`, leftX, leftY);
   const speedSpecial = Math.round(getBallSpeed(true));
   const speedNormal = Math.round(getBallSpeed(false));
-  ctx.fillText(`Vitesse: ${speedNormal}/${speedSpecial} px/s`, 14, 90);
-  ctx.fillText(`Cadence: ${(1000 / CONFIG.normalShotCooldownMs).toFixed(1)} /s`, 14, 112);
-  ctx.fillText(`Cadence spé: ${(1000 / CONFIG.specialShotCooldownMs).toFixed(1)} /s`, 14, 134);
-  ctx.fillText(`Briques: ${state.brickSpeed.toFixed(1)} px/s`, 14, 156);
+  leftY += 20;
+  ctx.fillText(`Vitesse: ${speedNormal}/${speedSpecial} px/s`, leftX, leftY);
+  leftY += 20;
+  ctx.fillText(`Cadence: ${(1000 / CONFIG.normalShotCooldownMs).toFixed(1)} /s`, leftX, leftY);
+  leftY += 20;
+  ctx.fillText(`Cadence spé: ${(1000 / CONFIG.specialShotCooldownMs).toFixed(1)} /s`, leftX, leftY);
+  leftY += 20;
+  ctx.fillText(`Briques: ${state.brickSpeed.toFixed(1)} px/s`, leftX, leftY);
   // Barres de progression (ordre: Vies, Stage, Level)
   const barW = 180;
   const barH = 8;
@@ -1662,12 +1791,15 @@ function renderHUD() {
     ctx.fillText('Partie terminée - Appuyez sur Entrée pour rejouer', 110, CONFIG.height / 2);
     ctx.fillText(`Score: ${state.score}`, 110, CONFIG.height / 2 + 30);
 
-    // Top 5 local
-    const top = getTopScores();
+    // Top 5 (backend si dispo, sinon local)
+    const top = (state.backendTopScores && state.backendTopScores.length)
+      ? state.backendTopScores
+      : getTopScores();
     ctx.font = '18px "Segoe UI", sans-serif';
     ctx.fillText('Top 5 :', 110, CONFIG.height / 2 + 60);
     top.forEach((s, idx) => {
-      const line = typeof s === 'object' ? `S:${s.score} - Stage:${s.stage} - Lv:${s.level}` : s;
+      const entry = typeof s === 'object' ? s : { score: s };
+      const line = `${entry.player || '???'} - ${entry.score || 0} pts - Stage:${entry.stage || '?'} - Lv:${entry.level || '?'}`;
       ctx.fillText(`${idx + 1}. ${line}`, 110, CONFIG.height / 2 + 80 + idx * 20);
     });
   }
@@ -1698,6 +1830,7 @@ function loop(timestamp) {
 
 function bindControls() {
   window.addEventListener('keydown', (event) => {
+    if (state.awaitingName) return;
     if (state.ballHeld && (event.code === 'Space' || event.key === 'ArrowUp' || event.key === 'Enter')) {
       launchBall();
       return;
@@ -1725,6 +1858,13 @@ function bindControls() {
       state.autoFire = event.target.checked;
     });
   }
+  playerNameSubmit?.addEventListener('click', handleNameSubmit);
+  playerNameInput?.addEventListener('keydown', (event) => {
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      handleNameSubmit();
+    }
+  });
   canvas.addEventListener('click', () => {
     if (state.ballHeld) launchBall();
   });
@@ -1743,7 +1883,11 @@ function init() {
   autoBtn.textContent = state.autoPlay ? 'Désactiver auto-visée' : 'Activer auto-visée';
   aimToggle.checked = state.showAim;
   if (autoFireToggle) autoFireToggle.checked = state.autoFire;
+  const savedName = loadPlayerName();
   resetGame();
+  if (!savedName) {
+    openNameModal();
+  }
   requestAnimationFrame(loop);
 }
 

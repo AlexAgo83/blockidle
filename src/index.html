@@ -112,6 +112,37 @@
       font-size: 0.96rem;
       letter-spacing: 0.01em;
     }
+    .input-group {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin: 12px 0;
+    }
+    .input-group label {
+      font-weight: 700;
+      letter-spacing: 0.01em;
+      color: #e0f2fe;
+    }
+    .input-group input {
+      border-radius: 8px;
+      border: 1px solid #334155;
+      background: #0f172a;
+      color: #e2e8f0;
+      padding: 10px 12px;
+      font-size: 1rem;
+      outline: none;
+      transition: border-color 120ms ease, box-shadow 120ms ease;
+    }
+    .input-group input:focus {
+      border-color: #38bdf8;
+      box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.18);
+    }
+    .modal-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+      margin-top: 6px;
+    }
     .power-grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
@@ -260,6 +291,19 @@
           <p class="power-preview-name" id="power-preview-name">Pouvoir</p>
           <p class="power-preview-desc" id="power-preview-desc">Survolez un pouvoir pour voir ses effets.</p>
         </div>
+      </div>
+    </div>
+  </div>
+  <div id="name-modal-backdrop" class="modal-backdrop">
+    <div class="modal">
+      <h2>Votre nom</h2>
+      <p class="subtitle">Choisissez un pseudo pour enregistrer vos scores.</p>
+      <div class="input-group">
+        <label for="player-name-input">Pseudo</label>
+        <input id="player-name-input" type="text" maxlength="32" placeholder="Ex: BrickMaster" />
+      </div>
+      <div class="modal-actions">
+        <button id="player-name-submit" type="button">Commencer</button>
       </div>
     </div>
   </div>

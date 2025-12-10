@@ -25,9 +25,15 @@ async function initDb() {
       id SERIAL PRIMARY KEY,
       player TEXT NOT NULL UNIQUE,
       score INTEGER NOT NULL,
+      stage INTEGER DEFAULT 1,
+      level INTEGER DEFAULT 1,
+      ended_at TIMESTAMPTZ DEFAULT now(),
       created_at TIMESTAMPTZ DEFAULT now()
     )
   `);
+  await pool.query('ALTER TABLE scores ADD COLUMN IF NOT EXISTS stage INTEGER DEFAULT 1');
+  await pool.query('ALTER TABLE scores ADD COLUMN IF NOT EXISTS level INTEGER DEFAULT 1');
+  await pool.query('ALTER TABLE scores ADD COLUMN IF NOT EXISTS ended_at TIMESTAMPTZ DEFAULT now()');
 }
 
 initDb().catch((err) => {
@@ -36,7 +42,7 @@ initDb().catch((err) => {
 });
 
 app.post('/scores', async (req, res) => {
-  const { player, score } = req.body || {};
+  const { player, score, stage, level, endedAt } = req.body || {};
   if (!player || typeof player !== 'string' || !player.trim()) {
     return res.status(400).json({ error: 'player requis' });
   }
@@ -45,16 +51,27 @@ app.post('/scores', async (req, res) => {
   }
 
   const name = player.trim().slice(0, 64);
+  const safeStage = Number.isFinite(stage) ? Math.max(1, Math.floor(stage)) : null;
+  const safeLevel = Number.isFinite(level) ? Math.max(1, Math.floor(level)) : null;
+  const endedAtIso = (() => {
+    const d = endedAt ? new Date(endedAt) : new Date();
+    return Number.isNaN(d.getTime()) ? new Date().toISOString() : d.toISOString();
+  })();
+
   try {
     const result = await pool.query(
       `
-        INSERT INTO scores (player, score)
-        VALUES ($1, $2)
+        INSERT INTO scores (player, score, stage, level, ended_at)
+        VALUES ($1, $2, COALESCE($3, 1), COALESCE($4, 1), $5)
         ON CONFLICT (player)
-        DO UPDATE SET score = GREATEST(scores.score, EXCLUDED.score)
-        RETURNING player, score, created_at
+        DO UPDATE SET
+          score = GREATEST(scores.score, EXCLUDED.score),
+          stage = CASE WHEN EXCLUDED.score > scores.score THEN EXCLUDED.stage ELSE scores.stage END,
+          level = CASE WHEN EXCLUDED.score > scores.score THEN EXCLUDED.level ELSE scores.level END,
+          ended_at = CASE WHEN EXCLUDED.score > scores.score THEN EXCLUDED.ended_at ELSE scores.ended_at END
+        RETURNING player, score, stage, level, ended_at, created_at
       `,
-      [name, score]
+      [name, score, safeStage, safeLevel, endedAtIso]
     );
     res.json(result.rows[0]);
   } catch (err) {
@@ -68,9 +85,9 @@ app.get('/scores', async (req, res) => {
   try {
     const result = await pool.query(
       `
-        SELECT player, score, created_at
+        SELECT player, score, stage, level, ended_at, created_at
         FROM scores
-        ORDER BY score DESC, created_at ASC
+        ORDER BY score DESC, ended_at ASC
         LIMIT $1
       `,
       [limit]
