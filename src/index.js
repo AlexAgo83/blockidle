@@ -154,6 +154,10 @@ function getBallRadius(isSpecial) {
   return isSpecial ? base : base * CONFIG.standardBallRadiusMultiplier;
 }
 
+function getMaxLives() {
+  return CONFIG.maxLives + 5 * getTalentLevel('Endurance');
+}
+
 function getPaddleSpeed() {
   const level = getTalentLevel('Bottes');
   const mult = 1 + 0.1 * level;
@@ -366,7 +370,8 @@ function getBrickHP() {
 }
 
 function xpForLevel(level) {
-  return 10 + (level - 1) * 5;
+  const base = 10 + (level - 1) * 5;
+  return Math.ceil(base * 1.25);
 }
 
 function gainXp(amount) {
@@ -411,12 +416,12 @@ function handlePowerSelect(powerName) {
   if (existing) {
     if (existing.level >= def.maxLevel) {
       state.pendingPowerChoices = Math.max(0, state.pendingPowerChoices - 1);
-      state.powerModalOpen = false;
-      powerModalBackdrop.classList.remove('open');
-      state.paused = state.pendingPowerChoices > 0;
-      if (state.paused) tryOpenPowerModal();
-      return;
-    }
+    state.powerModalOpen = false;
+    powerModalBackdrop.classList.remove('open');
+    state.paused = state.pendingPowerChoices > 0;
+    if (state.paused) tryOpenPowerModal();
+    return;
+  }
     existing.level = Math.min(existing.level + 1, def.maxLevel);
   } else {
     state.powers.push({ name: powerName, level: 1 });
@@ -864,7 +869,8 @@ function launchBall() {
 
 function resetGame() {
   state.score = 0;
-  state.lives = CONFIG.startLives + 5 * getTalentLevel('Endurance');
+  const maxLife = getMaxLives();
+  state.lives = Math.min(maxLife, CONFIG.startLives + 5 * getTalentLevel('Endurance'));
   state.bricks = [];
   state.rowIndex = 0;
   state.spawnTimer = 0;
@@ -899,7 +905,8 @@ function getTopScores() {
     const raw = localStorage.getItem('brickidle_top_scores');
     if (!raw) return [];
     const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed.slice(0, 5) : [];
+    if (!Array.isArray(parsed)) return [];
+    return parsed.slice(0, 5);
   } catch (_) {
     return [];
   }
@@ -908,8 +915,9 @@ function getTopScores() {
 function saveScore(score) {
   try {
     const scores = getTopScores();
-    scores.push(score);
-    scores.sort((a, b) => b - a);
+    const entry = typeof score === 'object' ? score : { score, stage: state.level, level: state.playerLevel };
+    scores.push(entry);
+    scores.sort((a, b) => (b.score || 0) - (a.score || 0));
     const top5 = scores.slice(0, 5);
     localStorage.setItem('brickidle_top_scores', JSON.stringify(top5));
   } catch (_) {
@@ -921,6 +929,7 @@ function update(dt) {
   if (!state.running || state.paused) return;
   const now = performance.now ? performance.now() : Date.now();
   const { paddle, heldBall, keys } = state;
+  paddle.w = getPaddleWidth();
   const speedInterval = CONFIG.speedIncreaseInterval;
   state.speedTimer += dt;
   while (state.speedTimer >= speedInterval) {
@@ -982,7 +991,7 @@ function update(dt) {
       state.lives -= 1;
       if (state.lives <= 0) {
         state.running = false;
-        saveScore(state.score);
+        saveScore({ score: state.score, stage: state.level, level: state.playerLevel });
       }
     }
   }
@@ -1561,7 +1570,7 @@ function renderHUD() {
   let barY = 30;
 
   // Vies
-  const maxLife = CONFIG.maxLives + 5 * getTalentLevel('Endurance');
+  const maxLife = getMaxLives();
   const lifeProgress = Math.min(state.lives / maxLife, 1);
   ctx.fillStyle = '#34d399';
   ctx.fillText(`Vies: ${state.lives}/${maxLife}`, barX, barY - 8);
@@ -1605,7 +1614,7 @@ function renderHUD() {
   ctx.fillStyle = '#e2e8f0';
   const powersY = barY + 28;
   ctx.fillText('Pouvoirs:', barX, powersY);
-  const powerLines = state.powers.slice(-5); // affiche les 5 derniers
+  const powerLines = state.powers; // affiche tous
   powerLines.forEach((p, idx) => {
     ctx.fillText(`- ${p.name} (Lv. ${p.level})`, barX, powersY + 20 + idx * 18);
   });
@@ -1613,7 +1622,7 @@ function renderHUD() {
   // Talents
   const talentsY = powersY + 20 + powerLines.length * 18 + 10;
   ctx.fillText('Talents:', barX, talentsY);
-  const talentLines = state.talents.slice(-5);
+  const talentLines = state.talents;
   talentLines.forEach((t, idx) => {
     ctx.fillText(`- ${t.name} (Lv. ${t.level})`, barX, talentsY + 20 + idx * 18);
   });
@@ -1631,7 +1640,8 @@ function renderHUD() {
     ctx.font = '18px "Segoe UI", sans-serif';
     ctx.fillText('Top 5 :', 110, CONFIG.height / 2 + 60);
     top.forEach((s, idx) => {
-      ctx.fillText(`${idx + 1}. ${s}`, 110, CONFIG.height / 2 + 80 + idx * 20);
+      const line = typeof s === 'object' ? `S:${s.score} - Stage:${s.stage} - Lv:${s.level}` : s;
+      ctx.fillText(`${idx + 1}. ${line}`, 110, CONFIG.height / 2 + 80 + idx * 20);
     });
   }
 }
@@ -1763,9 +1773,10 @@ function damageBrick(brick, amount, now) {
       applySpeedBoost();
     }
     // Effet Vampire : gain de vie si la brique est détruite par une balle Vampire (max 1/s)
-    if (amount && state.lastHitSpecial === 'Vampire' && state.lives < CONFIG.maxLives) {
+    const maxLife = getMaxLives();
+    if (amount && state.lastHitSpecial === 'Vampire' && state.lives < maxLife) {
       if (!state.lastVampireHeal || now - state.lastVampireHeal >= 1000) {
-        state.lives = Math.min(CONFIG.maxLives, state.lives + 1);
+        state.lives = Math.min(maxLife, state.lives + 1);
         state.lastVampireHeal = now;
       }
     }
