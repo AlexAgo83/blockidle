@@ -3,7 +3,6 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { Pool } from 'pg';
 import cors from 'cors';
-import { exec } from 'node:child_process';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -31,6 +30,9 @@ const pool = new Pool({
   connectionString,
   ssl: process.env.PGSSL_DISABLE === '1' ? false : { rejectUnauthorized: false }
 });
+
+const GITHUB_OWNER = process.env.GITHUB_OWNER || 'AlexAgo83';
+const GITHUB_REPO = process.env.GITHUB_REPO || 'blockidle';
 
 async function initDb() {
   await pool.query(`
@@ -121,19 +123,38 @@ app.get('/health', async (_req, res) => {
   }
 });
 
-app.get('/commits', (_req, res) => {
-  exec("git log -n 10 --pretty=format:'%h|%s|%cd' --date=short", { cwd: __dirname }, (err, stdout) => {
-    if (err) {
-      console.error('Erreur git log', err);
-      return res.status(500).json({ error: 'Impossible de lire les commits' });
-    }
-    const lines = stdout.split('\n').filter(Boolean);
-    const commits = lines.map((line) => {
-      const [hash, message, date] = line.split('|');
-      return { hash, message, date };
-    });
+async function fetchGithubCommits(limit = 10) {
+  const perPage = Math.max(1, Math.min(100, limit));
+  const url = `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/commits?per_page=${perPage}`;
+  const headers = {
+    'User-Agent': 'blockidle-backend'
+  };
+  const token = process.env.GITHUB_TOKEN?.trim();
+  if (token) {
+    headers.Authorization = `Bearer ${token}`;
+  }
+  const response = await fetch(url, { headers });
+  if (!response.ok) {
+    throw new Error(`GitHub API error ${response.status}`);
+  }
+  const data = await response.json();
+  return Array.isArray(data)
+    ? data.map((c) => ({
+        hash: c.sha ? c.sha.slice(0, 7) : '',
+        message: c.commit?.message?.split('\n')[0] || '',
+        date: c.commit?.author?.date?.slice(0, 10) || ''
+      }))
+    : [];
+}
+
+app.get('/commits', async (_req, res) => {
+  try {
+    const commits = await fetchGithubCommits(10);
     res.json(commits);
-  });
+  } catch (err) {
+    console.error('Erreur GitHub commits', err);
+    res.status(500).json({ error: 'Impossible de lire les commits via GitHub' });
+  }
 });
 
 const distPath = path.join(__dirname, 'dist');

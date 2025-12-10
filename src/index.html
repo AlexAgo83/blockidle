@@ -28,31 +28,9 @@
       margin: 0 0 6px;
       letter-spacing: 0.03em;
     }
-    .controls {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 10px;
-      flex-wrap: wrap;
-    }
     .hint {
       color: #cbd5e1;
       font-size: 0.95rem;
-    }
-    .checkbox {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      cursor: pointer;
-      user-select: none;
-      color: #e2e8f0;
-      font-weight: 600;
-    }
-    .checkbox input {
-      width: 16px;
-      height: 16px;
-      accent-color: #6366f1;
-      cursor: pointer;
     }
     button {
       background: linear-gradient(135deg, #22d3ee, #6366f1);
@@ -318,20 +296,11 @@
   <div id="app">
     <header>
       <h1>BrickIdle</h1>
-      <div class="controls">
-        <button id="auto-toggle" type="button">Activer auto-visée</button>
-        <label class="checkbox">
-          <input id="aim-toggle" type="checkbox" />
-          <span>Ligne</span>
-        </label>
-      </div>
     </header>
     <canvas id="game" width="800" height="600"></canvas>
     <div class="time-controls">
-      <div class="time-left">
-        <button id="auto-toggle" type="button">Activer auto-visée</button>
-      </div>
       <div class="time-right">
+        <button id="auto-toggle" type="button">Activer auto-visée</button>
         <button class="time-btn" data-speed="1" type="button">x1</button>
         <button class="time-btn" data-speed="2" type="button">x2</button>
         <button class="time-btn" data-speed="3" type="button">x3</button>
