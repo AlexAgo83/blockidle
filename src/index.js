@@ -707,8 +707,6 @@ function getAliveBoss() {
 }
 
 function maybeSpawnBoss() {
-  const boss = getAliveBoss();
-  if (boss) return; // on ne cumule pas les boss
   if (state.level > state.lastBossLevelSpawned) {
     spawnBossBrick(state.level);
     state.lastBossLevelSpawned = state.level;
