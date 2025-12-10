@@ -1693,6 +1693,18 @@ function renderHUD() {
   ctx.fillText(`Cadence spé: ${(1000 / CONFIG.specialShotCooldownMs).toFixed(1)} /s`, leftX, leftY);
   leftY += 20;
   ctx.fillText(`Briques: ${state.brickSpeed.toFixed(1)} px/s`, leftX, leftY);
+  const topList = (state.backendTopScores && state.backendTopScores.length)
+    ? state.backendTopScores
+    : getTopScores();
+  ctx.fillStyle = '#cbd5e1';
+  ctx.font = '16px "Segoe UI", sans-serif';
+  const boxY = CONFIG.height - 140;
+  ctx.fillText('Top 5 actuel', leftX, boxY);
+  topList.slice(0, 5).forEach((entry, idx) => {
+    const e = typeof entry === 'object' ? entry : { score: entry };
+    const label = `${idx + 1}. ${(e.player || '???').slice(0, 10)} - ${e.score || 0}`;
+    ctx.fillText(label, leftX, boxY + 20 + idx * 18);
+  });
   // Barres de progression (ordre: Vies, Stage, Level)
   const barW = 180;
   const barH = 8;
@@ -1888,6 +1900,10 @@ function init() {
   if (!savedName) {
     openNameModal();
   }
+  fetchTopScoresFromBackend();
+  setInterval(() => {
+    fetchTopScoresFromBackend().catch(() => {});
+  }, 30000);
   requestAnimationFrame(loop);
 }
 
