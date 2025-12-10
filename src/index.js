@@ -123,7 +123,8 @@ const state = {
   currentTalentOptions: [],
   lastHitSpecial: null,
   lastVampireHeal: 0,
-  lastBossLevelSpawned: 0
+  lastBossLevelSpawned: 0,
+  damageByPower: {}
 };
 
 const bonusState = {
@@ -416,12 +417,12 @@ function handlePowerSelect(powerName) {
   if (existing) {
     if (existing.level >= def.maxLevel) {
       state.pendingPowerChoices = Math.max(0, state.pendingPowerChoices - 1);
-    state.powerModalOpen = false;
-    powerModalBackdrop.classList.remove('open');
-    state.paused = state.pendingPowerChoices > 0;
-    if (state.paused) tryOpenPowerModal();
-    return;
-  }
+      state.powerModalOpen = false;
+      powerModalBackdrop.classList.remove('open');
+      state.paused = state.pendingPowerChoices > 0;
+      if (state.paused) tryOpenPowerModal();
+      return;
+    }
     existing.level = Math.min(existing.level + 1, def.maxLevel);
   } else {
     state.powers.push({ name: powerName, level: 1 });
@@ -430,7 +431,7 @@ function handlePowerSelect(powerName) {
   state.pendingPowerChoices = Math.max(0, state.pendingPowerChoices - 1);
   powerModalBackdrop.classList.remove('open');
   state.powerModalOpen = false;
-  if (state.pendingPowerChoices > 0 || state.pendingTalentChoices > 0) {
+  if (state.pendingPowerChoices > 0) {
     tryOpenPowerModal();
   } else {
     state.paused = false;
@@ -895,6 +896,7 @@ function resetGame() {
   state.lastHitSpecial = null;
   state.lastVampireHeal = 0;
   state.lastBossLevelSpawned = 0;
+  state.damageByPower = {};
   powerModalBackdrop.classList.remove('open');
   placeBallOnPaddle({ centerPaddle: true });
   spawnBrickRow();
@@ -1066,7 +1068,7 @@ function update(dt) {
     if (!brick.alive || !brick.poisonActive) continue;
     if (brick.poisonNextTick && brick.poisonNextTick <= now) {
       brick.poisonNextTick = now + 2500;
-      damageBrick(brick, 1, now);
+      damageBrick(brick, 1, now, 'Poison');
     }
   }
 
@@ -1075,7 +1077,7 @@ function update(dt) {
     if (!brick.alive) continue;
     if (brick.curseTick && brick.curseTick <= now) {
       brick.curseTick = null;
-      damageBrick(brick, 2, now);
+      damageBrick(brick, 2, now, 'Malediction');
     }
   }
 
@@ -1093,7 +1095,7 @@ function update(dt) {
       // Maintient le halo actif pendant l'effet Epine
       brick.effectColor = getPowerColor('Epine');
       brick.effectUntil = brick.thornExpire;
-      damageBrick(brick, 1, now);
+      damageBrick(brick, 1, now, 'Epine');
     }
   }
 
@@ -1246,7 +1248,7 @@ function update(dt) {
         const damage = ball.specialPower === 'Metal' ? 3 : 1;
         state.lastHitSpecial = ball.specialPower || null;
         applyPowerOnHit(ball, brick, now);
-        damageBrick(brick, damage, now);
+        damageBrick(brick, damage, now, ball.specialPower || null);
         applyFireSplash(ball, brick, now, damage);
 
         if (minOverlap === overlapLeft || minOverlap === overlapRight) {
@@ -1754,14 +1756,19 @@ function applyPowerOnHit(ball, brick, now) {
   }
 }
 
-function damageBrick(brick, amount, now) {
+function damageBrick(brick, amount, now, sourcePower = null) {
   brick.flashTime = now;
   brick.hp = Math.max(0, (brick.hp || 1) - amount);
+
+  if (sourcePower) {
+    state.damageByPower[sourcePower] = (state.damageByPower[sourcePower] || 0) + amount;
+  }
+
   const destroyed = brick.hp <= 0;
   if (destroyed) {
     brick.alive = false;
     brick.deathTime = now;
-    state.score += 50 + brick.row * 10;
+        state.score += 50 + brick.row * 10;
     const xpDropCount = brick.type === 'boss' ? 5 : 1;
     for (let k = 0; k < xpDropCount; k += 1) {
       spawnXpDrop(brick);
@@ -1805,6 +1812,6 @@ function applyFireSplash(ball, hitBrick, now, baseDamage) {
   const targets = nearest.slice(0, 3);
   for (const { brick } of targets) {
     applyPowerOnHit(ball, brick, now);
-    damageBrick(brick, baseDamage, now);
+    damageBrick(brick, baseDamage, now, 'Feu');
   }
 }
