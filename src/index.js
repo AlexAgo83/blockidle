@@ -14,6 +14,7 @@ const powerPreviewIcon = document.getElementById('power-preview-icon');
 const nameModalBackdrop = document.getElementById('name-modal-backdrop');
 const playerNameInput = document.getElementById('player-name-input');
 const playerNameSubmit = document.getElementById('player-name-submit');
+const abandonBtn = document.getElementById('abandon-btn');
 const commitToggle = document.getElementById('commit-toggle');
 const commitChevron = document.getElementById('commit-chevron');
 const commitListEl = document.getElementById('commit-list');
@@ -2166,18 +2167,6 @@ function renderHUD() {
       h.font = '32px "Segoe UI", sans-serif';
       h.fillText('Partie terminée - Appuyez sur Entrée pour rejouer', 120, CONFIG.height / 2);
       h.fillText(`Score: ${formatScore(state.score)}`, 120, CONFIG.height / 2 + 36);
-
-      // Top 10 (backend si dispo, sinon local)
-      const top = (state.backendTopScores && state.backendTopScores.length)
-        ? state.backendTopScores
-        : getTopScores();
-      h.font = '22px "Segoe UI", sans-serif';
-      h.fillText('Top 10 :', 120, CONFIG.height / 2 + 70);
-      top.slice(0, TOP_LIMIT).forEach((s, idx) => {
-        const entry = typeof s === 'object' ? s : { score: s };
-        const line = `${entry.player || '???'} - ${formatScore(entry.score || 0)} pts - Stage:${entry.stage || '?'} - Lv:${entry.level || '?'}`;
-        h.fillText(`${idx + 1}. ${line}`, 120, CONFIG.height / 2 + 95 + idx * 24);
-      });
     }
   }
 
@@ -2236,6 +2225,11 @@ function bindControls() {
       state.autoFire = event.target.checked;
     });
   }
+  abandonBtn?.addEventListener('click', () => {
+    if (!state.running || state.gameOverHandled) return;
+    state.lives = 0;
+    triggerGameOver();
+  });
   timeButtons.forEach((btn) => {
     btn.addEventListener('click', () => {
       const val = Number(btn.dataset.speed) || 1;
