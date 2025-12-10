@@ -226,8 +226,8 @@ function normalizeBrick(brick) {
   return {
     x: safeNumber(brick.x, 0),
     y: safeNumber(brick.y, 0),
-    w: safeNumber(brick.w, CONFIG.brickHeight),
-    h: safeNumber(brick.h, CONFIG.brickHeight),
+    w: Math.max(1, safeNumber(brick.w, CONFIG.brickHeight)),
+    h: Math.max(1, safeNumber(brick.h, CONFIG.brickHeight)),
     hue: safeNumber(brick.hue, 0),
     alive: safeBoolean(brick.alive, true),
     row: safeNumber(brick.row, 0),
@@ -336,11 +336,7 @@ function getSessionSnapshot() {
 }
 
 function saveSession() {
-  try {
-    localStorage.setItem(SESSION_KEY, JSON.stringify(getSessionSnapshot()));
-  } catch (_) {
-    // ignore storage errors
-  }
+  clearSession(); // on ne persiste plus la partie
 }
 
 function clearSession() {
@@ -352,96 +348,12 @@ function clearSession() {
 }
 
 function loadSession() {
-  let raw = null;
-  try {
-    raw = localStorage.getItem(SESSION_KEY);
-  } catch (_) {
-    return false;
-  }
-  if (!raw) return false;
-
-  let parsed;
-  try {
-    parsed = JSON.parse(raw);
-  } catch (_) {
-    clearSession();
-    return false;
-  }
-
-  if (!parsed || parsed.version !== SESSION_VERSION || !parsed.state) return false;
-
-  const data = parsed.state;
-  state.playerName = typeof data.playerName === 'string' ? data.playerName.slice(0, 32) : state.playerName;
-  if (playerNameInput && state.playerName) playerNameInput.value = state.playerName;
-
-  state.score = safeNumber(data.score, 0);
-  state.lives = safeNumber(data.lives, CONFIG.startLives);
-  state.running = data.running !== false;
-  state.autoPlay = safeBoolean(data.autoPlay, true);
-  state.showAim = safeBoolean(data.showAim, false);
-  state.autoFire = safeBoolean(data.autoFire, true);
-  state.ballHeld = safeBoolean(data.ballHeld, true);
-  state.ballCount = safeNumber(data.ballCount, 1);
-  state.lastLaunch = safeNumber(data.lastLaunch, 0);
-  state.spawnTimer = safeNumber(data.spawnTimer, 0);
-  state.rowIndex = safeNumber(data.rowIndex, 0);
-  state.brickSpeed = safeNumber(data.brickSpeed, CONFIG.brickDriftSpeed);
-  state.speedTimer = safeNumber(data.speedTimer, 0);
-  state.level = safeNumber(data.level, 1);
-  state.playerLevel = safeNumber(data.playerLevel, 1);
-  state.xp = safeNumber(data.xp, 0);
-  state.xpNeeded = xpForLevel(state.playerLevel);
-  state.xpDrops = Array.isArray(data.xpDrops)
-    ? data.xpDrops.map((drop) => normalizeDrop(drop)).filter(Boolean)
-    : [];
-  state.paused = safeBoolean(data.paused, false);
-  state.powers = normalizeLevelEntries(data.powers, getPowerDef);
-  state.talents = normalizeLevelEntries(data.talents, getTalentDef);
-  state.specialPocket = Array.isArray(data.specialPocket) ? data.specialPocket.slice(0, CONFIG.maxBalls) : [];
-  state.timeScale = safeNumber(data.timeScale, 1) || 1;
-  state.pendingPowerChoices = safeNumber(data.pendingPowerChoices, 0);
-  state.lastHitSpecial = typeof data.lastHitSpecial === 'string' ? data.lastHitSpecial : null;
-  state.lastVampireHeal = safeNumber(data.lastVampireHeal, 0);
-  state.lastBossLevelSpawned = safeNumber(data.lastBossLevelSpawned, 0);
-  state.damageByPower = data.damageByPower && typeof data.damageByPower === 'object' ? { ...data.damageByPower } : {};
-  state.heldBall = normalizeBall(data.heldBall, state.heldBall) || state.heldBall;
-  state.paddle = normalizeRect(data.paddle, state.paddle);
-  state.balls = Array.isArray(data.balls)
-    ? data.balls.map((b) => normalizeBall(b)).filter(Boolean)
-    : [];
-  state.bricks = Array.isArray(data.bricks)
-    ? data.bricks.map((b) => normalizeBrick(b)).filter(Boolean)
-    : [];
-  bonusState.lastBonus = safeNumber(data.bonus?.lastBonus, 0);
-  CONFIG.ballSpeed = safeNumber(data.configBallSpeed, BASE_BALL_SPEED) || BASE_BALL_SPEED;
-  state.gameOverHandled = safeBoolean(data.gameOverHandled, false);
-  state.lastEndedAt = data.lastEndedAt || null;
-  state.scoreSubmitted = safeBoolean(data.scoreSubmitted, false);
-  state.awaitingName = safeBoolean(data.awaitingName, false);
-  state.backendTopScores = Array.isArray(data.backendTopScores) ? data.backendTopScores : [];
-
-  state.currentPowerOptions = [];
-  state.currentTalentOptions = [];
-  state.powerModalOpen = false;
-  powerModalBackdrop.classList.remove('open');
-  setTimeScale(state.timeScale);
-  state.keys.left = false;
-  state.keys.right = false;
-  markSessionDirty();
-  lastSessionSave = -SESSION_SAVE_INTERVAL;
-  if (state.pendingPowerChoices > 0) {
-    state.paused = true;
-    tryOpenPowerModal();
-  }
-  return true;
+  clearSession(); // on nettoie les anciennes sauvegardes de partie
+  return false;
 }
 
 function maybeSaveSession(nowMs) {
-  if (!sessionDirty) return;
-  const ts = Number.isFinite(nowMs) ? nowMs : Date.now();
-  if (ts - lastSessionSave < SESSION_SAVE_INTERVAL) return;
-  saveSession();
-  lastSessionSave = ts;
+  // On ne sauvegarde plus l'état de la partie, seulement le nom via loadPlayerName/handleNameSubmit
   sessionDirty = false;
 }
 
@@ -1756,6 +1668,7 @@ function renderBricks() {
     const baseHue = ((brick.hue ?? (200 + brick.row * 12)) + hueShift) % 360;
     const now = timeNow;
     if (!brick.alive && !brick.deathTime) continue;
+    if (brick.w <= 0 || brick.h <= 0) continue; // données invalides, éviter les rayons négatifs
     let alpha = 1;
     let scale = 1;
     let explode = false;
@@ -1767,10 +1680,13 @@ function renderBricks() {
       explode = true;
     }
 
-    const drawX = brick.x - (scale - 1) * brick.w / 2;
-    const drawY = brick.y - (scale - 1) * brick.h / 2;
-    const drawW = brick.w * scale;
-    const drawH = brick.h * scale;
+    const bw = Math.max(1, Math.abs(Number.isFinite(brick.w) ? brick.w : CONFIG.brickHeight));
+    const bh = Math.max(1, Math.abs(Number.isFinite(brick.h) ? brick.h : CONFIG.brickHeight));
+
+    const drawX = brick.x - (scale - 1) * bw / 2;
+    const drawY = brick.y - (scale - 1) * bh / 2;
+    const drawW = bw * scale;
+    const drawH = bh * scale;
 
     let flashAlpha = 0;
     if (brick.flashTime) {
@@ -1862,7 +1778,10 @@ function renderBricks() {
     if (explode && alpha > 0) {
       ctx.fillStyle = `rgba(255, 255, 255, ${0.22 * alpha})`;
       ctx.beginPath();
-      ctx.arc(drawX + drawW / 2, drawY + drawH / 2, Math.max(drawW, drawH) * 0.35, 0, Math.PI * 2);
+      const radius = Math.max(drawW, drawH) * 0.35;
+      if (radius > 0 && Number.isFinite(radius)) {
+        ctx.arc(drawX + drawW / 2, drawY + drawH / 2, radius, 0, Math.PI * 2);
+      }
       ctx.fill();
     }
 
@@ -2001,7 +1920,7 @@ function renderHUD() {
   let leftY = 32;
   ctx.font = '22px "Segoe UI", sans-serif';
   ctx.fillStyle = '#7dd3fc';
-  const buildLabel = buildInfo?.build ? `v${buildInfo.build}` : 'dev';
+  const buildLabel = buildInfo?.build ? `b${buildInfo.build}` : 'dev';
   ctx.fillText(`Version: ${buildLabel}`, leftX, leftY);
   leftY += 26;
   const displayName = state.playerName ? state.playerName : 'Pseudo ?';
