@@ -342,6 +342,7 @@
       <div class="time-left">
         <button id="auto-toggle" type="button">Activer auto-visée</button>
         <button id="abandon-btn" type="button">Abandonner</button>
+        <button id="info-btn" type="button">Infos</button>
       </div>
       <div class="time-right">
         <button class="time-btn" data-speed="1" type="button">x1</button>
@@ -361,6 +362,20 @@
         <h3 class="commit-title">Top scores (Top 10)</h3>
       </div>
       <div id="score-list"></div>
+    </div>
+  </div>
+  <div id="info-modal-backdrop" class="modal-backdrop">
+    <div class="modal">
+      <h2>Règles du jeu</h2>
+      <p class="subtitle">Déplace la raquette pour lancer la balle et briser les briques… ou laisse moi faire.</p>
+      <ul>
+        <li>Auto-visée : active/désactive l’assistance de tir.</li>
+        <li>Pouvoirs/Talents : choisis des améliorations quand l’interface te les propose.</li>
+        <li>Objectif : ne laisse pas les briques atteindre le bas, gagne des points et des niveaux.</li>
+      </ul>
+      <div class="modal-actions">
+        <button id="info-close" type="button">Fermer</button>
+      </div>
     </div>
   </div>
   <div id="power-modal-backdrop" class="modal-backdrop">

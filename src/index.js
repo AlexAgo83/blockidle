@@ -15,6 +15,9 @@ const nameModalBackdrop = document.getElementById('name-modal-backdrop');
 const playerNameInput = document.getElementById('player-name-input');
 const playerNameSubmit = document.getElementById('player-name-submit');
 const abandonBtn = document.getElementById('abandon-btn');
+const infoBtn = document.getElementById('info-btn');
+const infoModalBackdrop = document.getElementById('info-modal-backdrop');
+const infoCloseBtn = document.getElementById('info-close');
 const commitToggle = document.getElementById('commit-toggle');
 const commitChevron = document.getElementById('commit-chevron');
 const commitListEl = document.getElementById('commit-list');
@@ -464,6 +467,20 @@ function handleNameSubmit() {
   }
   markSessionDirty();
   closeNameModal();
+}
+
+function openInfoModal() {
+  if (!infoModalBackdrop) return;
+  state.paused = true;
+  infoModalBackdrop.classList.add('open');
+}
+
+function closeInfoModal() {
+  if (!infoModalBackdrop) return;
+  infoModalBackdrop.classList.remove('open');
+  if (!state.powerModalOpen && !state.awaitingName) {
+    state.paused = false;
+  }
 }
 
 function setTimeScale(scale) {
@@ -2229,6 +2246,11 @@ function bindControls() {
     if (!state.running || state.gameOverHandled) return;
     state.lives = 0;
     triggerGameOver();
+  });
+  infoBtn?.addEventListener('click', () => openInfoModal());
+  infoCloseBtn?.addEventListener('click', () => closeInfoModal());
+  infoModalBackdrop?.addEventListener('click', (event) => {
+    if (event.target === infoModalBackdrop) closeInfoModal();
   });
   timeButtons.forEach((btn) => {
     btn.addEventListener('click', () => {
