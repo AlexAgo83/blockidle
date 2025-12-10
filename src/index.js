@@ -26,7 +26,8 @@ const TALENT_DEFS = [
   { name: 'Plume', maxLevel: 3 },
   { name: 'Gants', maxLevel: 3 },
   { name: 'Raquette', maxLevel: 3 },
-  { name: 'Miroir', maxLevel: 2 }
+  { name: 'Miroir', maxLevel: 2 },
+  { name: 'Endurance', maxLevel: 3 }
 ];
 
 const CONFIG = {
@@ -60,7 +61,7 @@ const CONFIG = {
   speedIncreaseMultiplier: 1.05,
   xpSpeed: 1200,
   xpSize: 7,
-  maxLives: 20,
+  maxLives: 10,
   startLives: 10,
   maxNormalBalls: 3,
   specialShotCooldownMs: 250, // 4 tirs/s pour les spéciales
@@ -259,6 +260,11 @@ function getTalentDescription(name) {
       return {
         plain: 'Ajoute des demi-paddles : gauche au niveau 1, droite au niveau 2',
         rich: 'Ajoute des demi-paddles : <span class="power-desc-accent">gauche</span> au Lv1, <span class="power-desc-accent">droite</span> au Lv2'
+      };
+    case 'Endurance':
+      return {
+        plain: 'Augmente les PV max de 5 par niveau',
+        rich: 'PV max <span class="power-desc-accent">+5</span> par niveau'
       };
     default:
       return { plain: '', rich: '' };
@@ -858,7 +864,7 @@ function launchBall() {
 
 function resetGame() {
   state.score = 0;
-  state.lives = CONFIG.startLives;
+  state.lives = CONFIG.startLives + 5 * getTalentLevel('Endurance');
   state.bricks = [];
   state.rowIndex = 0;
   state.spawnTimer = 0;
@@ -886,6 +892,29 @@ function resetGame() {
   powerModalBackdrop.classList.remove('open');
   placeBallOnPaddle({ centerPaddle: true });
   spawnBrickRow();
+}
+
+function getTopScores() {
+  try {
+    const raw = localStorage.getItem('brickidle_top_scores');
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed.slice(0, 5) : [];
+  } catch (_) {
+    return [];
+  }
+}
+
+function saveScore(score) {
+  try {
+    const scores = getTopScores();
+    scores.push(score);
+    scores.sort((a, b) => b - a);
+    const top5 = scores.slice(0, 5);
+    localStorage.setItem('brickidle_top_scores', JSON.stringify(top5));
+  } catch (_) {
+    // ignore storage errors
+  }
 }
 
 function update(dt) {
@@ -953,6 +982,7 @@ function update(dt) {
       state.lives -= 1;
       if (state.lives <= 0) {
         state.running = false;
+        saveScore(state.score);
       }
     }
   }
@@ -1531,9 +1561,10 @@ function renderHUD() {
   let barY = 30;
 
   // Vies
-  const lifeProgress = Math.min(state.lives / CONFIG.maxLives, 1);
+  const maxLife = CONFIG.maxLives + 5 * getTalentLevel('Endurance');
+  const lifeProgress = Math.min(state.lives / maxLife, 1);
   ctx.fillStyle = '#34d399';
-  ctx.fillText(`Vies: ${state.lives}/${CONFIG.maxLives}`, barX, barY - 8);
+  ctx.fillText(`Vies: ${state.lives}/${maxLife}`, barX, barY - 8);
   ctx.fillStyle = 'rgba(255,255,255,0.12)';
   ctx.fillRect(barX, barY, barW, barH);
   ctx.fillStyle = '#34d399';
@@ -1593,6 +1624,15 @@ function renderHUD() {
     ctx.fillStyle = '#e2e8f0';
     ctx.font = '26px "Segoe UI", sans-serif';
     ctx.fillText('Partie terminée - Appuyez sur Entrée pour rejouer', 110, CONFIG.height / 2);
+    ctx.fillText(`Score: ${state.score}`, 110, CONFIG.height / 2 + 30);
+
+    // Top 5 local
+    const top = getTopScores();
+    ctx.font = '18px "Segoe UI", sans-serif';
+    ctx.fillText('Top 5 :', 110, CONFIG.height / 2 + 60);
+    top.forEach((s, idx) => {
+      ctx.fillText(`${idx + 1}. ${s}`, 110, CONFIG.height / 2 + 80 + idx * 20);
+    });
   }
 }
 
