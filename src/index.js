@@ -467,6 +467,7 @@ function handleNameSubmit() {
   }
   markSessionDirty();
   closeNameModal();
+  openInfoModal();
 }
 
 function openInfoModal() {
