@@ -1,3 +1,5 @@
+import buildInfo from './build-info.json';
+
 const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
 const autoBtn = document.getElementById('auto-toggle');
@@ -13,6 +15,7 @@ const nameModalBackdrop = document.getElementById('name-modal-backdrop');
 const playerNameInput = document.getElementById('player-name-input');
 const playerNameSubmit = document.getElementById('player-name-submit');
 const debugGameOverBtn = document.getElementById('debug-gameover');
+const commitListEl = document.getElementById('commit-list');
 
 const API_BASE = (() => {
   const envBase = (import.meta?.env?.VITE_API_BASE || '').trim();
@@ -1046,6 +1049,38 @@ async function fetchTopScoresFromBackend(limit = 5) {
   }
 }
 
+async function fetchCommits() {
+  if (!commitListEl) return;
+  commitListEl.textContent = 'Chargement...';
+  try {
+    const res = await fetch(apiUrl('/commits'));
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    if (!Array.isArray(data)) throw new Error('format inattendu');
+    commitListEl.innerHTML = '';
+    data.forEach((c) => {
+      const item = document.createElement('div');
+      item.className = 'commit-item';
+      const hash = document.createElement('div');
+      hash.className = 'commit-hash';
+      hash.textContent = c.hash || '';
+      const msg = document.createElement('div');
+      msg.className = 'commit-msg';
+      msg.textContent = c.message || '';
+      const date = document.createElement('div');
+      date.className = 'commit-date';
+      date.textContent = c.date || '';
+      item.appendChild(hash);
+      item.appendChild(msg);
+      item.appendChild(date);
+      commitListEl.appendChild(item);
+    });
+  } catch (err) {
+    console.error('fetchCommits failed', err);
+    commitListEl.textContent = 'Impossible de charger les commits.';
+  }
+}
+
 function triggerGameOver() {
   if (state.gameOverHandled) return;
   state.running = false;
@@ -1691,6 +1726,9 @@ function renderHUD() {
   let leftY = 26;
   ctx.font = '18px "Segoe UI", sans-serif';
   ctx.fillStyle = '#7dd3fc';
+  const buildLabel = buildInfo?.build ? `v${buildInfo.build}` : 'dev';
+  ctx.fillText(`Version: ${buildLabel}`, leftX, leftY);
+  leftY += 22;
   const displayName = state.playerName ? state.playerName : 'Pseudo ?';
   ctx.fillText(`Joueur: ${displayName}`, leftX, leftY);
   leftY += 22;
@@ -1798,10 +1836,10 @@ function renderHUD() {
   const entries = Object.entries(state.damageByPower || {}).sort((a, b) => b[1] - a[1]).slice(0, 6);
   if (entries.length) {
     const labelY = histY;
-    const startY = labelY + 16; // espace entre le titre et les barres
+    const startY = labelY + 20; // cohérent avec les barres du dessus
     ctx.fillText('Dégâts par pouvoir', histX, labelY);
-    const barHeight = 12;
-    const barGap = 10;
+    const barHeight = 8; // même hauteur que les barres de progression
+    const barGap = 32; // même spacing vertical que les autres sections
     const maxVal = Math.max(...entries.map(([, v]) => v));
     entries.forEach(([name, val], idx) => {
       const y = startY + idx * (barHeight + barGap);
@@ -1812,7 +1850,7 @@ function renderHUD() {
       ctx.fillStyle = getPowerColor(name) || '#fbbf24';
       ctx.fillRect(histX, y, w, barHeight);
       ctx.fillStyle = '#e2e8f0';
-      ctx.fillText(`${name} (${val})`, histX, y - 2);
+      ctx.fillText(`${name} (${val})`, histX, y - 8);
     });
   }
 
@@ -1922,6 +1960,7 @@ function init() {
     openNameModal();
   }
   fetchTopScoresFromBackend();
+  fetchCommits();
   setInterval(() => {
     fetchTopScoresFromBackend().catch(() => {});
   }, 30000);

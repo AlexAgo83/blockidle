@@ -3,6 +3,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { Pool } from 'pg';
 import cors from 'cors';
+import { exec } from 'node:child_process';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -118,6 +119,21 @@ app.get('/health', async (_req, res) => {
   } catch (err) {
     res.status(500).json({ ok: false, error: 'DB KO' });
   }
+});
+
+app.get('/commits', (_req, res) => {
+  exec("git log -n 10 --pretty=format:'%h|%s|%cd' --date=short", { cwd: __dirname }, (err, stdout) => {
+    if (err) {
+      console.error('Erreur git log', err);
+      return res.status(500).json({ error: 'Impossible de lire les commits' });
+    }
+    const lines = stdout.split('\n').filter(Boolean);
+    const commits = lines.map((line) => {
+      const [hash, message, date] = line.split('|');
+      return { hash, message, date };
+    });
+    res.json(commits);
+  });
 });
 
 const distPath = path.join(__dirname, 'dist');

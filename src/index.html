@@ -253,6 +253,42 @@
       box-shadow: 0 12px 30px rgba(0, 0, 0, 0.35);
       display: block;
     }
+    .commits {
+      margin-top: 12px;
+      padding: 12px;
+      border: 1px solid #334155;
+      border-radius: 10px;
+      background: rgba(15, 23, 42, 0.6);
+      color: #e2e8f0;
+      font-size: 0.95rem;
+    }
+    .commits h3 {
+      margin: 0 0 8px;
+      font-size: 1.05rem;
+      letter-spacing: 0.01em;
+      color: #bae6fd;
+    }
+    .commit-item {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      padding: 6px 0;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    }
+    .commit-item:last-child {
+      border-bottom: none;
+    }
+    .commit-hash {
+      font-family: monospace;
+      color: #38bdf8;
+    }
+    .commit-msg {
+      color: #e2e8f0;
+    }
+    .commit-date {
+      color: #94a3b8;
+      font-size: 0.88rem;
+    }
   </style>
 </head>
 <body>
@@ -268,6 +304,10 @@
       </div>
     </header>
     <canvas id="game" width="800" height="600"></canvas>
+    <div class="commits">
+      <h3>Commits récents</h3>
+      <div id="commit-list"></div>
+    </div>
   </div>
   <div id="power-modal-backdrop" class="modal-backdrop">
     <div class="modal">
