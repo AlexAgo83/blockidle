@@ -17,7 +17,11 @@ const debugGameOverBtn = document.getElementById('debug-gameover');
 const API_BASE = (() => {
   const envBase = (import.meta?.env?.VITE_API_BASE || '').trim();
   if (envBase) return envBase.replace(/\/$/, '');
-  if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+  const host = window.location.hostname || '';
+  if (host === 'localhost' || host === '127.0.0.1') {
+    return 'https://blockidle-backend.onrender.com';
+  }
+  if (host === 'block-idle.onrender.com') {
     return 'https://blockidle-backend.onrender.com';
   }
   return (window.location.origin || '').replace(/\/$/, '');
