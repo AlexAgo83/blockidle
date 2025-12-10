@@ -86,6 +86,41 @@ const FUSION_DEFS = [
     fusion: true,
     ingredients: ['Fire', 'Light'],
     color: 'rgba(255, 224, 128, 0.5)'
+  },
+  {
+    name: 'Tundra',
+    maxLevel: 1,
+    fusion: true,
+    ingredients: ['Ice', 'Poison'],
+    color: 'rgba(125, 211, 252, 0.5)'
+  },
+  {
+    name: 'Forge',
+    maxLevel: 1,
+    fusion: true,
+    ingredients: ['Fire', 'Metal'],
+    color: 'rgba(248, 113, 113, 0.5)'
+  },
+  {
+    name: 'Leech',
+    maxLevel: 1,
+    fusion: true,
+    ingredients: ['Vampire', 'Poison'],
+    color: 'rgba(167, 139, 250, 0.5)'
+  },
+  {
+    name: 'Prism',
+    maxLevel: 1,
+    fusion: true,
+    ingredients: ['Light', 'Ice'],
+    color: 'rgba(191, 219, 254, 0.5)'
+  },
+  {
+    name: 'Spikes',
+    maxLevel: 1,
+    fusion: true,
+    ingredients: ['Thorns', 'Metal'],
+    color: 'rgba(94, 234, 212, 0.5)'
   }
 ];
 const ALL_POWER_DEFS = [...POWER_DEFS, ...FUSION_DEFS];
@@ -717,6 +752,31 @@ function getPowerDescription(name) {
       return {
         plain: 'Fusion of Fire + Light: spreads to 2 nearby bricks and stuns the hit brick plus 3 nearby for 1.5s',
         rich: '<strong>Fusion</strong> of <span class="power-desc-accent">Fire + Light</span>: spreads to <span class="power-desc-accent">2</span> nearby bricks and stuns the target + <span class="power-desc-accent">3 nearby</span> for <span class="power-desc-accent">1.5s</span>'
+      };
+    case 'Tundra':
+      return {
+        plain: 'Fusion of Ice + Poison: freezes 2 nearby bricks and applies poison ticks (1 dmg/s) while frozen',
+        rich: '<strong>Fusion</strong> of <span class="power-desc-accent">Ice + Poison</span>: freezes <span class="power-desc-accent">2 nearby</span> and applies poison <span class="power-desc-accent">1 dmg/s</span> during freeze'
+      };
+    case 'Forge':
+      return {
+        plain: 'Fusion of Fire + Metal: cone splash on 3 targets with +150% damage',
+        rich: '<strong>Fusion</strong> of <span class="power-desc-accent">Fire + Metal</span>: cone splash on <span class="power-desc-accent">3 targets</span> with <span class="power-desc-accent">+150% damage</span>'
+      };
+    case 'Leech':
+      return {
+        plain: 'Fusion of Vampire + Poison: damage over time heals 0.5 HP per tick',
+        rich: '<strong>Fusion</strong> of <span class="power-desc-accent">Vampire + Poison</span>: DoT heals <span class="power-desc-accent">0.5 HP</span> each tick'
+      };
+    case 'Prism':
+      return {
+        plain: 'Fusion of Light + Ice: stuns the target and chains a light stun to 2 nearby',
+        rich: '<strong>Fusion</strong> of <span class="power-desc-accent">Light + Ice</span>: stuns target and chains to <span class="power-desc-accent">2 nearby</span>'
+      };
+    case 'Spikes':
+      return {
+        plain: 'Fusion of Thorns + Metal: reflects 2 damage when a brick hits the paddle and adds +1 on each rebound',
+        rich: '<strong>Fusion</strong> of <span class="power-desc-accent">Thorns + Metal</span>: reflects <span class="power-desc-accent">2 dmg</span> on paddle hits and adds <span class="power-desc-accent">+1 dmg</span> on each rebound'
       };
     default:
       return { plain: '', rich: '' };
@@ -2682,6 +2742,81 @@ function applyPowerOnHit(ball, brick, now) {
     applyLightStun(brick, ball, now);
     brick.effectColor = getPowerColor(power);
     brick.effectUntil = now + 3000;
+  } else if (power === 'Tundra') {
+    applyLightStun(brick, ball, now); // reuse stun for freeze effect
+    brick.poisonActive = true;
+    brick.poisonNextTick = now + 1000;
+    brick.effectColor = getPowerColor(power);
+    brick.effectUntil = now + 3000;
+    // Also freeze 2 nearby bricks
+    const cx = brick.x + brick.w / 2;
+    const cy = brick.y + brick.h / 2;
+    const others = state.bricks
+      .filter((b) => b.alive && b !== brick)
+      .map((b) => {
+        const dx = b.x + b.w / 2 - cx;
+        const dy = b.y + b.h / 2 - cy;
+        return { b, dist: Math.hypot(dx, dy) };
+      })
+      .sort((a, b) => a.dist - b.dist)
+      .slice(0, 2);
+    for (const { b } of others) {
+      b.slowUntil = Math.max(b.slowUntil || 0, now + 3000);
+      b.poisonActive = true;
+      b.poisonNextTick = now + 1000;
+      b.effectColor = getPowerColor(power);
+      b.effectUntil = now + 3000;
+    }
+  } else if (power === 'Forge') {
+    brick.effectColor = getPowerColor(power);
+    brick.effectUntil = now + 400;
+    // Splash cone: pick 3 nearby targets and deal boosted damage
+    const cx = brick.x + brick.w / 2;
+    const cy = brick.y + brick.h / 2;
+    const baseDamage = getBallBaseDamage(ball) * 2.5; // ~+150%
+    const targets = state.bricks
+      .filter((b) => b.alive && b !== brick)
+      .map((b) => {
+        const dx = b.x + b.w / 2 - cx;
+        const dy = b.y + b.h / 2 - cy;
+        return { b, dist: Math.hypot(dx, dy) };
+      })
+      .sort((a, b) => a.dist - b.dist)
+      .slice(0, 3);
+    for (const { b } of targets) {
+      damageBrick(b, baseDamage, now, 'Forge');
+    }
+  } else if (power === 'Leech') {
+    brick.poisonActive = true;
+    brick.poisonNextTick = now + 1000;
+    brick.effectColor = getPowerColor(power);
+    brick.effectUntil = Number.POSITIVE_INFINITY;
+    brick.leechActive = true;
+  } else if (power === 'Prism') {
+    applyLightStun(brick, ball, now);
+    brick.effectColor = getPowerColor(power);
+    brick.effectUntil = now + 1500;
+    const cx = brick.x + brick.w / 2;
+    const cy = brick.y + brick.h / 2;
+    const targets = state.bricks
+      .filter((b) => b.alive && b !== brick)
+      .map((b) => {
+        const dx = b.x + b.w / 2 - cx;
+        const dy = b.y + b.h / 2 - cy;
+        return { b, dist: Math.hypot(dx, dy) };
+      })
+      .sort((a, b) => a.dist - b.dist)
+      .slice(0, 2);
+    for (const { b } of targets) {
+      applyLightStun(b, ball, now);
+      b.effectColor = getPowerColor(power);
+      b.effectUntil = now + 1200;
+    }
+  } else if (power === 'Spikes') {
+    // On-hit bonus damage and later paddle reflect handled elsewhere
+    brick.effectColor = getPowerColor(power);
+    brick.effectUntil = now + 600;
+    damageBrick(brick, 1, now, 'Spikes');
   }
 }
 
