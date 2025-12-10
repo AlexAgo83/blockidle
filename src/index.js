@@ -79,6 +79,16 @@ const POWER_DEFS = [
   { name: 'Thorns', maxLevel: 3 },
   { name: 'Curse', maxLevel: 3 }
 ];
+const FUSION_DEFS = [
+  {
+    name: 'Sun',
+    maxLevel: 1,
+    fusion: true,
+    ingredients: ['Fire', 'Light'],
+    color: 'rgba(255, 224, 128, 0.5)'
+  }
+];
+const ALL_POWER_DEFS = [...POWER_DEFS, ...FUSION_DEFS];
 
 const TALENT_DEFS = [
   { name: 'Boots', maxLevel: 3 },
@@ -654,7 +664,7 @@ function getPaddleWidth() {
 }
 
 function getPowerDef(name) {
-  return POWER_DEFS.find((p) => p.name === name) || { name, maxLevel: 1 };
+  return ALL_POWER_DEFS.find((p) => p.name === name) || { name, maxLevel: 1 };
 }
 
 function getTalentDef(name) {
@@ -702,6 +712,11 @@ function getPowerDescription(name) {
       return {
         plain: 'Deals 2 delayed damage after 3s and spreads to 1 nearby brick after 1s if the target survives',
         rich: 'Deals <span class=\"power-desc-accent\">+2</span> damage at <span class=\"power-desc-accent\">t+3s</span> and spreads to <span class=\"power-desc-accent\">1 nearby brick</span> after <span class=\"power-desc-accent\">1s</span> if the target lives'
+      };
+    case 'Sun':
+      return {
+        plain: 'Fusion of Fire + Light: spreads to 2 nearby bricks and stuns the hit brick plus 3 nearby for 1.5s',
+        rich: '<strong>Fusion</strong> of <span class="power-desc-accent">Fire + Light</span>: spreads to <span class="power-desc-accent">2</span> nearby bricks and stuns the target + <span class="power-desc-accent">3 nearby</span> for <span class="power-desc-accent">1.5s</span>'
       };
     default:
       return { plain: '', rich: '' };
@@ -755,6 +770,19 @@ function getPowerLevel(name) {
   return existing ? existing.level : 0;
 }
 
+function getFusionDef(name) {
+  return FUSION_DEFS.find((f) => f.name === name);
+}
+
+function hasFusionIngredients(fusion) {
+  if (!fusion || !Array.isArray(fusion.ingredients)) return false;
+  return fusion.ingredients.every((n) => {
+    const powerLv = getPowerLevel(n);
+    const talentLv = getTalentLevel(n);
+    return Math.max(powerLv, talentLv) >= 3;
+  });
+}
+
 function getTalentLevel(name) {
   const existing = state.talents.find((t) => t.name === name);
   return existing ? existing.level : 0;
@@ -762,6 +790,8 @@ function getTalentLevel(name) {
 
 function canUpgradePower(name) {
   const def = getPowerDef(name);
+  const fusion = getFusionDef(name);
+  if (fusion && !hasFusionIngredients(fusion)) return false;
   return getPowerLevel(name) < def.maxLevel;
 }
 
@@ -781,6 +811,8 @@ function nextTalentLevel(name) {
 }
 
 function getPowerColor(name) {
+  const fusionDef = getFusionDef(name);
+  if (fusionDef?.color) return fusionDef.color;
   switch (name) {
     case 'Fire':
       return 'rgba(255, 215, 0, 0.35)';
@@ -868,7 +900,7 @@ function gainXp(amount) {
 
 function tryOpenPowerModal() {
   if (state.powerModalOpen || state.pendingPowerChoices <= 0) return;
-  const availablePowers = POWER_DEFS.map((p) => p.name).filter((name) => canUpgradePower(name));
+  const availablePowers = ALL_POWER_DEFS.map((p) => p.name).filter((name) => canUpgradePower(name));
   const availableTalents = TALENT_DEFS.map((t) => t.name).filter((name) => canUpgradeTalent(name));
 
   if (!availablePowers.length && !availableTalents.length) {
@@ -904,6 +936,13 @@ function handlePowerSelect(powerName) {
     newLevel = existing.level;
   } else {
     state.powers.push({ name: powerName, level: 1 });
+    const fusion = getFusionDef(powerName);
+    if (fusion && Array.isArray(fusion.ingredients)) {
+      // Consumes ingredients when picking the fusion
+      state.powers = state.powers.filter((p) => !fusion.ingredients.includes(p.name));
+      state.talents = state.talents.filter((t) => !fusion.ingredients.includes(t.name));
+      state.specialPocket = state.specialPocket.filter((p) => !fusion.ingredients.includes(p));
+    }
   }
   if (newLevel <= 2) {
     state.specialPocket.push(powerName);
@@ -950,13 +989,14 @@ function renderPowerModal(powerOptions, talentOptions) {
       btn.style.display = 'block';
       const currentLv = getPowerLevel(power);
       const nextLv = nextPowerLevel(power);
+      const fusion = getFusionDef(power);
       const label = currentLv === 0
-        ? `${power} (New)`
+        ? fusion ? `${power} (Fusion)` : `${power} (New)`
         : `${power} (Lv. ${currentLv} → ${nextLv})`;
       btn.textContent = label;
       btn.dataset.power = power;
       btn.title = getPowerDescription(power).plain;
-      const showPreview = () => updatePowerPreview(power, label, 'power');
+      const showPreview = () => updatePowerPreview(power, label, 'power', fusion);
       btn.onmouseenter = showPreview;
       btn.onpointerenter = showPreview;
       btn.ontouchstart = showPreview;
@@ -994,7 +1034,7 @@ function renderPowerModal(powerOptions, talentOptions) {
   const firstTalent = talentOptions && talentOptions.find(Boolean);
   if (firstPower) {
     const label = powerButtons.find((b) => b.dataset.power === firstPower)?.textContent || firstPower;
-    updatePowerPreview(firstPower, label, 'power');
+    updatePowerPreview(firstPower, label, 'power', getFusionDef(firstPower));
   } else if (firstTalent) {
     const label = talentButtons.find((b) => b.dataset.talent === firstTalent)?.textContent || firstTalent;
     updatePowerPreview(firstTalent, label, 'talent');
@@ -1010,12 +1050,13 @@ function sampleOptions(list, count) {
   return pool.slice(0, count);
 }
 
-function updatePowerPreview(name, labelOverride, kind = 'power') {
+function updatePowerPreview(name, labelOverride, kind = 'power', fusionDef = null) {
   if (!name) return;
   const isPower = kind === 'power';
   const desc = isPower ? getPowerDescription(name) : getTalentDescription(name);
   const color = isPower ? getPowerColor(name) : 'rgba(148, 163, 184, 0.4)';
-  if (powerPreviewName) powerPreviewName.textContent = labelOverride || name;
+  const tag = fusionDef ? 'Fusion · ' : '';
+  if (powerPreviewName) powerPreviewName.textContent = labelOverride || `${tag}${name}`;
   if (powerPreviewDesc) powerPreviewDesc.innerHTML = desc.rich || desc.plain || 'No details available.';
   if (powerPreviewIcon) {
     powerPreviewIcon.textContent = name.slice(0, 2).toUpperCase();
@@ -1371,6 +1412,12 @@ function resetGame() {
   state.gameOverHandled = false;
   state.lastEndedAt = null;
   state.scoreSubmitted = false;
+  // Testing: start with Fire and Light at level 3 to unlock Sun fusion quickly
+  state.powers = [
+    { name: 'Fire', level: 3 },
+    { name: 'Light', level: 3 }
+  ];
+  state.specialPocket = ['Fire', 'Fire', 'Fire', 'Light', 'Light', 'Light'];
   powerModalBackdrop.classList.remove('open');
   placeBallOnPaddle({ centerPaddle: true });
   spawnBrickRow();
@@ -2360,13 +2407,26 @@ function renderHUD() {
         const y = startY + idx * (barHeight + barGap);
         const ratio = maxVal > 0 ? val / maxVal : 0;
         const w = barW * ratio;
-        h.fillStyle = 'rgba(255,255,255,0.12)';
+        const owned = getPowerLevel(name) > 0 || getTalentLevel(name) > 0;
+        const bgAlpha = owned ? 0.12 : 0.06;
+        h.fillStyle = `rgba(255,255,255,${bgAlpha})`;
         h.fillRect(histX, y, barW, barHeight);
-        h.fillStyle = getPowerColor(name) || '#fbbf24';
+        const barColor = getPowerColor(name) || '#fbbf24';
+        const inactiveColor = 'rgba(148, 163, 184, 0.35)';
+        h.fillStyle = owned ? barColor : inactiveColor;
         h.fillRect(histX, y, w, barHeight);
-        h.fillStyle = '#e2e8f0';
+        h.fillStyle = owned ? '#e2e8f0' : 'rgba(226,232,240,0.45)';
+        h.font = owned ? '14px "Segoe UI", sans-serif' : '14px "Segoe UI", sans-serif';
         const pct = totalVal > 0 ? Math.round((val / totalVal) * 100) : 0;
-        h.fillText(`${name} (${pct}%)`, histX, y - 8);
+        const label = `${name} (${pct}%)`;
+        if (owned) {
+          h.fillText(label, histX, y - 8);
+        } else {
+          h.save();
+          h.globalAlpha = 0.7;
+          h.fillText(label, histX, y - 8);
+          h.restore();
+        }
       });
     }
 
@@ -2614,6 +2674,11 @@ function applyPowerOnHit(ball, brick, now) {
     brick.vampireNextTick = now + 3000;
     brick.effectColor = getPowerColor(power);
     brick.effectUntil = brick.vampireNextTick;
+  } else if (power === 'Sun') {
+    // Apply both Fire and Light effects
+    applyLightStun(brick, ball, now);
+    brick.effectColor = getPowerColor(power);
+    brick.effectUntil = now + 3000;
   }
 }
 
@@ -2651,7 +2716,8 @@ function damageBrick(brick, amount, now, sourcePower = null) {
 }
 
 function applyFireSplash(ball, hitBrick, now, baseDamage) {
-  if (ball.specialPower !== 'Fire') return;
+  if (ball.specialPower !== 'Fire' && ball.specialPower !== 'Sun') return;
+  const sourcePower = ball.specialPower === 'Sun' ? 'Sun' : 'Fire';
   const cx = hitBrick.x + hitBrick.w / 2;
   const cy = hitBrick.y + hitBrick.h / 2;
   const candidates = state.bricks
@@ -2671,6 +2737,6 @@ function applyFireSplash(ball, hitBrick, now, baseDamage) {
   const targets = nearest.slice(0, 2);
   for (const { brick } of targets) {
     applyPowerOnHit(ball, brick, now);
-    damageBrick(brick, baseDamage, now, 'Fire');
+    damageBrick(brick, baseDamage, now, sourcePower);
   }
 }
