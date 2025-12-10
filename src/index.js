@@ -990,6 +990,15 @@ function renderPowerModal(powerOptions, talentOptions) {
       const currentLv = getPowerLevel(power);
       const nextLv = nextPowerLevel(power);
       const fusion = getFusionDef(power);
+      if (fusion) {
+        btn.style.background = 'linear-gradient(135deg, #2dd4bf, #16a34a)';
+        btn.style.border = '1px solid rgba(16, 185, 129, 0.6)';
+        btn.style.color = '#0b172a';
+      } else {
+        btn.style.background = '';
+        btn.style.border = '';
+        btn.style.color = '';
+      }
       const label = currentLv === 0
         ? fusion ? `${power} (Fusion)` : `${power} (New)`
         : `${power} (Lv. ${currentLv} → ${nextLv})`;
@@ -1412,12 +1421,6 @@ function resetGame() {
   state.gameOverHandled = false;
   state.lastEndedAt = null;
   state.scoreSubmitted = false;
-  // Testing: start with Fire and Light at level 3 to unlock Sun fusion quickly
-  state.powers = [
-    { name: 'Fire', level: 3 },
-    { name: 'Light', level: 3 }
-  ];
-  state.specialPocket = ['Fire', 'Fire', 'Fire', 'Light', 'Light', 'Light'];
   powerModalBackdrop.classList.remove('open');
   placeBallOnPaddle({ centerPaddle: true });
   spawnBrickRow();

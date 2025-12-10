@@ -348,6 +348,32 @@
       height: 18px;
       accent-color: #38bdf8;
     }
+    .info-list {
+      list-style: none;
+      padding: 0;
+      margin: 14px 0 6px;
+      display: grid;
+      gap: 10px;
+    }
+    .info-list li {
+      position: relative;
+      padding-left: 18px;
+      color: #e2e8f0;
+      line-height: 1.45;
+      border-left: 2px solid rgba(56, 189, 248, 0.35);
+    }
+    .info-list li::before {
+      content: '';
+      position: absolute;
+      left: -7px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #38bdf8, #a855f7);
+      box-shadow: 0 0 8px rgba(56, 189, 248, 0.6);
+    }
     .score-header {
       display: flex;
       align-items: center;
@@ -460,11 +486,14 @@
   <div id="info-modal-backdrop" class="modal-backdrop">
     <div class="modal">
       <h2>Game rules</h2>
-      <p class="subtitle">Move the paddle to launch the ball and break bricks… or let me handle it.</p>
-      <ul>
-        <li>Auto-aim: toggle the aim assist.</li>
-        <li>Powers/Talents: pick upgrades when prompted.</li>
-        <li>Goal: don’t let bricks reach the bottom, rack up points and levels.</li>
+      <p class="subtitle">Break bricks, level up, and choose your build… or let me handle it.</p>
+      <ul class="info-list">
+        <li>Objective: destroy bricks, level up, and push your score higher.</li>
+        <li>Lives: you lose a life when a brick exits at the bottom.</li>
+        <li>Fire: manual mode lets you aim and launch; auto-aim fires for you.</li>
+        <li>Powers: each level offers a power or upgrade; marked balls apply it on hit.</li>
+        <li>Talents: passive bonuses (speed, paddle width, precision, etc.).</li>
+        <li>Fusions: some pairs at level 3 unlock a Fusion (e.g., Fire + Light → Sun) and taking it consumes the ingredients.</li>
       </ul>
       <div class="modal-actions">
         <button id="info-close" type="button">Close</button>
