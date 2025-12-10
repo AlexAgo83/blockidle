@@ -43,12 +43,14 @@ async function initDb() {
       stage INTEGER DEFAULT 1,
       level INTEGER DEFAULT 1,
       ended_at TIMESTAMPTZ DEFAULT now(),
-      created_at TIMESTAMPTZ DEFAULT now()
+      created_at TIMESTAMPTZ DEFAULT now(),
+      build TEXT
     )
   `);
   await pool.query('ALTER TABLE scores ADD COLUMN IF NOT EXISTS stage INTEGER DEFAULT 1');
   await pool.query('ALTER TABLE scores ADD COLUMN IF NOT EXISTS level INTEGER DEFAULT 1');
   await pool.query('ALTER TABLE scores ADD COLUMN IF NOT EXISTS ended_at TIMESTAMPTZ DEFAULT now()');
+  await pool.query('ALTER TABLE scores ADD COLUMN IF NOT EXISTS build TEXT');
 }
 
 initDb().catch((err) => {
@@ -57,7 +59,7 @@ initDb().catch((err) => {
 });
 
 app.post('/scores', async (req, res) => {
-  const { player, score, stage, level, endedAt } = req.body || {};
+  const { player, score, stage, level, endedAt, build } = req.body || {};
   if (!player || typeof player !== 'string' || !player.trim()) {
     return res.status(400).json({ error: 'player requis' });
   }
@@ -77,16 +79,17 @@ app.post('/scores', async (req, res) => {
     const result = await pool.query(
       `
         INSERT INTO scores (player, score, stage, level, ended_at)
-        VALUES ($1, $2, COALESCE($3, 1), COALESCE($4, 1), $5)
+        VALUES ($1, $2, COALESCE($3, 1), COALESCE($4, 1), $5, $6)
         ON CONFLICT (player)
         DO UPDATE SET
           score = GREATEST(scores.score, EXCLUDED.score),
           stage = CASE WHEN EXCLUDED.score > scores.score THEN EXCLUDED.stage ELSE scores.stage END,
           level = CASE WHEN EXCLUDED.score > scores.score THEN EXCLUDED.level ELSE scores.level END,
-          ended_at = CASE WHEN EXCLUDED.score > scores.score THEN EXCLUDED.ended_at ELSE scores.ended_at END
-        RETURNING player, score, stage, level, ended_at, created_at
+          ended_at = CASE WHEN EXCLUDED.score > scores.score THEN EXCLUDED.ended_at ELSE scores.ended_at END,
+          build = CASE WHEN EXCLUDED.score > scores.score THEN EXCLUDED.build ELSE scores.build END
+        RETURNING player, score, stage, level, ended_at, created_at, build
       `,
-      [name, score, safeStage, safeLevel, endedAtIso]
+      [name, score, safeStage, safeLevel, endedAtIso, build || null]
     );
     res.json(result.rows[0]);
   } catch (err) {
@@ -100,7 +103,7 @@ app.get('/scores', async (req, res) => {
   try {
     const result = await pool.query(
       `
-        SELECT player, score, stage, level, ended_at, created_at
+        SELECT player, score, stage, level, ended_at, created_at, build
         FROM scores
         ORDER BY score DESC, ended_at ASC
         LIMIT $1

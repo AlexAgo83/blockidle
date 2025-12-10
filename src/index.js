@@ -23,6 +23,7 @@ const hudBuffer = document.createElement('canvas');
 const hudCtx = hudBuffer.getContext('2d');
 let hudSignature = null;
 const TOP_LIMIT = 10;
+const BUILD_LABEL = buildInfo?.build ? `b${buildInfo.build}` : 'Old';
 
 const API_BASE = (() => {
   const envBase = (import.meta?.env?.VITE_API_BASE || '').trim();
@@ -63,8 +64,8 @@ const TALENT_DEFS = [
 ];
 
 const CONFIG = {
-  width: 1600,
-  height: 1200,
+  width: 880,
+  height: 1728,
   paddleWidth: 80,
   paddleHeight: 16,
   paddleSpeed: 600,
@@ -75,7 +76,7 @@ const CONFIG = {
   brickCols: 6,
   brickTopOffset: 70,
   brickPadding: 12,
-  brickHeight: 22,
+  brickHeight: 44,
   sideMargin: 30,
   aimJitterDeg: 5,
   maxBalls: 3, // limite historique, alignée sur maxNormalBalls
@@ -718,8 +719,18 @@ function withAimJitter(vx, vy) {
 }
 
 function resizeCanvas() {
-  canvas.width = CONFIG.width;
-  canvas.height = CONFIG.height;
+  const dpr = window.devicePixelRatio || 1;
+  const container = canvas.parentElement;
+  const viewW = Math.floor((container?.clientWidth || window.innerWidth) * 0.9);
+  const viewH = Math.floor(window.innerHeight * 0.9);
+  const scale = Math.min(viewW / CONFIG.width, viewH / CONFIG.height);
+  const cssW = CONFIG.width * scale;
+  const cssH = CONFIG.height * scale;
+  canvas.style.width = `${cssW}px`;
+  canvas.style.height = `${cssH}px`;
+  canvas.width = Math.max(1, Math.floor(cssW * dpr));
+  canvas.height = Math.max(1, Math.floor(cssH * dpr));
+  ctx.setTransform(scale * dpr, 0, 0, scale * dpr, 0, 0);
   hudBuffer.width = CONFIG.width;
   hudBuffer.height = CONFIG.height;
 }
@@ -728,7 +739,7 @@ function computeBrickLayout() {
   const { brickCols, brickPadding, sideMargin } = CONFIG;
   const baseCols = brickCols + 2; // largeur héritée d'un layout plus large
   const brickWidthBase = (CONFIG.width - sideMargin * 2 - brickPadding * (baseCols - 1)) / baseCols;
-  const brickWidth = brickWidthBase * 0.25; // largeur encore divisée par deux
+  const brickWidth = brickWidthBase * 0.84375; // largeur agrandie à nouveau (~1.5x de plus)
   const totalWidth = brickCols * brickWidth + brickPadding * (brickCols - 1);
   const startX = (CONFIG.width - totalWidth) / 2;
   return { brickWidth, startX };
@@ -1298,7 +1309,10 @@ function getTopScores() {
     if (!raw) return [];
     const parsed = JSON.parse(raw);
     if (!Array.isArray(parsed)) return [];
-    return parsed.slice(0, TOP_LIMIT);
+    return parsed.slice(0, TOP_LIMIT).map((entry) => ({
+      ...entry,
+      build: entry.build || 'Old'
+    }));
   } catch (_) {
     return [];
   }
@@ -1314,7 +1328,8 @@ function saveScore(score) {
           score,
           stage: state.level,
           level: state.playerLevel,
-          endedAt: new Date().toISOString()
+          endedAt: new Date().toISOString(),
+          build: BUILD_LABEL
         };
     scores.push(entry);
     scores.sort((a, b) => (b.score || 0) - (a.score || 0));
@@ -1332,7 +1347,7 @@ async function submitScoreToBackend(payload) {
     const res = await fetch(apiUrl('/scores'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
+      body: JSON.stringify({ ...payload, build: BUILD_LABEL })
     });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
@@ -1428,7 +1443,8 @@ function renderTopScoresPanel() {
     item.className = 'score-item';
     const name = document.createElement('div');
     name.className = 'score-player';
-    name.textContent = `${idx + 1}. ${(e.player || '???').slice(0, 12)}`;
+    const buildLabel = e.build ? e.build : 'Old';
+    name.textContent = `${idx + 1}. ${(e.player || '???').slice(0, 12)} (${buildLabel})`;
     const pts = document.createElement('div');
     pts.className = 'score-points';
     pts.textContent = `${formatScore(e.score || 0)} pts`;
@@ -2125,8 +2141,7 @@ function renderHUD() {
     let leftY = 32;
     h.font = '22px "Segoe UI", sans-serif';
     h.fillStyle = '#7dd3fc';
-    const buildLabel = buildInfo?.build ? `b${buildInfo.build}` : 'dev';
-    h.fillText(`Version: ${buildLabel}`, leftX, leftY);
+    h.fillText(`Version: ${BUILD_LABEL}`, leftX, leftY);
     leftY += 26;
     const displayName = state.playerName ? state.playerName : 'Pseudo ?';
     h.fillText(`Joueur: ${displayName}`, leftX, leftY);
@@ -2374,6 +2389,12 @@ function bindControls() {
 function init() {
   resizeCanvas();
   bindControls();
+  window.addEventListener('resize', () => {
+    resizeCanvas();
+    hudSignature = null;
+    clampPaddlePosition();
+    if (state.ballHeld) placeBallOnPaddle({ centerPaddle: true });
+  });
   bindCommitToggle();
   const savedName = loadPlayerName();
   resetGame();

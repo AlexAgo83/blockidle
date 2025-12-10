@@ -25,7 +25,8 @@
       gap: 12px;
     }
     .narrow {
-      width: 80%;
+      width: 90vw;
+      max-width: 900px;
       margin: 0 auto;
     }
     header {
@@ -231,13 +232,14 @@
       color: #94a3b8;
     }
     canvas {
-      width: 100%;
+      width: auto;
       height: auto;
       border: 2px solid #334155;
       border-radius: 10px;
       background: radial-gradient(circle at 20% 20%, rgba(148, 163, 184, 0.18), rgba(15, 23, 42, 0.5) 60%), #0b1223;
       box-shadow: 0 12px 30px rgba(0, 0, 0, 0.35);
       display: block;
+      margin: 0 auto;
     }
     .commits {
       margin-top: 12px;
@@ -334,7 +336,7 @@
 </head>
 <body>
   <div id="app">
-    <canvas id="game" width="800" height="864" class="narrow"></canvas>
+    <canvas id="game" width="880" height="1728" class="narrow"></canvas>
     <div class="time-controls narrow">
       <div class="time-left">
         <button id="auto-toggle" type="button">Activer auto-visée</button>
