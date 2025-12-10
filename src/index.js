@@ -1797,12 +1797,14 @@ function renderHUD() {
   const histX = barX;
   const entries = Object.entries(state.damageByPower || {}).sort((a, b) => b[1] - a[1]).slice(0, 6);
   if (entries.length) {
-    ctx.fillText('Dégâts par pouvoir', histX, histY - 8);
+    const labelY = histY;
+    const startY = labelY + 16; // espace entre le titre et les barres
+    ctx.fillText('Dégâts par pouvoir', histX, labelY);
     const barHeight = 12;
-    const barGap = 8;
+    const barGap = 10;
     const maxVal = Math.max(...entries.map(([, v]) => v));
     entries.forEach(([name, val], idx) => {
-      const y = histY + idx * (barHeight + barGap);
+      const y = startY + idx * (barHeight + barGap);
       const ratio = maxVal > 0 ? val / maxVal : 0;
       const w = barW * ratio;
       ctx.fillStyle = 'rgba(255,255,255,0.12)';
