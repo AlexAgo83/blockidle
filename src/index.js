@@ -175,6 +175,11 @@ function clamp(value, min, max) {
   return Math.min(Math.max(value, min), max);
 }
 
+function formatScore(value) {
+  const n = Number.isFinite(value) ? value : 0;
+  return n.toLocaleString('fr-FR');
+}
+
 function loadPlayerName() {
   try {
     const saved = localStorage.getItem('brickidle_player_name');
@@ -1734,7 +1739,7 @@ function renderHUD() {
   ctx.fillText(`Joueur: ${displayName}`, leftX, leftY);
   leftY += 22;
   ctx.fillStyle = '#e2e8f0';
-  ctx.fillText(`Score: ${state.score}`, leftX, leftY);
+  ctx.fillText(`Score: ${formatScore(state.score)}`, leftX, leftY);
   leftY += 20;
   ctx.fillText(state.autoPlay ? 'Auto: ON' : 'Auto: OFF', leftX, leftY);
   const availableBalls = state.ballCount + state.specialPocket.length + (state.ballHeld ? 1 : 0);
@@ -1760,7 +1765,7 @@ function renderHUD() {
   ctx.fillText('Top 5 actuel', leftX, boxY);
   topList.slice(0, 5).forEach((entry, idx) => {
     const e = typeof entry === 'object' ? entry : { score: entry };
-    const label = `${idx + 1}. ${(e.player || '???').slice(0, 10)} - ${e.score || 0}`;
+    const label = `${idx + 1}. ${(e.player || '???').slice(0, 10)} - ${formatScore(e.score || 0)}`;
     ctx.fillText(label, leftX, boxY + 20 + idx * 18);
   });
   // Barres de progression (ordre: Vies, Stage, Level)
@@ -1861,7 +1866,7 @@ function renderHUD() {
     ctx.fillStyle = '#e2e8f0';
     ctx.font = '26px "Segoe UI", sans-serif';
     ctx.fillText('Partie terminée - Appuyez sur Entrée pour rejouer', 110, CONFIG.height / 2);
-    ctx.fillText(`Score: ${state.score}`, 110, CONFIG.height / 2 + 30);
+    ctx.fillText(`Score: ${formatScore(state.score)}`, 110, CONFIG.height / 2 + 30);
 
     // Top 5 (backend si dispo, sinon local)
     const top = (state.backendTopScores && state.backendTopScores.length)
@@ -1871,7 +1876,7 @@ function renderHUD() {
     ctx.fillText('Top 5 :', 110, CONFIG.height / 2 + 60);
     top.forEach((s, idx) => {
       const entry = typeof s === 'object' ? s : { score: s };
-      const line = `${entry.player || '???'} - ${entry.score || 0} pts - Stage:${entry.stage || '?'} - Lv:${entry.level || '?'}`;
+      const line = `${entry.player || '???'} - ${formatScore(entry.score || 0)} pts - Stage:${entry.stage || '?'} - Lv:${entry.level || '?'}`;
       ctx.fillText(`${idx + 1}. ${line}`, 110, CONFIG.height / 2 + 80 + idx * 20);
     });
   }
