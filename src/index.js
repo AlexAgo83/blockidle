@@ -99,6 +99,12 @@ const BASE_BALL_SPEED = CONFIG.ballSpeed;
 
 CONFIG.brickSpawnInterval = (CONFIG.brickHeight + CONFIG.brickPadding) / CONFIG.brickDriftSpeed;
 
+const SESSION_KEY = 'brickidle_session';
+const SESSION_VERSION = 1;
+const SESSION_SAVE_INTERVAL = 1500;
+let lastSessionSave = -SESSION_SAVE_INTERVAL;
+let sessionDirty = true;
+
 const state = {
   keys: {
     left: false,
@@ -181,6 +187,87 @@ function formatScore(value) {
   return n.toLocaleString('fr-FR');
 }
 
+function safeNumber(value, fallback = 0) {
+  return Number.isFinite(value) ? value : fallback;
+}
+
+function safeBoolean(value, fallback = false) {
+  return typeof value === 'boolean' ? value : fallback;
+}
+
+function normalizeLevelEntries(entries, getDef) {
+  if (!Array.isArray(entries)) return [];
+  return entries
+    .map((entry) => ({ name: entry?.name, level: safeNumber(entry?.level, 0) }))
+    .filter((entry) => typeof entry.name === 'string' && getDef(entry.name))
+    .map((entry) => {
+      const def = getDef(entry.name);
+      return { name: entry.name, level: clamp(entry.level, 0, def.maxLevel) };
+    });
+}
+
+function normalizeBall(ball, defaults = {}) {
+  if (!ball) return null;
+  return {
+    x: safeNumber(ball.x, defaults.x ?? 0),
+    y: safeNumber(ball.y, defaults.y ?? 0),
+    r: safeNumber(ball.r, defaults.r ?? getBallRadius(Boolean(ball.specialPower))),
+    vx: safeNumber(ball.vx, defaults.vx ?? 0),
+    vy: safeNumber(ball.vy, defaults.vy ?? 0),
+    returning: safeBoolean(ball.returning, false),
+    returnSpeed: safeNumber(ball.returnSpeed, defaults.returnSpeed ?? null),
+    reward: safeBoolean(ball.reward, false),
+    specialPower: typeof ball.specialPower === 'string' ? ball.specialPower : null
+  };
+}
+
+function normalizeBrick(brick) {
+  if (!brick) return null;
+  return {
+    x: safeNumber(brick.x, 0),
+    y: safeNumber(brick.y, 0),
+    w: safeNumber(brick.w, CONFIG.brickHeight),
+    h: safeNumber(brick.h, CONFIG.brickHeight),
+    hue: safeNumber(brick.hue, 0),
+    alive: safeBoolean(brick.alive, true),
+    row: safeNumber(brick.row, 0),
+    type: ['normal', 'bonus', 'speed', 'boss'].includes(brick.type) ? brick.type : 'normal',
+    hp: safeNumber(brick.hp, 1),
+    deathTime: safeNumber(brick.deathTime, null),
+    flashTime: safeNumber(brick.flashTime, null),
+    slowUntil: safeNumber(brick.slowUntil, 0),
+    freezeUntil: safeNumber(brick.freezeUntil, 0),
+    poisonNextTick: safeNumber(brick.poisonNextTick, 0),
+    poisonActive: safeBoolean(brick.poisonActive, false),
+    thornNextTick: safeNumber(brick.thornNextTick, 0),
+    thornActive: safeBoolean(brick.thornActive, false),
+    thornExpire: safeNumber(brick.thornExpire, 0),
+    curseTick: safeNumber(brick.curseTick, null),
+    effectColor: brick.effectColor || null,
+    effectUntil: safeNumber(brick.effectUntil, 0)
+  };
+}
+
+function normalizeDrop(drop) {
+  if (!drop) return null;
+  return {
+    x: safeNumber(drop.x, 0),
+    y: safeNumber(drop.y, 0),
+    vx: safeNumber(drop.vx, 0),
+    vy: safeNumber(drop.vy, 0),
+    size: safeNumber(drop.size, CONFIG.xpSize)
+  };
+}
+
+function normalizeRect(target, defaults) {
+  return {
+    x: safeNumber(target?.x, defaults?.x ?? 0),
+    y: safeNumber(target?.y, defaults?.y ?? 0),
+    w: safeNumber(target?.w, defaults?.w ?? 0),
+    h: safeNumber(target?.h, defaults?.h ?? 0)
+  };
+}
+
 function loadPlayerName() {
   try {
     const saved = localStorage.getItem('brickidle_player_name');
@@ -195,11 +282,175 @@ function loadPlayerName() {
   return null;
 }
 
+function markSessionDirty() {
+  sessionDirty = true;
+}
+
+function getSessionSnapshot() {
+  return {
+    version: SESSION_VERSION,
+    savedAt: Date.now(),
+    state: {
+      score: state.score,
+      lives: state.lives,
+      running: state.running,
+      autoPlay: state.autoPlay,
+      showAim: state.showAim,
+      autoFire: state.autoFire,
+      ballHeld: state.ballHeld,
+      ballCount: state.ballCount,
+      lastLaunch: state.lastLaunch,
+      spawnTimer: state.spawnTimer,
+      rowIndex: state.rowIndex,
+      brickSpeed: state.brickSpeed,
+      speedTimer: state.speedTimer,
+      level: state.level,
+      playerLevel: state.playerLevel,
+      xp: state.xp,
+      xpNeeded: state.xpNeeded,
+      xpDrops: state.xpDrops,
+      paused: state.paused,
+      powers: state.powers,
+      talents: state.talents,
+      specialPocket: state.specialPocket,
+      timeScale: state.timeScale,
+      pendingPowerChoices: state.pendingPowerChoices,
+      lastHitSpecial: state.lastHitSpecial,
+      lastVampireHeal: state.lastVampireHeal,
+      lastBossLevelSpawned: state.lastBossLevelSpawned,
+      damageByPower: state.damageByPower,
+      heldBall: state.heldBall,
+      paddle: state.paddle,
+      balls: state.balls,
+      bricks: state.bricks,
+      bonus: { lastBonus: bonusState.lastBonus },
+      configBallSpeed: CONFIG.ballSpeed,
+      gameOverHandled: state.gameOverHandled,
+      lastEndedAt: state.lastEndedAt,
+      scoreSubmitted: state.scoreSubmitted,
+      awaitingName: state.awaitingName,
+      playerName: state.playerName,
+      backendTopScores: state.backendTopScores
+    }
+  };
+}
+
+function saveSession() {
+  try {
+    localStorage.setItem(SESSION_KEY, JSON.stringify(getSessionSnapshot()));
+  } catch (_) {
+    // ignore storage errors
+  }
+}
+
+function clearSession() {
+  try {
+    localStorage.removeItem(SESSION_KEY);
+  } catch (_) {
+    // ignore
+  }
+}
+
+function loadSession() {
+  let raw = null;
+  try {
+    raw = localStorage.getItem(SESSION_KEY);
+  } catch (_) {
+    return false;
+  }
+  if (!raw) return false;
+
+  let parsed;
+  try {
+    parsed = JSON.parse(raw);
+  } catch (_) {
+    clearSession();
+    return false;
+  }
+
+  if (!parsed || parsed.version !== SESSION_VERSION || !parsed.state) return false;
+
+  const data = parsed.state;
+  state.playerName = typeof data.playerName === 'string' ? data.playerName.slice(0, 32) : state.playerName;
+  if (playerNameInput && state.playerName) playerNameInput.value = state.playerName;
+
+  state.score = safeNumber(data.score, 0);
+  state.lives = safeNumber(data.lives, CONFIG.startLives);
+  state.running = data.running !== false;
+  state.autoPlay = safeBoolean(data.autoPlay, true);
+  state.showAim = safeBoolean(data.showAim, false);
+  state.autoFire = safeBoolean(data.autoFire, true);
+  state.ballHeld = safeBoolean(data.ballHeld, true);
+  state.ballCount = safeNumber(data.ballCount, 1);
+  state.lastLaunch = safeNumber(data.lastLaunch, 0);
+  state.spawnTimer = safeNumber(data.spawnTimer, 0);
+  state.rowIndex = safeNumber(data.rowIndex, 0);
+  state.brickSpeed = safeNumber(data.brickSpeed, CONFIG.brickDriftSpeed);
+  state.speedTimer = safeNumber(data.speedTimer, 0);
+  state.level = safeNumber(data.level, 1);
+  state.playerLevel = safeNumber(data.playerLevel, 1);
+  state.xp = safeNumber(data.xp, 0);
+  state.xpNeeded = xpForLevel(state.playerLevel);
+  state.xpDrops = Array.isArray(data.xpDrops)
+    ? data.xpDrops.map((drop) => normalizeDrop(drop)).filter(Boolean)
+    : [];
+  state.paused = safeBoolean(data.paused, false);
+  state.powers = normalizeLevelEntries(data.powers, getPowerDef);
+  state.talents = normalizeLevelEntries(data.talents, getTalentDef);
+  state.specialPocket = Array.isArray(data.specialPocket) ? data.specialPocket.slice(0, CONFIG.maxBalls) : [];
+  state.timeScale = safeNumber(data.timeScale, 1) || 1;
+  state.pendingPowerChoices = safeNumber(data.pendingPowerChoices, 0);
+  state.lastHitSpecial = typeof data.lastHitSpecial === 'string' ? data.lastHitSpecial : null;
+  state.lastVampireHeal = safeNumber(data.lastVampireHeal, 0);
+  state.lastBossLevelSpawned = safeNumber(data.lastBossLevelSpawned, 0);
+  state.damageByPower = data.damageByPower && typeof data.damageByPower === 'object' ? { ...data.damageByPower } : {};
+  state.heldBall = normalizeBall(data.heldBall, state.heldBall) || state.heldBall;
+  state.paddle = normalizeRect(data.paddle, state.paddle);
+  state.balls = Array.isArray(data.balls)
+    ? data.balls.map((b) => normalizeBall(b)).filter(Boolean)
+    : [];
+  state.bricks = Array.isArray(data.bricks)
+    ? data.bricks.map((b) => normalizeBrick(b)).filter(Boolean)
+    : [];
+  bonusState.lastBonus = safeNumber(data.bonus?.lastBonus, 0);
+  CONFIG.ballSpeed = safeNumber(data.configBallSpeed, BASE_BALL_SPEED) || BASE_BALL_SPEED;
+  state.gameOverHandled = safeBoolean(data.gameOverHandled, false);
+  state.lastEndedAt = data.lastEndedAt || null;
+  state.scoreSubmitted = safeBoolean(data.scoreSubmitted, false);
+  state.awaitingName = safeBoolean(data.awaitingName, false);
+  state.backendTopScores = Array.isArray(data.backendTopScores) ? data.backendTopScores : [];
+
+  state.currentPowerOptions = [];
+  state.currentTalentOptions = [];
+  state.powerModalOpen = false;
+  powerModalBackdrop.classList.remove('open');
+  setTimeScale(state.timeScale);
+  state.keys.left = false;
+  state.keys.right = false;
+  markSessionDirty();
+  lastSessionSave = -SESSION_SAVE_INTERVAL;
+  if (state.pendingPowerChoices > 0) {
+    state.paused = true;
+    tryOpenPowerModal();
+  }
+  return true;
+}
+
+function maybeSaveSession(nowMs) {
+  if (!sessionDirty) return;
+  const ts = Number.isFinite(nowMs) ? nowMs : Date.now();
+  if (ts - lastSessionSave < SESSION_SAVE_INTERVAL) return;
+  saveSession();
+  lastSessionSave = ts;
+  sessionDirty = false;
+}
+
 function openNameModal() {
   state.paused = true;
   state.awaitingName = true;
   nameModalBackdrop.classList.add('open');
   setTimeout(() => playerNameInput?.focus(), 0);
+  markSessionDirty();
 }
 
 function closeNameModal() {
@@ -208,6 +459,7 @@ function closeNameModal() {
   if (!state.powerModalOpen) {
     state.paused = false;
   }
+  markSessionDirty();
 }
 
 function handleNameSubmit() {
@@ -222,6 +474,7 @@ function handleNameSubmit() {
   } catch (_) {
     // ignore
   }
+  markSessionDirty();
   closeNameModal();
 }
 
@@ -530,6 +783,7 @@ function handlePowerSelect(powerName) {
   } else {
     state.paused = false;
   }
+  markSessionDirty();
 }
 
 function handleTalentSelect(talentName) {
@@ -553,6 +807,7 @@ function handleTalentSelect(talentName) {
   } else {
     state.paused = false;
   }
+  markSessionDirty();
 }
 
 function renderPowerModal(powerOptions, talentOptions) {
@@ -999,6 +1254,8 @@ function resetGame() {
   powerModalBackdrop.classList.remove('open');
   placeBallOnPaddle({ centerPaddle: true });
   spawnBrickRow();
+  markSessionDirty();
+  lastSessionSave = -SESSION_SAVE_INTERVAL;
 }
 
 function getTopScores() {
@@ -1116,6 +1373,7 @@ function triggerGameOver() {
   saveScore(payload);
   submitScoreToBackend(payload)?.then(() => fetchTopScoresFromBackend().catch(() => {})).catch(() => {});
   fetchTopScoresFromBackend();
+  markSessionDirty();
 }
 
 function update(dt) {
@@ -1467,6 +1725,8 @@ function update(dt) {
       }
     }
   }
+
+  markSessionDirty();
 }
 
 function renderBackground() {
@@ -1916,6 +2176,7 @@ function loop(timestamp) {
   const scaledDt = dt * (state.timeScale || 1);
   update(scaledDt);
   render();
+  maybeSaveSession(timestamp);
   requestAnimationFrame(loop);
 }
 
@@ -1977,15 +2238,18 @@ function bindControls() {
 function init() {
   resizeCanvas();
   bindControls();
+  const savedName = loadPlayerName();
+  resetGame();
+  const restored = loadSession();
   autoBtn.textContent = state.autoPlay ? 'Désactiver auto-visée' : 'Activer auto-visée';
   aimToggle.checked = state.showAim;
   if (autoFireToggle) autoFireToggle.checked = state.autoFire;
-  const savedName = loadPlayerName();
-  resetGame();
-  if (!savedName) {
+  if (!savedName && !state.playerName) {
     openNameModal();
   }
-  setTimeScale(1);
+  if (!restored) {
+    setTimeScale(1);
+  }
   fetchTopScoresFromBackend();
   fetchCommits();
   setInterval(() => {
