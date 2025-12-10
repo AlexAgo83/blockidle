@@ -93,7 +93,7 @@ app.get('/health', async (_req, res) => {
 
 const distPath = path.join(__dirname, 'dist');
 app.use(express.static(distPath));
-app.get(['/', '/:path(*)'], (_req, res) => {
+app.use((_req, res) => {
   res.sendFile(path.join(distPath, 'index.html'));
 });
 
