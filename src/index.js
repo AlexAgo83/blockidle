@@ -121,6 +121,76 @@ const FUSION_DEFS = [
     fusion: true,
     ingredients: ['Thorns', 'Metal'],
     color: 'rgba(94, 234, 212, 0.5)'
+  },
+  {
+    name: 'Aurora',
+    maxLevel: 1,
+    fusion: true,
+    ingredients: ['Light', 'Curse'],
+    color: 'rgba(244, 244, 255, 0.55)'
+  },
+  {
+    name: 'Frostbite',
+    maxLevel: 1,
+    fusion: true,
+    ingredients: ['Ice', 'Thorns'],
+    color: 'rgba(125, 211, 252, 0.55)'
+  },
+  {
+    name: 'Gravebound',
+    maxLevel: 1,
+    fusion: true,
+    ingredients: ['Vampire', 'Thorns'],
+    color: 'rgba(190, 152, 110, 0.55)'
+  },
+  {
+    name: 'Storm',
+    maxLevel: 1,
+    fusion: true,
+    ingredients: ['Light', 'Metal'],
+    color: 'rgba(186, 230, 253, 0.55)'
+  },
+  {
+    name: 'Rust',
+    maxLevel: 1,
+    fusion: true,
+    ingredients: ['Metal', 'Poison'],
+    color: 'rgba(148, 163, 184, 0.55)'
+  },
+  {
+    name: 'Echo',
+    maxLevel: 1,
+    fusion: true,
+    ingredients: ['Light', 'Mirror'],
+    color: 'rgba(203, 213, 225, 0.55)'
+  },
+  {
+    name: 'Bramble',
+    maxLevel: 1,
+    fusion: true,
+    ingredients: ['Thorns', 'Feather'],
+    color: 'rgba(74, 222, 128, 0.5)'
+  },
+  {
+    name: 'Radiance',
+    maxLevel: 1,
+    fusion: true,
+    ingredients: ['Light', 'Endurance'],
+    color: 'rgba(255, 249, 196, 0.55)'
+  },
+  {
+    name: 'Shard',
+    maxLevel: 1,
+    fusion: true,
+    ingredients: ['Ice', 'Gloves'],
+    color: 'rgba(165, 243, 252, 0.55)'
+  },
+  {
+    name: 'Plaguefire',
+    maxLevel: 1,
+    fusion: true,
+    ingredients: ['Fire', 'Curse'],
+    color: 'rgba(251, 191, 36, 0.55)'
   }
 ];
 const ALL_POWER_DEFS = [...POWER_DEFS, ...FUSION_DEFS];
@@ -778,6 +848,56 @@ function getPowerDescription(name) {
         plain: 'Fusion of Thorns + Metal: reflects 2 damage when a brick hits the paddle and adds +1 on each rebound',
         rich: '<strong>Fusion</strong> of <span class="power-desc-accent">Thorns + Metal</span>: reflects <span class="power-desc-accent">2 dmg</span> on paddle hits and adds <span class="power-desc-accent">+1 dmg</span> on each rebound'
       };
+    case 'Aurora':
+      return {
+        plain: 'Fusion of Light + Curse: curses in a small area and extends the stun duration by 1s',
+        rich: '<strong>Fusion</strong> of <span class="power-desc-accent">Light + Curse</span>: curses in a small area and extends stun by <span class="power-desc-accent">+1s</span>'
+      };
+    case 'Frostbite':
+      return {
+        plain: 'Fusion of Ice + Thorns: freezes and applies thorn ticks during the freeze',
+        rich: '<strong>Fusion</strong> of <span class="power-desc-accent">Ice + Thorns</span>: freezes and applies thorn ticks while frozen'
+      };
+    case 'Gravebound':
+      return {
+        plain: 'Fusion of Vampire + Thorns: thorn ticks heal 0.5 HP and extend thorn duration',
+        rich: '<strong>Fusion</strong> of <span class="power-desc-accent">Vampire + Thorns</span>: thorn ticks heal <span class="power-desc-accent">0.5 HP</span> and extend duration'
+      };
+    case 'Storm':
+      return {
+        plain: 'Fusion of Light + Metal: chains to 2 nearby with +50% damage and a brief stun',
+        rich: '<strong>Fusion</strong> of <span class="power-desc-accent">Light + Metal</span>: chains to <span class="power-desc-accent">2 nearby</span> with <span class="power-desc-accent">+50% damage</span> and brief stun'
+      };
+    case 'Rust':
+      return {
+        plain: 'Fusion of Metal + Poison: applies poison and a rust debuff (+20% damage taken)',
+        rich: '<strong>Fusion</strong> of <span class="power-desc-accent">Metal + Poison</span>: poison + rust (<span class="power-desc-accent">+20% damage taken</span>)'
+      };
+    case 'Echo':
+      return {
+        plain: 'Fusion of Light + Mirror: adds a small stun on ricochets and a bonus rebound',
+        rich: '<strong>Fusion</strong> of <span class="power-desc-accent">Light + Mirror</span>: small stun on ricochets and one bonus rebound'
+      };
+    case 'Bramble':
+      return {
+        plain: 'Fusion of Thorns + Feather: faster thorn ticks and slight ball speed on return',
+        rich: '<strong>Fusion</strong> of <span class="power-desc-accent">Thorns + Feather</span>: faster thorn ticks, slight ball speed boost on return'
+      };
+    case 'Radiance':
+      return {
+        plain: 'Fusion of Light + Endurance: brief stun and grants +2 temporary max HP on hit',
+        rich: '<strong>Fusion</strong> of <span class="power-desc-accent">Light + Endurance</span>: stun and gain <span class="power-desc-accent">+2 temp max HP</span> on hit'
+      };
+    case 'Shard':
+      return {
+        plain: 'Fusion of Ice + Gloves: fires ice shards in a cone (1 damage each)',
+        rich: '<strong>Fusion</strong> of <span class="power-desc-accent">Ice + Gloves</span>: cone of ice shards (<span class="power-desc-accent">1 dmg</span> each)'
+      };
+    case 'Plaguefire':
+      return {
+        plain: 'Fusion of Fire + Curse: applies fire splash and a curse that can spread to 2',
+        rich: '<strong>Fusion</strong> of <span class="power-desc-accent">Fire + Curse</span>: fire splash + curse that can spread to <span class="power-desc-accent">2</span>'
+      };
     default:
       return { plain: '', rich: '' };
   }
@@ -1208,8 +1328,12 @@ function spawnBrickRow() {
       poisonNextTick: 0,
       poisonActive: false,
       thornNextTick: 0,
+      thornSecondTick: 0,
       thornActive: false,
       thornExpire: 0,
+      rustUntil: 0,
+      gravebound: false,
+      leechActive: false,
       curseTick: null,
       curseSpreadAt: null,
       effectColor: null,
@@ -1240,8 +1364,12 @@ function spawnBrickRow() {
       poisonNextTick: 0,
       poisonActive: false,
       thornNextTick: 0,
+      thornSecondTick: 0,
       thornActive: false,
       thornExpire: 0,
+      rustUntil: 0,
+      gravebound: false,
+      leechActive: false,
       curseTick: null,
       curseSpreadAt: null,
       effectColor: null,
@@ -1827,6 +1955,12 @@ function update(dt) {
     if (brick.poisonNextTick && brick.poisonNextTick <= now) {
       brick.poisonNextTick = now + 1000;
       damageBrick(brick, 1, now, 'Poison');
+      if (brick.leechActive) {
+        const maxLife = getMaxLives();
+        if (state.lives < maxLife) {
+          state.lives = Math.min(maxLife, state.lives + 0.5);
+        }
+      }
     }
   }
 
@@ -1863,6 +1997,9 @@ function update(dt) {
       brick.curseTick = null;
       damageBrick(brick, 2, now, 'Curse');
     }
+    if (brick.rustUntil && brick.rustUntil <= now) {
+      brick.rustUntil = 0;
+    }
   }
 
   // Vampire sustain: heal player while the marked brick is alive
@@ -1892,6 +2029,7 @@ function update(dt) {
       brick.thornNextTick = 0;
       brick.thornSecondTick = 0;
       brick.thornExpire = 0;
+      brick.gravebound = false;
       continue;
     }
     if (brick.thornNextTick && brick.thornNextTick <= now) {
@@ -1899,14 +2037,30 @@ function update(dt) {
       brick.effectColor = getPowerColor('Thorns');
       brick.effectUntil = brick.thornExpire;
       damageBrick(brick, 1.5, now, 'Thorns');
+      if (brick.gravebound) {
+        const maxLife = getMaxLives();
+        if (state.lives < maxLife) {
+          state.lives = Math.min(maxLife, state.lives + 0.5);
+        }
+        brick.thornExpire = Math.max(brick.thornExpire || 0, now + 1500);
+        brick.thornSecondTick = brick.thornSecondTick || now + 1200;
+      }
     }
     if (brick.thornSecondTick && brick.thornSecondTick <= now) {
       brick.thornSecondTick = null;
       brick.effectColor = getPowerColor('Thorns');
       brick.effectUntil = brick.thornExpire;
       damageBrick(brick, 0.5, now, 'Thorns');
+      if (brick.gravebound) {
+        const maxLife = getMaxLives();
+        if (state.lives < maxLife) {
+          state.lives = Math.min(maxLife, state.lives + 0.5);
+        }
+        brick.thornExpire = Math.max(brick.thornExpire || 0, now + 1500);
+      }
       brick.thornActive = false;
       brick.thornExpire = 0;
+      brick.gravebound = false;
     }
   }
 
@@ -2817,12 +2971,132 @@ function applyPowerOnHit(ball, brick, now) {
     brick.effectColor = getPowerColor(power);
     brick.effectUntil = now + 600;
     damageBrick(brick, 1, now, 'Spikes');
+  } else if (power === 'Aurora') {
+    applyLightStun(brick, ball, now + 1000); // extend stun
+    brick.curseTick = now + 3000;
+    brick.curseSpreadAt = now + 1000;
+    brick.effectColor = getPowerColor(power);
+    brick.effectUntil = brick.curseTick;
+    const cx = brick.x + brick.w / 2;
+    const cy = brick.y + brick.h / 2;
+    const nearby = state.bricks
+      .filter((b) => b.alive && b !== brick)
+      .map((b) => {
+        const dx = b.x + b.w / 2 - cx;
+        const dy = b.y + b.h / 2 - cy;
+        return { b, dist: Math.hypot(dx, dy) };
+      })
+      .sort((a, b) => a.dist - b.dist)
+      .slice(0, 2);
+    for (const { b } of nearby) {
+      b.curseTick = now + 3000;
+      b.effectColor = getPowerColor(power);
+      b.effectUntil = b.curseTick;
+    }
+  } else if (power === 'Frostbite') {
+    brick.slowUntil = Math.max(brick.slowUntil || 0, now + 3000);
+    brick.thornActive = true;
+    brick.thornNextTick = now + 800;
+    brick.thornSecondTick = now + 1600;
+    brick.thornExpire = now + 2000;
+    brick.effectColor = getPowerColor(power);
+    brick.effectUntil = brick.thornExpire;
+  } else if (power === 'Gravebound') {
+    brick.thornActive = true;
+    brick.thornNextTick = now + 800;
+    brick.thornSecondTick = now + 1600;
+    brick.thornExpire = now + 2000;
+    brick.gravebound = true;
+    brick.effectColor = getPowerColor(power);
+    brick.effectUntil = brick.thornExpire;
+  } else if (power === 'Storm') {
+    applyLightStun(brick, ball, now);
+    const base = getBallBaseDamage(ball) * 1.5;
+    const cx = brick.x + brick.w / 2;
+    const cy = brick.y + brick.h / 2;
+    const targets = state.bricks
+      .filter((b) => b.alive && b !== brick)
+      .map((b) => {
+        const dx = b.x + b.w / 2 - cx;
+        const dy = b.y + b.h / 2 - cy;
+        return { b, dist: Math.hypot(dx, dy) };
+      })
+      .sort((a, b) => a.dist - b.dist)
+      .slice(0, 2);
+    for (const { b } of targets) {
+      applyLightStun(b, ball, now);
+      damageBrick(b, base, now, 'Storm');
+    }
+  } else if (power === 'Rust') {
+    brick.poisonActive = true;
+    brick.poisonNextTick = now + 1000;
+    brick.rustUntil = now + 4000;
+    brick.effectColor = getPowerColor(power);
+    brick.effectUntil = brick.rustUntil;
+  } else if (power === 'Echo') {
+    applyLightStun(brick, ball, now + 200);
+    ball.echoBonus = (ball.echoBonus || 0) + 1;
+  } else if (power === 'Bramble') {
+    brick.thornActive = true;
+    brick.thornNextTick = now + 600;
+    brick.thornSecondTick = now + 1400;
+    brick.thornExpire = now + 2000;
+    brick.effectColor = getPowerColor(power);
+    brick.effectUntil = brick.thornExpire;
+    ball.vx *= 1.05;
+    ball.vy *= 1.05;
+  } else if (power === 'Radiance') {
+    applyLightStun(brick, ball, now);
+    const maxLife = getMaxLives();
+    state.lives = Math.min(maxLife + 2, state.lives + 2);
+    brick.effectColor = getPowerColor(power);
+    brick.effectUntil = now + 1000;
+  } else if (power === 'Shard') {
+    const cx = brick.x + brick.w / 2;
+    const cy = brick.y + brick.h / 2;
+    const shards = state.bricks
+      .filter((b) => b.alive && b !== brick)
+      .map((b) => {
+        const dx = b.x + b.w / 2 - cx;
+        const dy = b.y + b.h / 2 - cy;
+        return { b, dist: Math.hypot(dx, dy) };
+      })
+      .sort((a, b) => a.dist - b.dist)
+      .slice(0, 3);
+    for (const { b } of shards) {
+      damageBrick(b, 1, now, 'Shard');
+    }
+  } else if (power === 'Plaguefire') {
+    brick.curseTick = now + 3000;
+    brick.curseSpreadAt = now + 800;
+    brick.effectColor = getPowerColor(power);
+    brick.effectUntil = brick.curseTick;
+    applyFireSplash({ ...ball, specialPower: 'Plaguefire' }, brick, now, getBallBaseDamage(ball));
+    const cx = brick.x + brick.w / 2;
+    const cy = brick.y + brick.h / 2;
+    const targets = state.bricks
+      .filter((b) => b.alive && b !== brick)
+      .map((b) => {
+        const dx = b.x + b.w / 2 - cx;
+        const dy = b.y + b.h / 2 - cy;
+        return { b, dist: Math.hypot(dx, dy) };
+      })
+      .sort((a, b) => a.dist - b.dist)
+      .slice(0, 2);
+    for (const { b } of targets) {
+      b.curseTick = now + 3000;
+      b.effectColor = getPowerColor(power);
+      b.effectUntil = b.curseTick;
+    }
   }
 }
 
 function damageBrick(brick, amount, now, sourcePower = null) {
   brick.flashTime = now;
   brick.shakeTime = now;
+  if (brick.rustUntil && brick.rustUntil > now) {
+    amount *= 1.2;
+  }
   brick.hp = Math.max(0, (brick.hp || 1) - amount);
 
   if (sourcePower) {
@@ -2836,6 +3110,9 @@ function damageBrick(brick, amount, now, sourcePower = null) {
     state.score += 50 + brick.row * 10;
     brick.vampireActive = false;
     brick.vampireNextTick = null;
+    brick.rustUntil = 0;
+    brick.leechActive = false;
+    brick.gravebound = false;
     const xpDropCount = brick.type === 'boss' ? 5 : 1;
     for (let k = 0; k < xpDropCount; k += 1) {
       spawnXpDrop(brick);
@@ -2854,8 +3131,8 @@ function damageBrick(brick, amount, now, sourcePower = null) {
 }
 
 function applyFireSplash(ball, hitBrick, now, baseDamage) {
-  if (ball.specialPower !== 'Fire' && ball.specialPower !== 'Sun') return;
-  const sourcePower = ball.specialPower === 'Sun' ? 'Sun' : 'Fire';
+  if (ball.specialPower !== 'Fire' && ball.specialPower !== 'Sun' && ball.specialPower !== 'Plaguefire' && ball.specialPower !== 'Forge') return;
+  const sourcePower = ball.specialPower === 'Sun' ? 'Sun' : ball.specialPower === 'Plaguefire' ? 'Plaguefire' : ball.specialPower === 'Forge' ? 'Forge' : 'Fire';
   const cx = hitBrick.x + hitBrick.w / 2;
   const cy = hitBrick.y + hitBrick.h / 2;
   const candidates = state.bricks
