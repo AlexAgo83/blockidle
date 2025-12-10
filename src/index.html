@@ -374,6 +374,33 @@
       background: linear-gradient(135deg, #38bdf8, #a855f7);
       box-shadow: 0 0 8px rgba(56, 189, 248, 0.6);
     }
+    .catalog-list {
+      display: grid;
+      gap: 10px;
+      margin: 12px 0 6px;
+      padding: 0;
+      list-style: none;
+    }
+    .catalog-item {
+      padding: 10px 12px;
+      border-radius: 10px;
+      background: rgba(15, 23, 42, 0.6);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      color: #e2e8f0;
+      display: grid;
+      gap: 4px;
+    }
+    .catalog-item h4 {
+      margin: 0;
+      font-size: 1rem;
+      letter-spacing: 0.01em;
+      color: #bae6fd;
+    }
+    .catalog-item p {
+      margin: 0;
+      color: #cbd5e1;
+      line-height: 1.4;
+    }
     .score-header {
       display: flex;
       align-items: center;
@@ -496,7 +523,23 @@
         <li>Fusions: some pairs at level 3 unlock a Fusion (e.g., Fire + Light → Sun) and taking it consumes the ingredients.</li>
       </ul>
       <div class="modal-actions">
+        <button id="open-catalog" type="button">Powers & Talents</button>
         <button id="info-close" type="button">Close</button>
+      </div>
+    </div>
+  </div>
+  <div id="catalog-modal-backdrop" class="modal-backdrop">
+    <div class="modal">
+      <h2>All powers, talents & fusions</h2>
+      <p class="subtitle">Browse every option and its description.</p>
+      <h3>Powers</h3>
+      <div id="catalog-powers" class="catalog-list"></div>
+      <h3>Talents</h3>
+      <div id="catalog-talents" class="catalog-list"></div>
+      <h3>Fusions</h3>
+      <div id="catalog-fusions" class="catalog-list"></div>
+      <div class="modal-actions">
+        <button id="catalog-close" type="button">Close</button>
       </div>
     </div>
   </div>

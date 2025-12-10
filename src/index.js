@@ -18,6 +18,12 @@ const abandonBtn = document.getElementById('abandon-btn');
 const infoBtn = document.getElementById('info-btn');
 const infoModalBackdrop = document.getElementById('info-modal-backdrop');
 const infoCloseBtn = document.getElementById('info-close');
+const catalogModalBackdrop = document.getElementById('catalog-modal-backdrop');
+const catalogCloseBtn = document.getElementById('catalog-close');
+const catalogOpenBtn = document.getElementById('open-catalog');
+const catalogPowers = document.getElementById('catalog-powers');
+const catalogTalents = document.getElementById('catalog-talents');
+const catalogFusions = document.getElementById('catalog-fusions');
 const commitToggle = document.getElementById('commit-toggle');
 const commitChevron = document.getElementById('commit-chevron');
 const commitListEl = document.getElementById('commit-list');
@@ -46,6 +52,7 @@ const DEFAULT_KEYS = {
   right: 'ArrowRight',
   launch: 'Space'
 };
+const formatDesc = (desc) => desc?.plain || desc?.rich || '';
 
 const API_BASE = (() => {
   const envBase = (import.meta?.env?.VITE_API_BASE || '').trim();
@@ -672,6 +679,21 @@ function openInfoModal() {
 function closeInfoModal() {
   if (!infoModalBackdrop) return;
   infoModalBackdrop.classList.remove('open');
+  if (!state.powerModalOpen && !state.awaitingName) {
+    state.paused = false;
+  }
+}
+
+function openCatalogModal() {
+  if (!catalogModalBackdrop) return;
+  state.paused = true;
+  renderCatalogLists();
+  catalogModalBackdrop.classList.add('open');
+}
+
+function closeCatalogModal() {
+  if (!catalogModalBackdrop) return;
+  catalogModalBackdrop.classList.remove('open');
   if (!state.powerModalOpen && !state.awaitingName) {
     state.paused = false;
   }
@@ -1740,6 +1762,32 @@ function renderCommitList() {
   updateCommitChevron();
 }
 
+function renderCatalogLists() {
+  const renderList = (container, items, kind) => {
+    if (!container) return;
+    container.innerHTML = '';
+    items.forEach((item) => {
+      const desc = kind === 'power'
+        ? getPowerDescription(item.name)
+        : kind === 'talent'
+          ? getTalentDescription(item.name)
+          : getPowerDescription(item.name);
+      const el = document.createElement('div');
+      el.className = 'catalog-item';
+      const title = document.createElement('h4');
+      title.textContent = item.name;
+      const p = document.createElement('p');
+      p.textContent = formatDesc(desc);
+      el.appendChild(title);
+      el.appendChild(p);
+      container.appendChild(el);
+    });
+  };
+  renderList(catalogPowers, POWER_DEFS, 'power');
+  renderList(catalogTalents, TALENT_DEFS, 'talent');
+  renderList(catalogFusions, FUSION_DEFS, 'power');
+}
+
 function renderTopScoresPanel() {
   if (!scoreListEl) return;
   scoreListEl.innerHTML = '';
@@ -2701,9 +2749,10 @@ function bindControls() {
     return !!eventKey && !!bindingKey && eventKey === bindingKey;
   };
   const isSettingsOpen = () => settingsModalBackdrop?.classList.contains('open');
+  const isCatalogOpen = () => catalogModalBackdrop?.classList.contains('open');
 
   window.addEventListener('keydown', (event) => {
-    if (state.awaitingName || isSettingsOpen()) return;
+    if (state.awaitingName || isSettingsOpen() || isCatalogOpen()) return;
     const keyValue = normalizeKeyValue(event.key || event.code);
     if (
       state.ballHeld &&
@@ -2720,7 +2769,7 @@ function bindControls() {
     }
   });
   window.addEventListener('keyup', (event) => {
-    if (isSettingsOpen()) return;
+    if (isSettingsOpen() || isCatalogOpen()) return;
     if (isKeyBinding(event, state.keyBindings.left)) state.keys.left = false;
     if (isKeyBinding(event, state.keyBindings.right)) state.keys.right = false;
   });
@@ -2752,6 +2801,11 @@ function bindControls() {
   settingsSaveBtn?.addEventListener('click', () => {
     applySettingsBindings();
     closeSettingsModal();
+  });
+  catalogOpenBtn?.addEventListener('click', openCatalogModal);
+  catalogCloseBtn?.addEventListener('click', closeCatalogModal);
+  catalogModalBackdrop?.addEventListener('click', (event) => {
+    if (event.target === catalogModalBackdrop) closeCatalogModal();
   });
   const captureKey = (input) => {
     if (!input) return;
