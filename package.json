@@ -8,6 +8,7 @@
     "build": "node -e \"const fs=require('fs'); if(!fs.existsSync('node_modules/vite')){console.log('Installing deps via npm ci...'); require('child_process').execSync('npm ci --include=dev', {stdio:'inherit'});} \" && npm run build:app",
     "build:app": "vite build",
     "preview": "vite preview",
+    "start": "node server.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
@@ -15,6 +16,8 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
+    "express": "^5.2.1",
+    "pg": "^8.16.3",
     "vite": "^7.2.7"
   }
 }
