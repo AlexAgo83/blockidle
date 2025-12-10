@@ -15,8 +15,12 @@ const playerNameSubmit = document.getElementById('player-name-submit');
 const debugGameOverBtn = document.getElementById('debug-gameover');
 
 const API_BASE = (() => {
-  const base = (import.meta?.env?.VITE_API_BASE || window.location.origin || '').replace(/\/$/, '');
-  return base || '';
+  const envBase = (import.meta?.env?.VITE_API_BASE || '').trim();
+  if (envBase) return envBase.replace(/\/$/, '');
+  if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+    return 'https://blockidle-backend.onrender.com';
+  }
+  return (window.location.origin || '').replace(/\/$/, '');
 })();
 
 function apiUrl(path) {
