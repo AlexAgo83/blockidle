@@ -17,7 +17,12 @@ const playerNameSubmit = document.getElementById('player-name-submit');
 const commitToggle = document.getElementById('commit-toggle');
 const commitChevron = document.getElementById('commit-chevron');
 const commitListEl = document.getElementById('commit-list');
+const scoreListEl = document.getElementById('score-list');
 const timeButtons = Array.from(document.querySelectorAll('.time-btn'));
+const hudBuffer = document.createElement('canvas');
+const hudCtx = hudBuffer.getContext('2d');
+let hudSignature = null;
+const TOP_LIMIT = 10;
 
 const API_BASE = (() => {
   const envBase = (import.meta?.env?.VITE_API_BASE || '').trim();
@@ -241,6 +246,25 @@ function clampBallAgainstWalls(ball) {
       if (ball.vx < 0) ball.vx *= -1;
     }
   }
+}
+
+function computeHudSignature() {
+  const dmgEntries = Object.entries(state.damageByPower || {})
+    .sort((a, b) => a[0].localeCompare(b[0]));
+  return JSON.stringify({
+    score: state.score,
+    lives: state.lives,
+    level: state.level,
+    playerLevel: state.playerLevel,
+    xp: state.xp,
+    speedTimer: state.speedTimer,
+    xpNeeded: state.xpNeeded,
+    timeScale: state.timeScale,
+    playerName: state.playerName,
+    powers: state.powers.map((p) => `${p.name}:${p.level}`).join('|'),
+    talents: state.talents.map((t) => `${t.name}:${t.level}`).join('|'),
+    damage: dmgEntries.map(([k, v]) => `${k}:${v}`).join('|')
+  });
 }
 
 function formatScore(value) {
@@ -696,6 +720,8 @@ function withAimJitter(vx, vy) {
 function resizeCanvas() {
   canvas.width = CONFIG.width;
   canvas.height = CONFIG.height;
+  hudBuffer.width = CONFIG.width;
+  hudBuffer.height = CONFIG.height;
 }
 
 function computeBrickLayout() {
@@ -709,13 +735,8 @@ function computeBrickLayout() {
 }
 
 function getWalls() {
-  const { startX } = computeBrickLayout();
-  const xLeft = startX / 2 - WALL.width / 2;
-  const xRight = CONFIG.width - startX / 2 - WALL.width / 2;
-  return [
-    { x: xLeft, y: 0, w: WALL.width, h: CONFIG.height },
-    { x: xRight, y: 0, w: WALL.width, h: CONFIG.height }
-  ];
+  // Murs internes retirés
+  return [];
 }
 
 function getBrickHP() {
@@ -1277,7 +1298,7 @@ function getTopScores() {
     if (!raw) return [];
     const parsed = JSON.parse(raw);
     if (!Array.isArray(parsed)) return [];
-    return parsed.slice(0, 5);
+    return parsed.slice(0, TOP_LIMIT);
   } catch (_) {
     return [];
   }
@@ -1297,8 +1318,8 @@ function saveScore(score) {
         };
     scores.push(entry);
     scores.sort((a, b) => (b.score || 0) - (a.score || 0));
-    const top5 = scores.slice(0, 5);
-    localStorage.setItem('brickidle_top_scores', JSON.stringify(top5));
+    const top = scores.slice(0, TOP_LIMIT);
+    localStorage.setItem('brickidle_top_scores', JSON.stringify(top));
   } catch (_) {
     // ignore storage errors
   }
@@ -1325,16 +1346,19 @@ async function submitScoreToBackend(payload) {
   }
 }
 
-async function fetchTopScoresFromBackend(limit = 5) {
+async function fetchTopScoresFromBackend(limit = TOP_LIMIT) {
+  if (scoreListEl) scoreListEl.textContent = 'Chargement...';
   try {
     const res = await fetch(apiUrl(`/scores?limit=${limit}`));
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
     if (Array.isArray(data)) {
       state.backendTopScores = data;
+      renderTopScoresPanel();
     }
   } catch (err) {
     console.error('fetchTopScoresFromBackend failed', err);
+    renderTopScoresPanel();
   }
 }
 
@@ -1386,6 +1410,28 @@ function renderCommitList() {
     commitListEl.appendChild(item);
   });
   updateCommitChevron();
+}
+
+function renderTopScoresPanel() {
+  if (!scoreListEl) return;
+  scoreListEl.innerHTML = '';
+  const list = (state.backendTopScores && state.backendTopScores.length)
+    ? state.backendTopScores
+    : getTopScores();
+  if (!list || list.length === 0) {
+    scoreListEl.textContent = 'Aucun score.';
+    return;
+  }
+  list.slice(0, TOP_LIMIT).forEach((entry, idx) => {
+    const e = typeof entry === 'object' ? entry : { score: entry };
+    const item = document.createElement('div');
+    item.className = 'commit-item';
+    const line = document.createElement('div');
+    line.className = 'commit-msg';
+    line.textContent = `${idx + 1}. ${(e.player || '???').slice(0, 12)} - ${formatScore(e.score || 0)} pts`;
+    item.appendChild(line);
+    scoreListEl.appendChild(item);
+  });
 }
 
 function bindCommitToggle() {
@@ -2066,168 +2112,149 @@ function renderBalls() {
 }
 
 function renderHUD() {
-  const leftX = 14;
-  let leftY = 32;
-  ctx.font = '22px "Segoe UI", sans-serif';
-  ctx.fillStyle = '#7dd3fc';
-  const buildLabel = buildInfo?.build ? `b${buildInfo.build}` : 'dev';
-  ctx.fillText(`Version: ${buildLabel}`, leftX, leftY);
-  leftY += 26;
-  const displayName = state.playerName ? state.playerName : 'Pseudo ?';
-  ctx.fillText(`Joueur: ${displayName}`, leftX, leftY);
-  leftY += 26;
-  ctx.fillStyle = '#e2e8f0';
-  ctx.fillText(`Score: ${formatScore(state.score)}`, leftX, leftY);
-  leftY += 24;
-  ctx.fillText(state.autoPlay ? 'Auto: ON' : 'Auto: OFF', leftX, leftY);
-  const availableBalls = state.ballCount + state.specialPocket.length + (state.ballHeld ? 1 : 0);
-  const totalBalls = availableBalls + state.balls.length;
-  leftY += 24;
-  ctx.fillText(`Balles: ${availableBalls}/${totalBalls}`, leftX, leftY);
-  const speedSpecial = Math.round(getBallSpeed(true));
-  const speedNormal = Math.round(getBallSpeed(false));
-  leftY += 24;
-  ctx.fillText(`Vitesse: ${speedNormal}/${speedSpecial} px/s`, leftX, leftY);
-  leftY += 24;
-  ctx.fillText(`Cadence: ${(1000 / CONFIG.normalShotCooldownMs).toFixed(1)} /s`, leftX, leftY);
-  leftY += 24;
-  ctx.fillText(`Cadence spé: ${(1000 / CONFIG.specialShotCooldownMs).toFixed(1)} /s`, leftX, leftY);
-  leftY += 24;
-  ctx.fillText(`Briques: ${state.brickSpeed.toFixed(1)} px/s`, leftX, leftY);
-  const topList = (state.backendTopScores && state.backendTopScores.length)
-    ? state.backendTopScores
-    : getTopScores();
-  ctx.fillStyle = '#cbd5e1';
-  ctx.font = '19px "Segoe UI", sans-serif';
-  const boxY = CONFIG.height - 150;
-  ctx.fillText('Top 5 actuel', leftX, boxY);
-  topList.slice(0, 5).forEach((entry, idx) => {
-    const e = typeof entry === 'object' ? entry : { score: entry };
-    const label = `${idx + 1}. ${(e.player || '???').slice(0, 10)} - ${formatScore(e.score || 0)}`;
-    ctx.fillText(label, leftX, boxY + 24 + idx * 22);
-  });
-  // Barres de progression (ordre: Vies, Stage, Level)
-  const barW = 180;
-  const barH = 8;
-  const barX = CONFIG.width - barW - 20;
-  const spacing = 32;
-  let barY = 30;
+  const sig = computeHudSignature();
+  if (hudSignature !== sig) {
+    hudSignature = sig;
+    const h = hudCtx;
+    h.clearRect(0, 0, CONFIG.width, CONFIG.height);
+    const leftX = 14;
+    let leftY = 32;
+    h.font = '22px "Segoe UI", sans-serif';
+    h.fillStyle = '#7dd3fc';
+    const buildLabel = buildInfo?.build ? `b${buildInfo.build}` : 'dev';
+    h.fillText(`Version: ${buildLabel}`, leftX, leftY);
+    leftY += 26;
+    const displayName = state.playerName ? state.playerName : 'Pseudo ?';
+    h.fillText(`Joueur: ${displayName}`, leftX, leftY);
+    leftY += 26;
+    h.fillStyle = '#e2e8f0';
+    h.fillText(`Score: ${formatScore(state.score)}`, leftX, leftY);
 
-  // Vies
-  const maxLife = getMaxLives();
-  const lifeProgress = Math.min(state.lives / maxLife, 1);
-  ctx.fillStyle = '#34d399';
-  ctx.fillText(`Vies: ${state.lives}/${maxLife}`, barX, barY - 8);
-  ctx.fillStyle = 'rgba(255,255,255,0.12)';
-  ctx.fillRect(barX, barY, barW, barH);
-  ctx.fillStyle = '#34d399';
-  ctx.fillRect(barX, barY, barW * lifeProgress, barH);
-  ctx.strokeStyle = 'rgba(255,255,255,0.5)';
-  ctx.lineWidth = 1;
-  ctx.strokeRect(barX, barY, barW, barH);
+    // Barres de progression (ordre: Vies, Stage, Level)
+    const barW = 180;
+    const barH = 8;
+    const barX = CONFIG.width - barW - 20;
+  const spacing = 40; // plus d'espace vertical entre les barres et les sections de droite
+    let barY = 30;
 
-  // Stage
-  barY += spacing;
-  const interval = CONFIG.speedIncreaseInterval;
-  const progress = Math.min(state.speedTimer / interval, 1);
-  ctx.fillStyle = '#38bdf8';
-  ctx.fillText(`Stage: ${state.level}`, barX, barY - 8);
-  ctx.fillStyle = 'rgba(255,255,255,0.12)';
-  ctx.fillRect(barX, barY, barW, barH);
-  ctx.fillStyle = '#38bdf8';
-  ctx.fillRect(barX, barY, barW * progress, barH);
-  ctx.strokeStyle = 'rgba(255,255,255,0.5)';
-  ctx.lineWidth = 1;
-  ctx.strokeRect(barX, barY, barW, barH);
+    // Vies
+    const maxLife = getMaxLives();
+    const lifeProgress = Math.min(state.lives / maxLife, 1);
+    h.fillStyle = '#34d399';
+    h.fillText(`Vies: ${state.lives}/${maxLife}`, barX, barY - 8);
+    h.fillStyle = 'rgba(255,255,255,0.12)';
+    h.fillRect(barX, barY, barW, barH);
+    h.fillStyle = '#34d399';
+    h.fillRect(barX, barY, barW * lifeProgress, barH);
+    h.strokeStyle = 'rgba(255,255,255,0.5)';
+    h.lineWidth = 1;
+    h.strokeRect(barX, barY, barW, barH);
 
-  // Level (XP joueur)
-  barY += spacing;
-  const xpProgress = Math.min(state.xp / state.xpNeeded, 1);
-  ctx.fillStyle = '#f472b6';
-  ctx.fillText(`Level ${state.playerLevel}`, barX, barY - 8);
-  ctx.fillStyle = 'rgba(255,255,255,0.12)';
-  ctx.fillRect(barX, barY, barW, barH);
-  ctx.fillStyle = '#f472b6';
-  ctx.fillRect(barX, barY, barW * xpProgress, barH);
-  ctx.strokeStyle = 'rgba(255,255,255,0.5)';
-  ctx.lineWidth = 1;
-  ctx.strokeRect(barX, barY, barW, barH);
-  ctx.fillText(`${Math.floor(state.xp)}/${state.xpNeeded}`, barX + barW - 70, barY - 8);
+    // Stage
+    barY += spacing;
+    const interval = CONFIG.speedIncreaseInterval;
+    const progress = Math.min(state.speedTimer / interval, 1);
+    h.fillStyle = '#38bdf8';
+    h.fillText(`Stage: ${state.level}`, barX, barY - 8);
+    h.fillStyle = 'rgba(255,255,255,0.12)';
+    h.fillRect(barX, barY, barW, barH);
+    h.fillStyle = '#38bdf8';
+    h.fillRect(barX, barY, barW * progress, barH);
+    h.strokeStyle = 'rgba(255,255,255,0.5)';
+    h.lineWidth = 1;
+    h.strokeRect(barX, barY, barW, barH);
 
-  // Liste des pouvoirs acquis (à droite, sous les infos).
-  ctx.fillStyle = '#e2e8f0';
-  let infoY = barY + 28;
-  const powerLines = state.powers; // affiche tous
-  let powersBlockHeight = 0;
-  if (powerLines.length) {
-    const powersY = infoY;
-    ctx.fillText('Pouvoirs:', barX, powersY);
-    powerLines.forEach((p, idx) => {
-      ctx.fillText(`- ${p.name} (Lv. ${p.level})`, barX, powersY + 20 + idx * 18);
-    });
-    powersBlockHeight = 20 + powerLines.length * 18;
-    infoY += powersBlockHeight + 10;
+    // Level (XP joueur)
+    barY += spacing;
+    const xpProgress = Math.min(state.xp / state.xpNeeded, 1);
+    h.fillStyle = '#f472b6';
+    h.fillText(`Level ${state.playerLevel}`, barX, barY - 8);
+    h.fillStyle = 'rgba(255,255,255,0.12)';
+    h.fillRect(barX, barY, barW, barH);
+    h.fillStyle = '#f472b6';
+    h.fillRect(barX, barY, barW * xpProgress, barH);
+    h.strokeStyle = 'rgba(255,255,255,0.5)';
+    h.lineWidth = 1;
+    h.strokeRect(barX, barY, barW, barH);
+    h.fillText(`${Math.floor(state.xp)}/${state.xpNeeded}`, barX + barW - 70, barY - 8);
+
+    // Liste des pouvoirs acquis (à droite, sous les infos).
+    h.fillStyle = '#e2e8f0';
+    let infoY = barY + 36; // espace accru au-dessus de la liste des pouvoirs
+    const powerLines = state.powers; // affiche tous
+    let powersBlockHeight = 0;
+    if (powerLines.length) {
+      const powersY = infoY;
+      h.fillText('Pouvoirs:', barX, powersY);
+      powerLines.forEach((p, idx) => {
+        h.fillText(`- ${p.name} (Lv. ${p.level})`, barX, powersY + 20 + idx * 18);
+      });
+      powersBlockHeight = 20 + powerLines.length * 18;
+      infoY += powersBlockHeight + 10;
+    }
+
+    // Talents
+    const talentLines = state.talents;
+    let talentsY = infoY;
+    let talentsBlockHeight = 0;
+    if (talentLines.length) {
+      h.fillText('Talents:', barX, talentsY);
+      talentLines.forEach((t, idx) => {
+        h.fillText(`- ${t.name} (Lv. ${t.level})`, barX, talentsY + 20 + idx * 18);
+      });
+      talentsBlockHeight = 20 + talentLines.length * 18;
+    }
+
+    // Histogramme dégâts par pouvoir (en bas à droite)
+    const listBottom = talentsY + talentsBlockHeight;
+    const histY = Math.min(CONFIG.height - 140, listBottom + 50); // plus d'espace avant l'histogramme
+    const histX = barX;
+    const entries = Object.entries(state.damageByPower || {}).sort((a, b) => b[1] - a[1]).slice(0, 6);
+    if (entries.length) {
+      const labelY = histY;
+      const startY = labelY + 32; // plus d'espace avant le premier pouvoir
+      h.fillText('Dégâts par pouvoir', histX, labelY);
+      const barHeight = 8; // même hauteur que les barres de progression
+      const barGap = 32; // même spacing vertical que les autres sections
+      const maxVal = Math.max(...entries.map(([, v]) => v));
+      const totalVal = entries.reduce((sum, [, v]) => sum + v, 0);
+      entries.forEach(([name, val], idx) => {
+        const y = startY + idx * (barHeight + barGap);
+        const ratio = maxVal > 0 ? val / maxVal : 0;
+        const w = barW * ratio;
+        h.fillStyle = 'rgba(255,255,255,0.12)';
+        h.fillRect(histX, y, barW, barHeight);
+        h.fillStyle = getPowerColor(name) || '#fbbf24';
+        h.fillRect(histX, y, w, barHeight);
+        h.fillStyle = '#e2e8f0';
+        const pct = totalVal > 0 ? Math.round((val / totalVal) * 100) : 0;
+        h.fillText(`${name} (${pct}%)`, histX, y - 8);
+      });
+    }
+
+    if (!state.running) {
+      h.fillStyle = 'rgba(0,0,0,0.6)';
+      h.fillRect(0, 0, CONFIG.width, CONFIG.height);
+      h.fillStyle = '#e2e8f0';
+      h.font = '32px "Segoe UI", sans-serif';
+      h.fillText('Partie terminée - Appuyez sur Entrée pour rejouer', 120, CONFIG.height / 2);
+      h.fillText(`Score: ${formatScore(state.score)}`, 120, CONFIG.height / 2 + 36);
+
+      // Top 10 (backend si dispo, sinon local)
+      const top = (state.backendTopScores && state.backendTopScores.length)
+        ? state.backendTopScores
+        : getTopScores();
+      h.font = '22px "Segoe UI", sans-serif';
+      h.fillText('Top 10 :', 120, CONFIG.height / 2 + 70);
+      top.slice(0, TOP_LIMIT).forEach((s, idx) => {
+        const entry = typeof s === 'object' ? s : { score: s };
+        const line = `${entry.player || '???'} - ${formatScore(entry.score || 0)} pts - Stage:${entry.stage || '?'} - Lv:${entry.level || '?'}`;
+        h.fillText(`${idx + 1}. ${line}`, 120, CONFIG.height / 2 + 95 + idx * 24);
+      });
+    }
   }
 
-  // Talents
-  const talentLines = state.talents;
-  let talentsY = infoY;
-  let talentsBlockHeight = 0;
-  if (talentLines.length) {
-    ctx.fillText('Talents:', barX, talentsY);
-    talentLines.forEach((t, idx) => {
-      ctx.fillText(`- ${t.name} (Lv. ${t.level})`, barX, talentsY + 20 + idx * 18);
-    });
-    talentsBlockHeight = 20 + talentLines.length * 18;
-  }
-
-  // Histogramme dégâts par pouvoir (en bas à droite)
-  const listBottom = talentsY + talentsBlockHeight;
-  const histY = Math.min(CONFIG.height - 140, listBottom + 30);
-  const histX = barX;
-  const entries = Object.entries(state.damageByPower || {}).sort((a, b) => b[1] - a[1]).slice(0, 6);
-  if (entries.length) {
-    const labelY = histY;
-    const startY = labelY + 32; // plus d'espace avant le premier pouvoir
-    ctx.fillText('Dégâts par pouvoir', histX, labelY);
-    const barHeight = 8; // même hauteur que les barres de progression
-    const barGap = 32; // même spacing vertical que les autres sections
-    const maxVal = Math.max(...entries.map(([, v]) => v));
-    const totalVal = entries.reduce((sum, [, v]) => sum + v, 0);
-    entries.forEach(([name, val], idx) => {
-      const y = startY + idx * (barHeight + barGap);
-      const ratio = maxVal > 0 ? val / maxVal : 0;
-      const w = barW * ratio;
-      ctx.fillStyle = 'rgba(255,255,255,0.12)';
-      ctx.fillRect(histX, y, barW, barHeight);
-      ctx.fillStyle = getPowerColor(name) || '#fbbf24';
-      ctx.fillRect(histX, y, w, barHeight);
-      ctx.fillStyle = '#e2e8f0';
-      const pct = totalVal > 0 ? Math.round((val / totalVal) * 100) : 0;
-      ctx.fillText(`${name} (${pct}%)`, histX, y - 8);
-    });
-  }
-
-  if (!state.running) {
-    ctx.fillStyle = 'rgba(0,0,0,0.6)';
-    ctx.fillRect(0, 0, CONFIG.width, CONFIG.height);
-    ctx.fillStyle = '#e2e8f0';
-    ctx.font = '32px "Segoe UI", sans-serif';
-    ctx.fillText('Partie terminée - Appuyez sur Entrée pour rejouer', 120, CONFIG.height / 2);
-    ctx.fillText(`Score: ${formatScore(state.score)}`, 120, CONFIG.height / 2 + 36);
-
-    // Top 5 (backend si dispo, sinon local)
-    const top = (state.backendTopScores && state.backendTopScores.length)
-      ? state.backendTopScores
-      : getTopScores();
-    ctx.font = '22px "Segoe UI", sans-serif';
-    ctx.fillText('Top 5 :', 120, CONFIG.height / 2 + 70);
-    top.forEach((s, idx) => {
-      const entry = typeof s === 'object' ? s : { score: s };
-      const line = `${entry.player || '???'} - ${formatScore(entry.score || 0)} pts - Stage:${entry.stage || '?'} - Lv:${entry.level || '?'}`;
-      ctx.fillText(`${idx + 1}. ${line}`, 120, CONFIG.height / 2 + 95 + idx * 24);
-    });
-  }
+  ctx.drawImage(hudBuffer, 0, 0);
 }
 
 function render() {
@@ -2356,7 +2383,8 @@ function init() {
   if (!restored) {
     setTimeScale(state.timeScale || 1);
   }
-  fetchTopScoresFromBackend();
+  renderTopScoresPanel();
+  fetchTopScoresFromBackend(TOP_LIMIT);
   fetchCommits();
   setInterval(() => {
     fetchTopScoresFromBackend().catch(() => {});
