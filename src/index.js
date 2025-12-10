@@ -9,6 +9,7 @@ const talentButtons = Array.from(document.querySelectorAll('.talent-btn'));
 const powerPreviewName = document.getElementById('power-preview-name');
 const powerPreviewDesc = document.getElementById('power-preview-desc');
 const powerPreviewIcon = document.getElementById('power-preview-icon');
+const debugGameOverBtn = document.getElementById('debug-gameover');
 const nameModalBackdrop = document.getElementById('name-modal-backdrop');
 const playerNameInput = document.getElementById('player-name-input');
 const playerNameSubmit = document.getElementById('player-name-submit');
@@ -1870,6 +1871,10 @@ function bindControls() {
       state.autoFire = event.target.checked;
     });
   }
+  debugGameOverBtn?.addEventListener('click', () => {
+    if (state.awaitingName) return;
+    triggerGameOver();
+  });
   playerNameSubmit?.addEventListener('click', handleNameSubmit);
   playerNameInput?.addEventListener('keydown', (event) => {
     if (event.key === 'Enter') {
