@@ -14,8 +14,8 @@ const powerPreviewIcon = document.getElementById('power-preview-icon');
 const nameModalBackdrop = document.getElementById('name-modal-backdrop');
 const playerNameInput = document.getElementById('player-name-input');
 const playerNameSubmit = document.getElementById('player-name-submit');
-const debugGameOverBtn = document.getElementById('debug-gameover');
 const commitListEl = document.getElementById('commit-list');
+const timeButtons = Array.from(document.querySelectorAll('.time-btn'));
 
 const API_BASE = (() => {
   const envBase = (import.meta?.env?.VITE_API_BASE || '').trim();
@@ -149,6 +149,7 @@ const state = {
   lastEndedAt: null,
   awaitingName: false,
   scoreSubmitted: false,
+  timeScale: 1,
   pendingPowerChoices: 0,
   powerModalOpen: false,
   currentPowerOptions: [],
@@ -222,6 +223,18 @@ function handleNameSubmit() {
     // ignore
   }
   closeNameModal();
+}
+
+function setTimeScale(scale) {
+  state.timeScale = scale;
+  timeButtons.forEach((btn) => {
+    const val = Number(btn.dataset.speed);
+    if (val === scale) {
+      btn.classList.add('active');
+    } else {
+      btn.classList.remove('active');
+    }
+  });
 }
 
 function getBallSpeed(isSpecial) {
@@ -1900,7 +1913,8 @@ function loop(timestamp) {
   const dt = Math.min((timestamp - loop.lastTime) / 1000, 0.033);
   loop.lastTime = timestamp;
 
-  update(dt);
+  const scaledDt = dt * (state.timeScale || 1);
+  update(scaledDt);
   render();
   requestAnimationFrame(loop);
 }
@@ -1935,6 +1949,12 @@ function bindControls() {
       state.autoFire = event.target.checked;
     });
   }
+  timeButtons.forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const val = Number(btn.dataset.speed) || 1;
+      setTimeScale(val);
+    });
+  });
   playerNameSubmit?.addEventListener('click', handleNameSubmit);
   playerNameInput?.addEventListener('keydown', (event) => {
     if (event.key === 'Enter') {
@@ -1965,6 +1985,7 @@ function init() {
   if (!savedName) {
     openNameModal();
   }
+  setTimeScale(1);
   fetchTopScoresFromBackend();
   fetchCommits();
   setInterval(() => {
