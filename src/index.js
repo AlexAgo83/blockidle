@@ -685,8 +685,8 @@ function getPowerDescription(name) {
       };
     case 'Vampire':
       return {
-        plain: 'Destroying a brick heals 1 life (max 1 heal per second)',
-        rich: 'Destroying a brick heals <span class="power-desc-accent">+1 life</span> <span class="power-desc-muted">(max 1/s)</span>'
+        plain: 'Destroying a brick heals 1 life (max 1/s). If it survives, heal 1 life every 3s while marked.',
+        rich: 'Destroying a brick heals <span class="power-desc-accent">+1 life</span> <span class="power-desc-muted">(max 1/s)</span>. If it survives, you heal <span class="power-desc-accent">+1 life</span> every <span class="power-desc-accent">3s</span> while it stays marked.'
       };
     case 'Light':
       return {
@@ -695,8 +695,8 @@ function getPowerDescription(name) {
       };
     case 'Thorns':
       return {
-        plain: 'Deals 1 damage every 3s for up to 8s (persistent effect)',
-        rich: 'Deals <span class=\"power-desc-accent\">1</span> damage every <span class=\"power-desc-accent\">3s</span> for up to <span class=\"power-desc-accent\">8s</span>'
+        plain: 'Deals 2 damage after 1s and 1 damage after 2s',
+        rich: 'Deals <span class="power-desc-accent">+2</span> damage at <span class="power-desc-accent">t+1s</span> then <span class="power-desc-accent">+1</span> at <span class="power-desc-accent">t+2s</span>'
       };
     case 'Curse':
       return {
@@ -1755,21 +1755,48 @@ function update(dt) {
     }
   }
 
+  // Vampire sustain: heal player while the marked brick is alive
+  const maxLife = getMaxLives();
+  for (const brick of state.bricks) {
+    if (!brick.alive) {
+      brick.vampireActive = false;
+      brick.vampireNextTick = null;
+      continue;
+    }
+    if (brick.vampireActive && brick.vampireNextTick && brick.vampireNextTick <= now) {
+      if (state.lives < maxLife) {
+        state.lives = Math.min(maxLife, state.lives + 1);
+        state.lastVampireHeal = now;
+      }
+      brick.vampireNextTick = now + 3000;
+      brick.effectColor = getPowerColor('Vampire');
+      brick.effectUntil = brick.vampireNextTick;
+    }
+  }
+
   // Tick Thorns (continuous damage)
   for (const brick of state.bricks) {
     if (!brick.alive || !brick.thornActive) continue;
     if (brick.thornExpire && brick.thornExpire <= now) {
       brick.thornActive = false;
       brick.thornNextTick = 0;
+      brick.thornSecondTick = 0;
       brick.thornExpire = 0;
       continue;
     }
     if (brick.thornNextTick && brick.thornNextTick <= now) {
-      brick.thornNextTick = now + 3000;
-      // Maintains halo during Thorns effect
+      brick.thornNextTick = null;
+      brick.effectColor = getPowerColor('Thorns');
+      brick.effectUntil = brick.thornExpire;
+      damageBrick(brick, 2, now, 'Thorns');
+    }
+    if (brick.thornSecondTick && brick.thornSecondTick <= now) {
+      brick.thornSecondTick = null;
       brick.effectColor = getPowerColor('Thorns');
       brick.effectUntil = brick.thornExpire;
       damageBrick(brick, 1, now, 'Thorns');
+      brick.thornActive = false;
+      brick.thornExpire = 0;
     }
   }
 
@@ -1960,6 +1987,8 @@ function renderBricks() {
     let alpha = 1;
     let scale = 1;
     let explode = false;
+    let shakeX = 0;
+    let shakeY = 0;
 
     if (!brick.alive && brick.deathTime) {
       const t = Math.min((now - brick.deathTime) / 180, 1); // 180 ms
@@ -1968,11 +1997,23 @@ function renderBricks() {
       explode = true;
     }
 
+    if (brick.shakeTime) {
+      const elapsed = now - brick.shakeTime;
+      if (elapsed <= 220) {
+        const intensity = 1 - elapsed / 220;
+        const magnitude = 3 * intensity;
+        shakeX = Math.sin(now * 0.2 + brick.x) * magnitude;
+        shakeY = Math.cos(now * 0.25 + brick.y) * magnitude;
+      } else {
+        brick.shakeTime = null;
+      }
+    }
+
     const bw = Math.max(1, Math.abs(Number.isFinite(brick.w) ? brick.w : CONFIG.brickHeight));
     const bh = Math.max(1, Math.abs(Number.isFinite(brick.h) ? brick.h : CONFIG.brickHeight));
 
-    const drawX = brick.x - (scale - 1) * bw / 2;
-    const drawY = brick.y - (scale - 1) * bh / 2;
+    const drawX = (brick.x + shakeX) - (scale - 1) * bw / 2;
+    const drawY = (brick.y + shakeY) - (scale - 1) * bh / 2;
     const drawW = bw * scale;
     const drawH = bh * scale;
 
@@ -2563,15 +2604,22 @@ function applyPowerOnHit(ball, brick, now) {
     brick.effectUntil = brick.curseTick;
   } else if (power === 'Thorns') {
     brick.thornActive = true;
-    brick.thornNextTick = now + 3000;
-    brick.thornExpire = now + 8000;
+    brick.thornNextTick = now + 1000; // +2 dmg
+    brick.thornSecondTick = now + 2000; // +1 dmg
+    brick.thornExpire = brick.thornSecondTick;
     brick.effectColor = getPowerColor(power);
     brick.effectUntil = brick.thornExpire;
+  } else if (power === 'Vampire') {
+    brick.vampireActive = true;
+    brick.vampireNextTick = now + 3000;
+    brick.effectColor = getPowerColor(power);
+    brick.effectUntil = brick.vampireNextTick;
   }
 }
 
 function damageBrick(brick, amount, now, sourcePower = null) {
   brick.flashTime = now;
+  brick.shakeTime = now;
   brick.hp = Math.max(0, (brick.hp || 1) - amount);
 
   if (sourcePower) {
@@ -2582,7 +2630,9 @@ function damageBrick(brick, amount, now, sourcePower = null) {
   if (destroyed) {
     brick.alive = false;
     brick.deathTime = now;
-        state.score += 50 + brick.row * 10;
+    state.score += 50 + brick.row * 10;
+    brick.vampireActive = false;
+    brick.vampireNextTick = null;
     const xpDropCount = brick.type === 'boss' ? 5 : 1;
     for (let k = 0; k < xpDropCount; k += 1) {
       spawnXpDrop(brick);
