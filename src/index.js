@@ -14,6 +14,8 @@ const powerPreviewIcon = document.getElementById('power-preview-icon');
 const nameModalBackdrop = document.getElementById('name-modal-backdrop');
 const playerNameInput = document.getElementById('player-name-input');
 const playerNameSubmit = document.getElementById('player-name-submit');
+const commitToggle = document.getElementById('commit-toggle');
+const commitChevron = document.getElementById('commit-chevron');
 const commitListEl = document.getElementById('commit-list');
 const timeButtons = Array.from(document.querySelectorAll('.time-btn'));
 
@@ -155,6 +157,8 @@ const state = {
   lastEndedAt: null,
   awaitingName: false,
   scoreSubmitted: false,
+  commitExpanded: true,
+  commitCache: [],
   timeScale: 1,
   pendingPowerChoices: 0,
   powerModalOpen: false,
@@ -1245,28 +1249,60 @@ async function fetchCommits() {
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
     if (!Array.isArray(data)) throw new Error('format inattendu');
-    commitListEl.innerHTML = '';
-    data.slice(0, 10).forEach((c) => {
-      const item = document.createElement('div');
-      item.className = 'commit-item';
-      const hash = document.createElement('div');
-      hash.className = 'commit-hash';
-      hash.textContent = c.hash || '';
-      const msg = document.createElement('div');
-      msg.className = 'commit-msg';
-      msg.textContent = c.message || '';
-      const date = document.createElement('div');
-      date.className = 'commit-date';
-      date.textContent = c.date || '';
-      item.appendChild(hash);
-      item.appendChild(msg);
-      item.appendChild(date);
-      commitListEl.appendChild(item);
-    });
+    state.commitCache = data;
+    renderCommitList();
   } catch (err) {
     console.error('fetchCommits failed', err);
     commitListEl.textContent = 'Impossible de charger les commits.';
   }
+}
+
+function updateCommitChevron() {
+  if (!commitChevron) return;
+  commitChevron.textContent = state.commitExpanded ? '▼' : '►';
+}
+
+function renderCommitList() {
+  if (!commitListEl) return;
+  commitListEl.innerHTML = '';
+  const limit = state.commitExpanded ? 10 : 1;
+  const commits = state.commitCache.slice(0, limit);
+  if (!commits.length) {
+    commitListEl.textContent = 'Aucun commit.';
+    return;
+  }
+  commits.forEach((c) => {
+    const item = document.createElement('div');
+    item.className = 'commit-item';
+    const hash = document.createElement('div');
+    hash.className = 'commit-hash';
+    hash.textContent = c.hash || '';
+    const msg = document.createElement('div');
+    msg.className = 'commit-msg';
+    msg.textContent = c.message || '';
+    const date = document.createElement('div');
+    date.className = 'commit-date';
+    date.textContent = c.date || '';
+    item.appendChild(hash);
+    item.appendChild(msg);
+    item.appendChild(date);
+    commitListEl.appendChild(item);
+  });
+  updateCommitChevron();
+}
+
+function bindCommitToggle() {
+  if (!commitToggle) return;
+  commitToggle.addEventListener('click', () => {
+    state.commitExpanded = !state.commitExpanded;
+    updateCommitChevron();
+    if (state.commitCache.length) {
+      renderCommitList();
+    } else {
+      fetchCommits();
+    }
+  });
+  updateCommitChevron();
 }
 
 function triggerGameOver() {
@@ -2007,34 +2043,43 @@ function renderHUD() {
   // Liste des pouvoirs acquis (à droite, sous les infos).
   ctx.fillStyle = '#e2e8f0';
   let infoY = barY + 28;
-  const powersY = infoY;
-  ctx.fillText('Pouvoirs:', barX, powersY);
   const powerLines = state.powers; // affiche tous
-  powerLines.forEach((p, idx) => {
-    ctx.fillText(`- ${p.name} (Lv. ${p.level})`, barX, powersY + 20 + idx * 18);
-  });
+  let powersBlockHeight = 0;
+  if (powerLines.length) {
+    const powersY = infoY;
+    ctx.fillText('Pouvoirs:', barX, powersY);
+    powerLines.forEach((p, idx) => {
+      ctx.fillText(`- ${p.name} (Lv. ${p.level})`, barX, powersY + 20 + idx * 18);
+    });
+    powersBlockHeight = 20 + powerLines.length * 18;
+    infoY += powersBlockHeight + 10;
+  }
 
   // Talents
-  const talentsY = powersY + 20 + powerLines.length * 18 + 10;
-  ctx.fillText('Talents:', barX, talentsY);
   const talentLines = state.talents;
-  talentLines.forEach((t, idx) => {
-    ctx.fillText(`- ${t.name} (Lv. ${t.level})`, barX, talentsY + 20 + idx * 18);
-  });
+  let talentsY = infoY;
+  let talentsBlockHeight = 0;
+  if (talentLines.length) {
+    ctx.fillText('Talents:', barX, talentsY);
+    talentLines.forEach((t, idx) => {
+      ctx.fillText(`- ${t.name} (Lv. ${t.level})`, barX, talentsY + 20 + idx * 18);
+    });
+    talentsBlockHeight = 20 + talentLines.length * 18;
+  }
 
   // Histogramme dégâts par pouvoir (en bas à droite)
-  const talentsBlockHeight = 20 + talentLines.length * 18;
   const listBottom = talentsY + talentsBlockHeight;
   const histY = Math.min(CONFIG.height - 140, listBottom + 30);
   const histX = barX;
   const entries = Object.entries(state.damageByPower || {}).sort((a, b) => b[1] - a[1]).slice(0, 6);
   if (entries.length) {
     const labelY = histY;
-    const startY = labelY + 20; // cohérent avec les barres du dessus
+    const startY = labelY + 32; // plus d'espace avant le premier pouvoir
     ctx.fillText('Dégâts par pouvoir', histX, labelY);
     const barHeight = 8; // même hauteur que les barres de progression
     const barGap = 32; // même spacing vertical que les autres sections
     const maxVal = Math.max(...entries.map(([, v]) => v));
+    const totalVal = entries.reduce((sum, [, v]) => sum + v, 0);
     entries.forEach(([name, val], idx) => {
       const y = startY + idx * (barHeight + barGap);
       const ratio = maxVal > 0 ? val / maxVal : 0;
@@ -2044,7 +2089,8 @@ function renderHUD() {
       ctx.fillStyle = getPowerColor(name) || '#fbbf24';
       ctx.fillRect(histX, y, w, barHeight);
       ctx.fillStyle = '#e2e8f0';
-      ctx.fillText(`${name} (${val})`, histX, y - 8);
+      const pct = totalVal > 0 ? Math.round((val / totalVal) * 100) : 0;
+      ctx.fillText(`${name} (${pct}%)`, histX, y - 8);
     });
   }
 
@@ -2181,6 +2227,7 @@ function bindControls() {
 function init() {
   resizeCanvas();
   bindControls();
+  bindCommitToggle();
   const savedName = loadPlayerName();
   resetGame();
   const restored = loadSession();

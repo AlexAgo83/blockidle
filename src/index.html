@@ -240,11 +240,24 @@
       color: #e2e8f0;
       font-size: 0.95rem;
     }
-    .commits h3 {
+    .commit-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      cursor: pointer;
+      user-select: none;
+    }
+    .commit-title {
       margin: 0 0 8px;
       font-size: 1.05rem;
       letter-spacing: 0.01em;
       color: #bae6fd;
+    }
+    .commit-chevron {
+      font-size: 1rem;
+      color: #e2e8f0;
+      transition: transform 140ms ease;
     }
     .commit-item {
       display: flex;
@@ -307,7 +320,10 @@
       </div>
     </div>
     <div class="commits">
-      <h3>Commits récents</h3>
+      <div class="commit-header" id="commit-toggle">
+        <h3 class="commit-title">Commits récents</h3>
+        <span class="commit-chevron" id="commit-chevron">▼</span>
+      </div>
       <div id="commit-list"></div>
     </div>
   </div>
