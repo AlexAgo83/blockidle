@@ -106,6 +106,7 @@ const SESSION_VERSION = 1;
 const SESSION_SAVE_INTERVAL = 1500;
 let lastSessionSave = -SESSION_SAVE_INTERVAL;
 let sessionDirty = true;
+const PREFS_KEY = 'brickidle_prefs';
 
 const state = {
   keys: {
@@ -284,6 +285,40 @@ function loadPlayerName() {
     // ignore storage errors
   }
   return null;
+}
+
+function loadPreferences() {
+  try {
+    const raw = localStorage.getItem(PREFS_KEY);
+    if (!raw) return;
+    const data = JSON.parse(raw);
+    if ([1, 2, 3].includes(Number(data.timeScale))) {
+      setTimeScale(Number(data.timeScale));
+    }
+    if (typeof data.autoPlay === 'boolean') {
+      state.autoPlay = data.autoPlay;
+      autoBtn.textContent = state.autoPlay ? 'Désactiver auto-visée' : 'Activer auto-visée';
+    }
+    if (typeof data.commitExpanded === 'boolean') {
+      state.commitExpanded = data.commitExpanded;
+      updateCommitChevron();
+    }
+  } catch (_) {
+    // ignore parsing/storage errors
+  }
+}
+
+function savePreferences() {
+  try {
+    const payload = {
+      timeScale: state.timeScale,
+      autoPlay: state.autoPlay,
+      commitExpanded: state.commitExpanded
+    };
+    localStorage.setItem(PREFS_KEY, JSON.stringify(payload));
+  } catch (_) {
+    // ignore storage errors
+  }
 }
 
 function markSessionDirty() {
@@ -1296,6 +1331,7 @@ function bindCommitToggle() {
   commitToggle.addEventListener('click', () => {
     state.commitExpanded = !state.commitExpanded;
     updateCommitChevron();
+    savePreferences();
     if (state.commitCache.length) {
       renderCommitList();
     } else {
@@ -2162,6 +2198,7 @@ function bindControls() {
   autoBtn.addEventListener('click', () => {
     state.autoPlay = !state.autoPlay;
     autoBtn.textContent = state.autoPlay ? 'Désactiver auto-visée' : 'Activer auto-visée';
+    savePreferences();
   });
   if (autoFireToggle) {
     autoFireToggle.addEventListener('change', (event) => {
@@ -2172,6 +2209,7 @@ function bindControls() {
     btn.addEventListener('click', () => {
       const val = Number(btn.dataset.speed) || 1;
       setTimeScale(val);
+      savePreferences();
     });
   });
   playerNameSubmit?.addEventListener('click', handleNameSubmit);
@@ -2230,6 +2268,7 @@ function init() {
   bindCommitToggle();
   const savedName = loadPlayerName();
   resetGame();
+  loadPreferences();
   const restored = loadSession();
   autoBtn.textContent = state.autoPlay ? 'Désactiver auto-visée' : 'Activer auto-visée';
   if (autoFireToggle) autoFireToggle.checked = state.autoFire;
@@ -2237,7 +2276,7 @@ function init() {
     openNameModal();
   }
   if (!restored) {
-    setTimeScale(1);
+    setTimeScale(state.timeScale || 1);
   }
   fetchTopScoresFromBackend();
   fetchCommits();

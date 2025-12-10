@@ -243,13 +243,13 @@
     .commit-header {
       display: flex;
       align-items: center;
-      justify-content: space-between;
+      justify-content: flex-start;
       gap: 8px;
       cursor: pointer;
       user-select: none;
     }
     .commit-title {
-      margin: 0 0 8px;
+      margin: 0;
       font-size: 1.05rem;
       letter-spacing: 0.01em;
       color: #bae6fd;
@@ -293,6 +293,7 @@
     }
     .time-right {
       display: flex;
+      justify-content: flex-end;
       gap: 8px;
     }
     .time-btn {
@@ -312,8 +313,10 @@
     </header>
     <canvas id="game" width="800" height="600"></canvas>
     <div class="time-controls">
-      <div class="time-right">
+      <div class="time-left">
         <button id="auto-toggle" type="button">Activer auto-visée</button>
+      </div>
+      <div class="time-right">
         <button class="time-btn" data-speed="1" type="button">x1</button>
         <button class="time-btn" data-speed="2" type="button">x2</button>
         <button class="time-btn" data-speed="3" type="button">x3</button>
@@ -321,8 +324,8 @@
     </div>
     <div class="commits">
       <div class="commit-header" id="commit-toggle">
-        <h3 class="commit-title">Commits récents</h3>
         <span class="commit-chevron" id="commit-chevron">▼</span>
+        <h3 class="commit-title">Commits récents</h3>
       </div>
       <div id="commit-list"></div>
     </div>
