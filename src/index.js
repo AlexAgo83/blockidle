@@ -1729,44 +1729,44 @@ function renderBalls() {
 
 function renderHUD() {
   const leftX = 14;
-  let leftY = 26;
-  ctx.font = '18px "Segoe UI", sans-serif';
+  let leftY = 32;
+  ctx.font = '22px "Segoe UI", sans-serif';
   ctx.fillStyle = '#7dd3fc';
   const buildLabel = buildInfo?.build ? `v${buildInfo.build}` : 'dev';
   ctx.fillText(`Version: ${buildLabel}`, leftX, leftY);
-  leftY += 22;
+  leftY += 26;
   const displayName = state.playerName ? state.playerName : 'Pseudo ?';
   ctx.fillText(`Joueur: ${displayName}`, leftX, leftY);
-  leftY += 22;
+  leftY += 26;
   ctx.fillStyle = '#e2e8f0';
   ctx.fillText(`Score: ${formatScore(state.score)}`, leftX, leftY);
-  leftY += 20;
+  leftY += 24;
   ctx.fillText(state.autoPlay ? 'Auto: ON' : 'Auto: OFF', leftX, leftY);
   const availableBalls = state.ballCount + state.specialPocket.length + (state.ballHeld ? 1 : 0);
   const totalBalls = availableBalls + state.balls.length;
-  leftY += 20;
+  leftY += 24;
   ctx.fillText(`Balles: ${availableBalls}/${totalBalls}`, leftX, leftY);
   const speedSpecial = Math.round(getBallSpeed(true));
   const speedNormal = Math.round(getBallSpeed(false));
-  leftY += 20;
+  leftY += 24;
   ctx.fillText(`Vitesse: ${speedNormal}/${speedSpecial} px/s`, leftX, leftY);
-  leftY += 20;
+  leftY += 24;
   ctx.fillText(`Cadence: ${(1000 / CONFIG.normalShotCooldownMs).toFixed(1)} /s`, leftX, leftY);
-  leftY += 20;
+  leftY += 24;
   ctx.fillText(`Cadence spé: ${(1000 / CONFIG.specialShotCooldownMs).toFixed(1)} /s`, leftX, leftY);
-  leftY += 20;
+  leftY += 24;
   ctx.fillText(`Briques: ${state.brickSpeed.toFixed(1)} px/s`, leftX, leftY);
   const topList = (state.backendTopScores && state.backendTopScores.length)
     ? state.backendTopScores
     : getTopScores();
   ctx.fillStyle = '#cbd5e1';
-  ctx.font = '16px "Segoe UI", sans-serif';
-  const boxY = CONFIG.height - 140;
+  ctx.font = '19px "Segoe UI", sans-serif';
+  const boxY = CONFIG.height - 150;
   ctx.fillText('Top 5 actuel', leftX, boxY);
   topList.slice(0, 5).forEach((entry, idx) => {
     const e = typeof entry === 'object' ? entry : { score: entry };
     const label = `${idx + 1}. ${(e.player || '???').slice(0, 10)} - ${formatScore(e.score || 0)}`;
-    ctx.fillText(label, leftX, boxY + 20 + idx * 18);
+    ctx.fillText(label, leftX, boxY + 24 + idx * 22);
   });
   // Barres de progression (ordre: Vies, Stage, Level)
   const barW = 180;
@@ -1864,20 +1864,20 @@ function renderHUD() {
     ctx.fillStyle = 'rgba(0,0,0,0.6)';
     ctx.fillRect(0, 0, CONFIG.width, CONFIG.height);
     ctx.fillStyle = '#e2e8f0';
-    ctx.font = '26px "Segoe UI", sans-serif';
-    ctx.fillText('Partie terminée - Appuyez sur Entrée pour rejouer', 110, CONFIG.height / 2);
-    ctx.fillText(`Score: ${formatScore(state.score)}`, 110, CONFIG.height / 2 + 30);
+    ctx.font = '32px "Segoe UI", sans-serif';
+    ctx.fillText('Partie terminée - Appuyez sur Entrée pour rejouer', 120, CONFIG.height / 2);
+    ctx.fillText(`Score: ${formatScore(state.score)}`, 120, CONFIG.height / 2 + 36);
 
     // Top 5 (backend si dispo, sinon local)
     const top = (state.backendTopScores && state.backendTopScores.length)
       ? state.backendTopScores
       : getTopScores();
-    ctx.font = '18px "Segoe UI", sans-serif';
-    ctx.fillText('Top 5 :', 110, CONFIG.height / 2 + 60);
+    ctx.font = '22px "Segoe UI", sans-serif';
+    ctx.fillText('Top 5 :', 120, CONFIG.height / 2 + 70);
     top.forEach((s, idx) => {
       const entry = typeof s === 'object' ? s : { score: s };
       const line = `${entry.player || '???'} - ${formatScore(entry.score || 0)} pts - Stage:${entry.stage || '?'} - Lv:${entry.level || '?'}`;
-      ctx.fillText(`${idx + 1}. ${line}`, 110, CONFIG.height / 2 + 80 + idx * 20);
+      ctx.fillText(`${idx + 1}. ${line}`, 120, CONFIG.height / 2 + 95 + idx * 24);
     });
   }
 }
