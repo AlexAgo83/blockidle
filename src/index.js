@@ -1334,7 +1334,7 @@ async function fetchCommits() {
     const data = await res.json();
     if (!Array.isArray(data)) throw new Error('format inattendu');
     commitListEl.innerHTML = '';
-    data.forEach((c) => {
+    data.slice(0, 10).forEach((c) => {
       const item = document.createElement('div');
       item.className = 'commit-item';
       const hash = document.createElement('div');
