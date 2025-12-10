@@ -695,8 +695,8 @@ function getPowerDescription(name) {
       };
     case 'Thorns':
       return {
-        plain: 'Deals 2 damage after 1s and 1 damage after 2s',
-        rich: 'Deals <span class="power-desc-accent">+2</span> damage at <span class="power-desc-accent">t+1s</span> then <span class="power-desc-accent">+1</span> at <span class="power-desc-accent">t+2s</span>'
+        plain: 'Deals 1.5 damage after 1s and 0.5 damage after 2s',
+        rich: 'Deals <span class="power-desc-accent">+1.5</span> damage at <span class="power-desc-accent">t+1s</span> then <span class="power-desc-accent">+0.5</span> at <span class="power-desc-accent">t+2s</span>'
       };
     case 'Curse':
       return {
@@ -1788,13 +1788,13 @@ function update(dt) {
       brick.thornNextTick = null;
       brick.effectColor = getPowerColor('Thorns');
       brick.effectUntil = brick.thornExpire;
-      damageBrick(brick, 2, now, 'Thorns');
+      damageBrick(brick, 1.5, now, 'Thorns');
     }
     if (brick.thornSecondTick && brick.thornSecondTick <= now) {
       brick.thornSecondTick = null;
       brick.effectColor = getPowerColor('Thorns');
       brick.effectUntil = brick.thornExpire;
-      damageBrick(brick, 1, now, 'Thorns');
+      damageBrick(brick, 0.5, now, 'Thorns');
       brick.thornActive = false;
       brick.thornExpire = 0;
     }
@@ -2604,8 +2604,8 @@ function applyPowerOnHit(ball, brick, now) {
     brick.effectUntil = brick.curseTick;
   } else if (power === 'Thorns') {
     brick.thornActive = true;
-    brick.thornNextTick = now + 1000; // +2 dmg
-    brick.thornSecondTick = now + 2000; // +1 dmg
+    brick.thornNextTick = now + 1000; // +1.5 dmg
+    brick.thornSecondTick = now + 2000; // +0.5 dmg
     brick.thornExpire = brick.thornSecondTick;
     brick.effectColor = getPowerColor(power);
     brick.effectUntil = brick.thornExpire;
