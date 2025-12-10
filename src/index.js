@@ -48,24 +48,24 @@ function apiUrl(path) {
 }
 
 const POWER_DEFS = [
-  { name: 'Feu', maxLevel: 3 },
-  { name: 'Glace', maxLevel: 3 },
+  { name: 'Fire', maxLevel: 3 },
+  { name: 'Ice', maxLevel: 3 },
   { name: 'Poison', maxLevel: 3 },
   { name: 'Metal', maxLevel: 3 },
   { name: 'Vampire', maxLevel: 3 },
-  { name: 'Lumière', maxLevel: 3 },
-  { name: 'Epine', maxLevel: 3 },
-  { name: 'Malediction', maxLevel: 3 }
+  { name: 'Light', maxLevel: 3 },
+  { name: 'Thorns', maxLevel: 3 },
+  { name: 'Curse', maxLevel: 3 }
 ];
 
 const TALENT_DEFS = [
-  { name: 'Bottes', maxLevel: 3 },
-  { name: 'Plume', maxLevel: 3 },
-  { name: 'Gants', maxLevel: 3 },
-  { name: 'Raquette', maxLevel: 3 },
-  { name: 'Miroir', maxLevel: 2 },
+  { name: 'Boots', maxLevel: 3 },
+  { name: 'Feather', maxLevel: 3 },
+  { name: 'Gloves', maxLevel: 3 },
+  { name: 'Paddle', maxLevel: 3 },
+  { name: 'Mirror', maxLevel: 2 },
   { name: 'Endurance', maxLevel: 3 },
-  { name: 'Lunette', maxLevel: 3 }
+  { name: 'Scope', maxLevel: 3 }
 ];
 
 const CONFIG = {
@@ -194,7 +194,7 @@ function clamp(value, min, max) {
 
 function clampPaddlePosition() {
   const { paddle } = state;
-  const mirrorLevel = getTalentLevel('Miroir');
+  const mirrorLevel = getTalentLevel('Mirror');
   const halfWidth = paddle.w * 0.5;
   const gap = 8;
   const minOffset = mirrorLevel >= 1 ? -halfWidth - gap : 0;
@@ -337,7 +337,7 @@ function loadPreferences() {
     }
     if (typeof data.autoPlay === 'boolean') {
       state.autoPlay = data.autoPlay;
-      autoBtn.textContent = state.autoPlay ? 'Désactiver auto-visée' : 'Activer auto-visée';
+      autoBtn.textContent = state.autoPlay ? 'Disable auto-aim' : 'Enable auto-aim';
     }
     if (typeof data.commitExpanded === 'boolean') {
       state.commitExpanded = data.commitExpanded;
@@ -497,7 +497,7 @@ function setTimeScale(scale) {
 
 function getBallSpeed(isSpecial) {
   const base = CONFIG.ballSpeed;
-  const plumeLevel = getTalentLevel('Plume');
+  const plumeLevel = getTalentLevel('Feather');
   const mult = 1 + 0.1 * plumeLevel;
   return (isSpecial ? base : base * CONFIG.standardBallSpeedMultiplier) * mult;
 }
@@ -512,26 +512,26 @@ function getMaxLives() {
 }
 
 function getPaddleSpeed() {
-  const level = getTalentLevel('Bottes');
+  const level = getTalentLevel('Boots');
   const mult = 1 + 0.1 * level;
   return CONFIG.paddleSpeed * mult;
 }
 
 function getPaddleMaxSpeed() {
-  const level = getTalentLevel('Bottes');
+  const level = getTalentLevel('Boots');
   const mult = 1 + 0.1 * level;
   return CONFIG.paddleMaxSpeed * mult;
 }
 
 function getCooldowns(nextIsSpecial) {
-  const level = getTalentLevel('Gants');
+  const level = getTalentLevel('Gloves');
   const mult = 1 / (1 + 0.1 * level);
   const base = nextIsSpecial ? CONFIG.specialShotCooldownMs : CONFIG.normalShotCooldownMs;
   return base * mult;
 }
 
 function getPaddleWidth() {
-  const level = getTalentLevel('Raquette');
+  const level = getTalentLevel('Paddle');
   const mult = 1 + 0.2 * level;
   return CONFIG.paddleWidth * mult;
 }
@@ -546,45 +546,45 @@ function getTalentDef(name) {
 
 function getPowerDescription(name) {
   switch (name) {
-    case 'Feu':
+    case 'Fire':
       return {
-        plain: 'Propage les dégâts reçus à 2 briques proches (ex: 3 dégâts deviennent 3x2)',
-        rich: 'Propage les dégâts reçus à <span class="power-desc-accent">2</span> briques proches <span class="power-desc-muted">(ex: <span class="power-desc-accent">3</span> dégâts deviennent <span class="power-desc-accent">3×2</span>)</span>'
+        plain: 'Spreads the hit to 2 nearby bricks (e.g. 3 damage becomes 3x2)',
+        rich: 'Spreads to <span class="power-desc-accent">2</span> nearby bricks <span class="power-desc-muted">(e.g. <span class="power-desc-accent">3</span> damage becomes <span class="power-desc-accent">3×2</span>)</span>'
       };
-    case 'Glace':
+    case 'Ice':
       return {
-        plain: 'Gèle/ralentit la brique pendant 3s (vitesse 0 puis 50%)',
-        rich: 'Gèle/ralentit pendant <span class="power-desc-accent">3s</span> <span class="power-desc-muted">(0% puis 50%)</span>'
+        plain: 'Freezes/slows the brick for 3s (speed 0 then 50%)',
+        rich: 'Freeze/slow for <span class="power-desc-accent">3s</span> <span class="power-desc-muted">(0% then 50%)</span>'
       };
     case 'Poison':
       return {
-        plain: 'Inflige 1 dégât toutes les 1s jusqu’à la mort',
-        rich: 'Inflige <span class="power-desc-accent">1</span> dégât toutes les <span class="power-desc-accent">1s</span> jusqu’à destruction'
+        plain: 'Deals 1 damage every 1s until destruction',
+        rich: 'Deals <span class="power-desc-accent">1</span> damage every <span class="power-desc-accent">1s</span> until destroyed'
       };
     case 'Metal':
       return {
-        plain: 'Dégâts fortement augmentés (+150% : 3 dégâts au lieu de 1)',
-        rich: 'Dégâts <span class="power-desc-accent">+150%</span> <span class="power-desc-muted">(3 au lieu de 1)</span>'
+        plain: 'Greatly increased damage (+150%: 3 damage instead of 1)',
+        rich: 'Damage <span class="power-desc-accent">+150%</span> <span class="power-desc-muted">(3 instead of 1)</span>'
       };
     case 'Vampire':
       return {
-        plain: 'Détruire une brique rend 1 vie (max 1 soin par seconde)',
-        rich: 'Détruire une brique rend <span class="power-desc-accent">+1 vie</span> <span class="power-desc-muted">(max 1/s)</span>'
+        plain: 'Destroying a brick heals 1 life (max 1 heal per second)',
+        rich: 'Destroying a brick heals <span class="power-desc-accent">+1 life</span> <span class="power-desc-muted">(max 1/s)</span>'
       };
-    case 'Lumière':
+    case 'Light':
       return {
-        plain: 'Immobilise la brique touchée et 3 proches pendant 1.5s',
-        rich: 'Immobilise la brique + <span class="power-desc-accent">3 proches</span> pendant <span class="power-desc-accent">1.5s</span>'
+        plain: 'Stuns the hit brick and 3 nearby for 1.5s',
+        rich: 'Stuns hit brick + <span class="power-desc-accent">3 nearby</span> for <span class="power-desc-accent">1.5s</span>'
       };
-    case 'Epine':
+    case 'Thorns':
       return {
-        plain: 'Inflige 1 dégât toutes les 3s pendant 8s max (effet persistant)',
-        rich: 'Inflige <span class="power-desc-accent">1</span> dégât toutes les <span class="power-desc-accent">3s</span> pendant <span class="power-desc-accent">8s</span> max'
+        plain: 'Deals 1 damage every 3s for up to 8s (persistent effect)',
+        rich: 'Deals <span class=\"power-desc-accent\">1</span> damage every <span class=\"power-desc-accent\">3s</span> for up to <span class=\"power-desc-accent\">8s</span>'
       };
-    case 'Malediction':
+    case 'Curse':
       return {
-        plain: 'Inflige 2 dégâts différés après 3s et se propage à une brique proche au bout de 1s si la cible survit',
-        rich: 'Inflige <span class="power-desc-accent">+2</span> dégâts à <span class="power-desc-accent">t+3s</span> et se propage à <span class="power-desc-accent">1 brique proche</span> après <span class="power-desc-accent">1s</span> si la cible est encore en vie'
+        plain: 'Deals 2 delayed damage after 3s and spreads to 1 nearby brick after 1s if the target survives',
+        rich: 'Deals <span class=\"power-desc-accent\">+2</span> damage at <span class=\"power-desc-accent\">t+3s</span> and spreads to <span class=\"power-desc-accent\">1 nearby brick</span> after <span class=\"power-desc-accent\">1s</span> if the target lives'
       };
     default:
       return { plain: '', rich: '' };
@@ -593,40 +593,40 @@ function getPowerDescription(name) {
 
 function getTalentDescription(name) {
   switch (name) {
-    case 'Bottes':
+    case 'Boots':
       return {
-        plain: 'Augmente la vitesse du paddle de 10% par niveau',
-        rich: 'Vitesse du paddle <span class="power-desc-accent">+10%</span> par niveau'
+        plain: 'Increases paddle speed by 10% per level',
+        rich: 'Paddle speed <span class="power-desc-accent">+10%</span> per level'
       };
-    case 'Plume':
+    case 'Feather':
       return {
-        plain: 'Augmente la vitesse des balles de 10% par niveau',
-        rich: 'Vitesse des balles <span class="power-desc-accent">+10%</span> par niveau'
+        plain: 'Increases ball speed by 10% per level',
+        rich: 'Ball speed <span class="power-desc-accent">+10%</span> per level'
       };
-    case 'Gants':
+    case 'Gloves':
       return {
-        plain: 'Augmente la cadence de tir de 10% par niveau',
-        rich: 'Cadence de tir <span class="power-desc-accent">+10%</span> par niveau'
+        plain: 'Increases fire rate by 10% per level',
+        rich: 'Fire rate <span class="power-desc-accent">+10%</span> per level'
       };
-    case 'Raquette':
+    case 'Paddle':
       return {
-        plain: 'Augmente la largeur du paddle de 20% par niveau',
-        rich: 'Largeur du paddle <span class="power-desc-accent">+20%</span> par niveau'
+        plain: 'Increases paddle width by 20% per level',
+        rich: 'Paddle width <span class=\"power-desc-accent\">+20%</span> per level'
       };
-    case 'Miroir':
+    case 'Mirror':
       return {
-        plain: 'Ajoute des demi-paddles : gauche au niveau 1, droite au niveau 2',
-        rich: 'Ajoute des demi-paddles : <span class="power-desc-accent">gauche</span> au Lv1, <span class="power-desc-accent">droite</span> au Lv2'
+        plain: 'Adds half-paddles: left at level 1, right at level 2',
+        rich: 'Adds half-paddles <span class=\"power-desc-accent\">left</span> (Lv1) then <span class=\"power-desc-accent\">right</span> (Lv2)'
       };
     case 'Endurance':
       return {
-        plain: 'Augmente les PV max de 5 par niveau',
-        rich: 'PV max <span class="power-desc-accent">+5</span> par niveau'
+        plain: 'Increases max HP by 5 per level',
+        rich: 'Max HP <span class=\"power-desc-accent\">+5</span> per level'
       };
-    case 'Lunette':
+    case 'Scope':
       return {
-        plain: 'Réduit le cône d’incertitude de 1° par niveau (tir plus précis)',
-        rich: 'Cône d’incertitude <span class="power-desc-accent">-1°</span> par niveau <span class="power-desc-muted">(tir plus précis)</span>'
+        plain: 'Reduces aim jitter cone by 1° per level (more precise shots)',
+        rich: 'Aim jitter cone <span class=\"power-desc-accent\">-1°</span> per level <span class=\"power-desc-muted\">(more precise)</span>'
       };
     default:
       return { plain: '', rich: '' };
@@ -665,9 +665,9 @@ function nextTalentLevel(name) {
 
 function getPowerColor(name) {
   switch (name) {
-    case 'Feu':
+    case 'Fire':
       return 'rgba(255, 215, 0, 0.35)';
-    case 'Glace':
+    case 'Ice':
       return 'rgba(96, 165, 250, 0.35)';
     case 'Poison':
       return 'rgba(52, 211, 153, 0.35)';
@@ -675,11 +675,11 @@ function getPowerColor(name) {
       return 'rgba(226, 232, 240, 0.35)';
     case 'Vampire':
       return 'rgba(239, 68, 68, 0.35)';
-    case 'Lumière':
+    case 'Light':
       return 'rgba(255, 255, 255, 0.35)';
-    case 'Epine':
+    case 'Thorns':
       return 'rgba(120, 72, 48, 0.35)';
-    case 'Malediction':
+    case 'Curse':
       return 'rgba(139, 92, 246, 0.35)';
     default:
       return 'rgba(255,255,255,0.25)';
@@ -688,7 +688,7 @@ function getPowerColor(name) {
 
 function withAimJitter(vx, vy) {
   const angle = Math.atan2(vy, vx);
-  const jitter = degToRad(Math.max(0, CONFIG.aimJitterDeg - getTalentLevel('Lunette')));
+  const jitter = degToRad(Math.max(0, CONFIG.aimJitterDeg - getTalentLevel('Scope')));
   const offset = (Math.random() * 2 - 1) * jitter;
   const speed = Math.hypot(vx, vy);
   const nx = Math.cos(angle + offset);
@@ -899,7 +899,7 @@ function updatePowerPreview(name, labelOverride, kind = 'power') {
   const desc = isPower ? getPowerDescription(name) : getTalentDescription(name);
   const color = isPower ? getPowerColor(name) : 'rgba(148, 163, 184, 0.4)';
   if (powerPreviewName) powerPreviewName.textContent = labelOverride || name;
-  if (powerPreviewDesc) powerPreviewDesc.innerHTML = desc.rich || desc.plain || 'Aucun détail disponible.';
+  if (powerPreviewDesc) powerPreviewDesc.innerHTML = desc.rich || desc.plain || 'No details available.';
   if (powerPreviewIcon) {
     powerPreviewIcon.textContent = name.slice(0, 2).toUpperCase();
     powerPreviewIcon.style.background = color.replace('0.35', '0.55');
@@ -909,7 +909,7 @@ function updatePowerPreview(name, labelOverride, kind = 'power') {
 
 function applyLightStun(target, ball, now) {
   const duration = 1500;
-  const color = getPowerColor('Lumière');
+  const color = getPowerColor('Light');
   const stun = (brick) => {
     brick.freezeUntil = Math.max(brick.freezeUntil || 0, now + duration);
     brick.effectColor = color;
@@ -1434,7 +1434,7 @@ function triggerGameOver() {
   const endedAt = new Date().toISOString();
   state.lastEndedAt = endedAt;
   const payload = {
-    player: state.playerName || 'Anonyme',
+          player: state.playerName || 'Anonymous',
     score: state.score,
     stage: state.level,
     level: state.playerLevel,
@@ -1610,7 +1610,7 @@ function update(dt) {
       if (target) {
         target.curseTick = now + 3000;
         target.curseSpreadAt = now + 1000;
-        target.effectColor = getPowerColor('Malediction');
+        target.effectColor = getPowerColor('Curse');
         target.effectUntil = target.curseTick;
       }
     }
@@ -1621,11 +1621,11 @@ function update(dt) {
     if (!brick.alive) continue;
     if (brick.curseTick && brick.curseTick <= now) {
       brick.curseTick = null;
-      damageBrick(brick, 2, now, 'Malediction');
+      damageBrick(brick, 2, now, 'Curse');
     }
   }
 
-  // Tick Epine (dégâts continus)
+  // Tick Thorns (continuous damage)
   for (const brick of state.bricks) {
     if (!brick.alive || !brick.thornActive) continue;
     if (brick.thornExpire && brick.thornExpire <= now) {
@@ -1636,10 +1636,10 @@ function update(dt) {
     }
     if (brick.thornNextTick && brick.thornNextTick <= now) {
       brick.thornNextTick = now + 3000;
-      // Maintient le halo actif pendant l'effet Epine
-      brick.effectColor = getPowerColor('Epine');
+      // Maintains halo during Thorns effect
+      brick.effectColor = getPowerColor('Thorns');
       brick.effectUntil = brick.thornExpire;
-      damageBrick(brick, 1, now, 'Epine');
+      damageBrick(brick, 1, now, 'Thorns');
     }
   }
 
@@ -1694,7 +1694,7 @@ function update(dt) {
     }
 
     // Paddle
-    const mirrorLevel = getTalentLevel('Miroir');
+    const mirrorLevel = getTalentLevel('Mirror');
     const paddles = [{ x: paddle.x, w: paddle.w }];
     const halfWidth = paddle.w * 0.5;
     const gap = 8;
@@ -1964,11 +1964,11 @@ function renderXpDrops() {
 
 function renderPaddle() {
   const { paddle } = state;
-  const raquetteLv = getTalentLevel('Raquette');
+  const raquetteLv = getTalentLevel('Paddle');
   const baseColor = raquetteLv > 0 ? '#22d3ee' : '#38bdf8';
   ctx.fillStyle = baseColor;
   ctx.fillRect(paddle.x, paddle.y, paddle.w, paddle.h);
-  const mirrorLevel = getTalentLevel('Miroir');
+  const mirrorLevel = getTalentLevel('Mirror');
   const halfWidth = paddle.w * 0.5;
   const gap = 8;
   if (mirrorLevel >= 1) {
@@ -2025,11 +2025,11 @@ function renderBalls() {
     if (ball.returning) {
       ctx.fillStyle = 'rgba(255, 255, 255, 0.35)';
     } else {
-      if (ball.specialPower === 'Feu') {
+      if (ball.specialPower === 'Fire') {
         const blink = (Math.sin(performance.now() / 80) + 1) / 2; // plus rapide
         const alpha = 0.35 + 0.65 * blink;
         ctx.fillStyle = `rgba(255, 215, 0, ${alpha.toFixed(2)})`; // jaune doré
-      } else if (ball.specialPower === 'Glace') {
+      } else if (ball.specialPower === 'Ice') {
         const blink = (Math.sin(performance.now() / 90) + 1) / 2;
         const alpha = 0.35 + 0.65 * blink;
         ctx.fillStyle = `rgba(96, 165, 250, ${alpha.toFixed(2)})`; // bleu lumineux animé
@@ -2045,15 +2045,15 @@ function renderBalls() {
         const blink = (Math.sin(performance.now() / 85) + 1) / 2;
         const alpha = 0.35 + 0.65 * blink;
         ctx.fillStyle = `rgba(239, 68, 68, ${alpha.toFixed(2)})`; // rouge vif animé
-      } else if (ball.specialPower === 'Lumière') {
+      } else if (ball.specialPower === 'Light') {
         const blink = (Math.sin(performance.now() / 80) + 1) / 2;
         const alpha = 0.3 + 0.7 * blink;
         ctx.fillStyle = `rgba(255, 255, 255, ${alpha.toFixed(2)})`; // blanc pulsé
-      } else if (ball.specialPower === 'Epine') {
+      } else if (ball.specialPower === 'Thorns') {
         const blink = (Math.sin(performance.now() / 100) + 1) / 2;
         const alpha = 0.35 + 0.65 * blink;
         ctx.fillStyle = `rgba(120, 72, 48, ${alpha.toFixed(2)})`; // marron pulsé
-      } else if (ball.specialPower === 'Malediction') {
+      } else if (ball.specialPower === 'Curse') {
         const blink = (Math.sin(performance.now() / 90) + 1) / 2;
         const alpha = 0.35 + 0.65 * blink;
         ctx.fillStyle = `rgba(139, 92, 246, ${alpha.toFixed(2)})`; // violet pulsé
@@ -2360,7 +2360,7 @@ init();
 function applyPowerOnHit(ball, brick, now) {
   if (!brick.alive) return;
   const power = ball.specialPower;
-  if (power === 'Glace') {
+  if (power === 'Ice') {
     brick.slowUntil = Math.max(brick.slowUntil || 0, now + 3000); // 3s de gel
     brick.effectColor = getPowerColor(power);
     brick.effectUntil = brick.slowUntil;
@@ -2369,20 +2369,20 @@ function applyPowerOnHit(ball, brick, now) {
     brick.poisonNextTick = now + 1000;
     brick.effectColor = getPowerColor(power);
     brick.effectUntil = Number.POSITIVE_INFINITY;
-  } else if (power === 'Feu') {
+  } else if (power === 'Fire') {
     brick.effectColor = getPowerColor(power);
     brick.effectUntil = now + 3000; // halo feu 3s
   } else if (power === 'Metal') {
     brick.effectColor = getPowerColor(power);
     brick.effectUntil = now + 500;
-  } else if (power === 'Lumière') {
+  } else if (power === 'Light') {
     applyLightStun(brick, ball, now);
-  } else if (power === 'Malediction') {
+  } else if (power === 'Curse') {
     brick.curseTick = now + 3000;
     brick.curseSpreadAt = now + 1000;
     brick.effectColor = getPowerColor(power);
     brick.effectUntil = brick.curseTick;
-  } else if (power === 'Epine') {
+  } else if (power === 'Thorns') {
     brick.thornActive = true;
     brick.thornNextTick = now + 3000;
     brick.thornExpire = now + 8000;
@@ -2422,7 +2422,7 @@ function damageBrick(brick, amount, now, sourcePower = null) {
 }
 
 function applyFireSplash(ball, hitBrick, now, baseDamage) {
-  if (ball.specialPower !== 'Feu') return;
+  if (ball.specialPower !== 'Fire') return;
   const cx = hitBrick.x + hitBrick.w / 2;
   const cy = hitBrick.y + hitBrick.h / 2;
   const candidates = state.bricks
@@ -2442,6 +2442,6 @@ function applyFireSplash(ball, hitBrick, now, baseDamage) {
   const targets = nearest.slice(0, 2);
   for (const { brick } of targets) {
     applyPowerOnHit(ball, brick, now);
-    damageBrick(brick, baseDamage, now, 'Feu');
+    damageBrick(brick, baseDamage, now, 'Fire');
   }
 }
