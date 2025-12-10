@@ -292,7 +292,16 @@
     .time-controls {
       margin-top: 10px;
       display: flex;
-      justify-content: flex-end;
+      justify-content: space-between;
+      gap: 12px;
+    }
+    .time-left {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .time-right {
+      display: flex;
       gap: 8px;
     }
     .time-btn {
@@ -319,9 +328,14 @@
     </header>
     <canvas id="game" width="800" height="600"></canvas>
     <div class="time-controls">
-      <button class="time-btn" data-speed="1" type="button">x1</button>
-      <button class="time-btn" data-speed="2" type="button">x2</button>
-      <button class="time-btn" data-speed="3" type="button">x3</button>
+      <div class="time-left">
+        <button id="auto-toggle" type="button">Activer auto-visée</button>
+      </div>
+      <div class="time-right">
+        <button class="time-btn" data-speed="1" type="button">x1</button>
+        <button class="time-btn" data-speed="2" type="button">x2</button>
+        <button class="time-btn" data-speed="3" type="button">x3</button>
+      </div>
     </div>
     <div class="commits">
       <h3>Commits récents</h3>

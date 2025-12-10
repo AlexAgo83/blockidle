@@ -3,7 +3,7 @@ import buildInfo from './build-info.json';
 const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
 const autoBtn = document.getElementById('auto-toggle');
-const aimToggle = document.getElementById('aim-toggle');
+const aimToggle = null;
 const autoFireToggle = null;
 const powerModalBackdrop = document.getElementById('power-modal-backdrop');
 const powerButtons = Array.from(document.querySelectorAll('.power-btn'));
@@ -1905,19 +1905,15 @@ function renderPaddle() {
 }
 
 function renderAimCone() {
-  if (!state.showAim) return;
+  // La ligne de visée apparaît seulement en manuel (autoPlay off)
+  if (state.autoPlay) return;
   const { paddle } = state;
   const originX = paddle.x + paddle.w / 2;
   const originY = paddle.y;
 
   let targetPoint = null;
-  if (!state.autoPlay && state.aimPos) {
+  if (state.aimPos) {
     targetPoint = { x: state.aimPos.x, y: state.aimPos.y };
-  } else if (state.autoPlay) {
-    const target = selectTargetBrick();
-    if (target) {
-      targetPoint = { x: target.x + target.w / 2, y: target.y + target.h / 2 };
-    }
   }
 
   if (targetPoint) {
@@ -2202,9 +2198,6 @@ function bindControls() {
     state.autoPlay = !state.autoPlay;
     autoBtn.textContent = state.autoPlay ? 'Désactiver auto-visée' : 'Activer auto-visée';
   });
-  aimToggle.addEventListener('change', (event) => {
-    state.showAim = event.target.checked;
-  });
   if (autoFireToggle) {
     autoFireToggle.addEventListener('change', (event) => {
       state.autoFire = event.target.checked;
@@ -2223,16 +2216,47 @@ function bindControls() {
       handleNameSubmit();
     }
   });
-  canvas.addEventListener('click', () => {
-    if (state.ballHeld) launchBall();
-  });
-  canvas.addEventListener('mousemove', (event) => {
+  const updateAim = (clientX, clientY) => {
     const rect = canvas.getBoundingClientRect();
     state.aimPos = {
-      x: ((event.clientX - rect.left) / rect.width) * CONFIG.width,
-      y: ((event.clientY - rect.top) / rect.height) * CONFIG.height
+      x: ((clientX - rect.left) / rect.width) * CONFIG.width,
+      y: ((clientY - rect.top) / rect.height) * CONFIG.height
     };
+  };
+
+  canvas.addEventListener('click', (event) => {
+    if (!state.running) {
+      state.running = true;
+      resetGame();
+      return;
+    }
+    if (state.ballHeld) {
+      updateAim(event.clientX, event.clientY);
+      launchBall();
+    }
   });
+
+  canvas.addEventListener('mousemove', (event) => {
+    updateAim(event.clientX, event.clientY);
+  });
+
+  canvas.addEventListener('touchstart', (event) => {
+    const touch = event.touches[0];
+    if (!touch) return;
+    updateAim(touch.clientX, touch.clientY);
+    if (!state.running) {
+      state.running = true;
+      resetGame();
+      return;
+    }
+    if (state.ballHeld) launchBall();
+  }, { passive: true });
+
+  canvas.addEventListener('touchmove', (event) => {
+    const touch = event.touches[0];
+    if (!touch) return;
+    updateAim(touch.clientX, touch.clientY);
+  }, { passive: true });
 }
 
 function init() {
@@ -2242,7 +2266,6 @@ function init() {
   resetGame();
   const restored = loadSession();
   autoBtn.textContent = state.autoPlay ? 'Désactiver auto-visée' : 'Activer auto-visée';
-  aimToggle.checked = state.showAim;
   if (autoFireToggle) autoFireToggle.checked = state.autoFire;
   if (!savedName && !state.playerName) {
     openNameModal();
