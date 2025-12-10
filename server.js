@@ -122,7 +122,7 @@ app.get('/health', async (_req, res) => {
 });
 
 app.get('/commits', (_req, res) => {
-  exec("git log -n 15 --pretty=format:'%h|%s|%cd' --date=short", { cwd: __dirname }, (err, stdout) => {
+  exec("git log -n 10 --pretty=format:'%h|%s|%cd' --date=short", { cwd: __dirname }, (err, stdout) => {
     if (err) {
       console.error('Erreur git log', err);
       return res.status(500).json({ error: 'Impossible de lire les commits' });
