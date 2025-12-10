@@ -64,7 +64,8 @@ const TALENT_DEFS = [
   { name: 'Gants', maxLevel: 3 },
   { name: 'Raquette', maxLevel: 3 },
   { name: 'Miroir', maxLevel: 2 },
-  { name: 'Endurance', maxLevel: 3 }
+  { name: 'Endurance', maxLevel: 3 },
+  { name: 'Lunette', maxLevel: 3 }
 ];
 
 const CONFIG = {
@@ -622,6 +623,11 @@ function getTalentDescription(name) {
         plain: 'Augmente les PV max de 5 par niveau',
         rich: 'PV max <span class="power-desc-accent">+5</span> par niveau'
       };
+    case 'Lunette':
+      return {
+        plain: 'Réduit le cône d’incertitude de 1° par niveau (tir plus précis)',
+        rich: 'Cône d’incertitude <span class="power-desc-accent">-1°</span> par niveau <span class="power-desc-muted">(tir plus précis)</span>'
+      };
     default:
       return { plain: '', rich: '' };
   }
@@ -682,7 +688,7 @@ function getPowerColor(name) {
 
 function withAimJitter(vx, vy) {
   const angle = Math.atan2(vy, vx);
-  const jitter = degToRad(CONFIG.aimJitterDeg);
+  const jitter = degToRad(Math.max(0, CONFIG.aimJitterDeg - getTalentLevel('Lunette')));
   const offset = (Math.random() * 2 - 1) * jitter;
   const speed = Math.hypot(vx, vy);
   const nx = Math.cos(angle + offset);
