@@ -1889,10 +1889,6 @@ function bindControls() {
       state.autoFire = event.target.checked;
     });
   }
-  debugGameOverBtn?.addEventListener('click', () => {
-    if (state.awaitingName) return;
-    triggerGameOver();
-  });
   playerNameSubmit?.addEventListener('click', handleNameSubmit);
   playerNameInput?.addEventListener('keydown', (event) => {
     if (event.key === 'Enter') {
