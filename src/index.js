@@ -181,9 +181,7 @@ const state = {
   damageByPower: {}
 };
 
-const bonusState = {
-  lastBonus: 0
-};
+const bonusState = {};
 
 function degToRad(deg) {
   return (deg * Math.PI) / 180;
@@ -288,6 +286,7 @@ function normalizeBrick(brick) {
     thornActive: safeBoolean(brick.thornActive, false),
     thornExpire: safeNumber(brick.thornExpire, 0),
     curseTick: safeNumber(brick.curseTick, null),
+    curseSpreadAt: safeNumber(brick.curseSpreadAt, null),
     effectColor: brick.effectColor || null,
     effectUntil: safeNumber(brick.effectUntil, 0)
   };
@@ -402,7 +401,6 @@ function getSessionSnapshot() {
       paddle: state.paddle,
       balls: state.balls,
       bricks: state.bricks,
-      bonus: { lastBonus: bonusState.lastBonus },
       configBallSpeed: CONFIG.ballSpeed,
       gameOverHandled: state.gameOverHandled,
       lastEndedAt: state.lastEndedAt,
@@ -549,8 +547,8 @@ function getPowerDescription(name) {
   switch (name) {
     case 'Feu':
       return {
-        plain: 'Propage les dégâts reçus à 3 briques proches (ex: 3 dégâts deviennent 3x3)',
-        rich: 'Propage les dégâts reçus à <span class="power-desc-accent">3</span> briques proches <span class="power-desc-muted">(ex: <span class="power-desc-accent">3</span> dégâts deviennent <span class="power-desc-accent">3×3</span>)</span>'
+        plain: 'Propage les dégâts reçus à 2 briques proches (ex: 3 dégâts deviennent 3x2)',
+        rich: 'Propage les dégâts reçus à <span class="power-desc-accent">2</span> briques proches <span class="power-desc-muted">(ex: <span class="power-desc-accent">3</span> dégâts deviennent <span class="power-desc-accent">3×2</span>)</span>'
       };
     case 'Glace':
       return {
@@ -559,8 +557,8 @@ function getPowerDescription(name) {
       };
     case 'Poison':
       return {
-        plain: 'Inflige 1 dégât toutes les 2.5s jusqu’à la mort',
-        rich: 'Inflige <span class="power-desc-accent">1</span> dégât toutes les <span class="power-desc-accent">2.5s</span> jusqu’à destruction'
+        plain: 'Inflige 1 dégât toutes les 1s jusqu’à la mort',
+        rich: 'Inflige <span class="power-desc-accent">1</span> dégât toutes les <span class="power-desc-accent">1s</span> jusqu’à destruction'
       };
     case 'Metal':
       return {
@@ -584,8 +582,8 @@ function getPowerDescription(name) {
       };
     case 'Malediction':
       return {
-        plain: 'Inflige 2 dégâts différés après 3s (ex: 1 hit -> +2 dégâts à t+3s)',
-        rich: 'Inflige <span class="power-desc-accent">+2</span> dégâts différés à <span class="power-desc-accent">3s</span> <span class="power-desc-muted">(ex: +2 à t+3s)</span>'
+        plain: 'Inflige 2 dégâts différés après 3s et se propage à une brique proche au bout de 1s si la cible survit',
+        rich: 'Inflige <span class="power-desc-accent">+2</span> dégâts à <span class="power-desc-accent">t+3s</span> et se propage à <span class="power-desc-accent">1 brique proche</span> après <span class="power-desc-accent">1s</span> si la cible est encore en vie'
       };
     default:
       return { plain: '', rich: '' };
@@ -611,8 +609,8 @@ function getTalentDescription(name) {
       };
     case 'Raquette':
       return {
-        plain: 'Augmente la largeur du paddle de 10% par niveau',
-        rich: 'Largeur du paddle <span class="power-desc-accent">+10%</span> par niveau'
+        plain: 'Augmente la largeur du paddle de 20% par niveau',
+        rich: 'Largeur du paddle <span class="power-desc-accent">+20%</span> par niveau'
       };
     case 'Miroir':
       return {
@@ -769,6 +767,7 @@ function tryOpenPowerModal() {
 function handlePowerSelect(powerName) {
   const def = getPowerDef(powerName);
   const existing = state.powers.find((p) => p.name === powerName);
+  let newLevel = 1;
   if (existing) {
     if (existing.level >= def.maxLevel) {
       state.pendingPowerChoices = Math.max(0, state.pendingPowerChoices - 1);
@@ -779,10 +778,13 @@ function handlePowerSelect(powerName) {
       return;
     }
     existing.level = Math.min(existing.level + 1, def.maxLevel);
+    newLevel = existing.level;
   } else {
     state.powers.push({ name: powerName, level: 1 });
   }
-  state.specialPocket.push(powerName);
+  if (newLevel <= 2) {
+    state.specialPocket.push(powerName);
+  }
   state.pendingPowerChoices = Math.max(0, state.pendingPowerChoices - 1);
   powerModalBackdrop.classList.remove('open');
   state.powerModalOpen = false;
@@ -930,7 +932,7 @@ function applyLightStun(target, ball, now) {
 }
 
 function spawnBrickRow() {
-  const { brickCols, brickPadding, brickHeight, brickTopOffset, brickRowFillRate, bonusChance, speedBonusChance } = CONFIG;
+  const { brickCols, brickPadding, brickHeight, brickTopOffset, brickRowFillRate } = CONFIG;
   const { brickWidth, startX } = computeBrickLayout();
 
   // Si un boss est proche du haut, on évite de spawner une rangée pour ne pas chevaucher.
@@ -941,8 +943,6 @@ function spawnBrickRow() {
 
   const bricks = [];
   let spawned = 0;
-  const now = performance.now ? performance.now() : Date.now();
-  const allowBonus = now - bonusState.lastBonus >= CONFIG.bonusCooldownMs;
   const hp = getBrickHP();
   for (let col = 0; col < brickCols; col += 1) {
     if (Math.random() > brickRowFillRate) continue;
@@ -958,13 +958,6 @@ function spawnBrickRow() {
       );
       if (overlapsBoss) continue;
     }
-    const roll = Math.random();
-    let type = 'normal';
-    if (allowBonus && roll < bonusChance) {
-      type = 'bonus';
-    } else if (roll < bonusChance + speedBonusChance) {
-      type = 'speed';
-    }
     bricks.push({
       x,
       y,
@@ -973,7 +966,7 @@ function spawnBrickRow() {
       hue: 200 + state.rowIndex * 12, // couleur figée à la création
       alive: true,
       row: state.rowIndex,
-      type,
+      type: 'normal',
       hp,
       deathTime: null,
       flashTime: null,
@@ -985,6 +978,7 @@ function spawnBrickRow() {
       thornActive: false,
       thornExpire: 0,
       curseTick: null,
+      curseSpreadAt: null,
       effectColor: null,
       effectUntil: 0
     });
@@ -996,13 +990,6 @@ function spawnBrickRow() {
     const col = Math.floor(Math.random() * brickCols);
     const x = startX + col * (brickWidth + brickPadding);
     const y = -brickHeight - brickTopOffset;
-    const roll = Math.random();
-    let type = 'normal';
-    if (allowBonus && roll < bonusChance) {
-      type = 'bonus';
-    } else if (roll < bonusChance + speedBonusChance) {
-      type = 'speed';
-    }
     bricks.push({
       x,
       y,
@@ -1011,7 +998,7 @@ function spawnBrickRow() {
       hue: 200 + state.rowIndex * 12, // couleur figée à la création
       alive: true,
       row: state.rowIndex,
-      type,
+      type: 'normal',
       hp,
       deathTime: null,
       flashTime: null,
@@ -1023,6 +1010,7 @@ function spawnBrickRow() {
       thornActive: false,
       thornExpire: 0,
       curseTick: null,
+      curseSpreadAt: null,
       effectColor: null,
       effectUntil: 0
     });
@@ -1072,6 +1060,7 @@ function spawnBossBrick(level) {
     thornActive: false,
     thornExpire: 0,
     curseTick: null,
+    curseSpreadAt: null,
     effectColor: 'rgba(248, 113, 113, 0.35)',
     effectUntil: Number.POSITIVE_INFINITY
   });
@@ -1138,11 +1127,6 @@ function selectTargetBrick() {
 
   const dangerous = alive.filter((b) => b.y + b.h >= dangerY);
   if (dangerous.length) return dangerous.sort((a, b) => b.y - a.y)[0];
-
-  const bonus = alive.filter((b) => b.type === 'bonus');
-  if (bonus.length) return bonus.sort((a, b) => b.y - a.y)[0];
-  const speed = alive.filter((b) => b.type === 'speed');
-  if (speed.length) return speed.sort((a, b) => b.y - a.y)[0];
 
   return alive.sort((a, b) => b.y - a.y)[0];
 }
@@ -1248,7 +1232,6 @@ function resetGame() {
   state.balls = [];
   state.lastLaunch = 0;
   CONFIG.ballSpeed = BASE_BALL_SPEED;
-  bonusState.lastBonus = 0;
   state.paused = false;
   state.powers = [];
   state.talents = [];
@@ -1596,8 +1579,34 @@ function update(dt) {
   for (const brick of state.bricks) {
     if (!brick.alive || !brick.poisonActive) continue;
     if (brick.poisonNextTick && brick.poisonNextTick <= now) {
-      brick.poisonNextTick = now + 2500;
+      brick.poisonNextTick = now + 1000;
       damageBrick(brick, 1, now, 'Poison');
+    }
+  }
+
+  // Propagation malédiction (si la brique est encore en vie après 1s)
+  for (const brick of state.bricks) {
+    if (!brick.alive) {
+      brick.curseSpreadAt = null;
+      continue;
+    }
+    if (brick.curseSpreadAt && brick.curseSpreadAt <= now) {
+      brick.curseSpreadAt = null;
+      const targets = state.bricks
+        .filter((b) => b !== brick && b.alive)
+        .map((b) => {
+          const dx = (b.x + b.w / 2) - (brick.x + brick.w / 2);
+          const dy = (b.y + b.h / 2) - (brick.y + brick.h / 2);
+          return { b, dist: Math.hypot(dx, dy) };
+        })
+        .sort((a, b) => a.dist - b.dist);
+      const target = targets.length ? targets[0].b : null;
+      if (target) {
+        target.curseTick = now + 3000;
+        target.curseSpreadAt = now + 1000;
+        target.effectColor = getPowerColor('Malediction');
+        target.effectUntil = target.curseTick;
+      }
     }
   }
 
@@ -2351,7 +2360,7 @@ function applyPowerOnHit(ball, brick, now) {
     brick.effectUntil = brick.slowUntil;
   } else if (power === 'Poison') {
     brick.poisonActive = true;
-    brick.poisonNextTick = now + 2500;
+    brick.poisonNextTick = now + 1000;
     brick.effectColor = getPowerColor(power);
     brick.effectUntil = Number.POSITIVE_INFINITY;
   } else if (power === 'Feu') {
@@ -2364,6 +2373,7 @@ function applyPowerOnHit(ball, brick, now) {
     applyLightStun(brick, ball, now);
   } else if (power === 'Malediction') {
     brick.curseTick = now + 3000;
+    brick.curseSpreadAt = now + 1000;
     brick.effectColor = getPowerColor(power);
     brick.effectUntil = brick.curseTick;
   } else if (power === 'Epine') {
@@ -2392,12 +2402,7 @@ function damageBrick(brick, amount, now, sourcePower = null) {
     for (let k = 0; k < xpDropCount; k += 1) {
       spawnXpDrop(brick);
     }
-    if (brick.type === 'bonus') {
-      bonusState.lastBonus = brick.deathTime;
-      spawnRewardBall(brick);
-    } else if (brick.type === 'speed') {
-      applySpeedBoost();
-    }
+    // bonus/speed retirés
     // Effet Vampire : gain de vie si la brique est détruite par une balle Vampire (max 1/s)
     const maxLife = getMaxLives();
     if (amount && state.lastHitSpecial === 'Vampire' && state.lives < maxLife) {
@@ -2428,7 +2433,7 @@ function applyFireSplash(ball, hitBrick, now, baseDamage) {
     const j = Math.floor(Math.random() * (i + 1));
     [nearest[i], nearest[j]] = [nearest[j], nearest[i]];
   }
-  const targets = nearest.slice(0, 3);
+  const targets = nearest.slice(0, 2);
   for (const { brick } of targets) {
     applyPowerOnHit(ball, brick, now);
     damageBrick(brick, baseDamage, now, 'Feu');
