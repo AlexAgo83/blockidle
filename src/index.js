@@ -1614,7 +1614,8 @@ function renderHUD() {
 
   // Liste des pouvoirs acquis (à droite, sous les infos).
   ctx.fillStyle = '#e2e8f0';
-  const powersY = barY + 28;
+  let infoY = barY + 28;
+  const powersY = infoY;
   ctx.fillText('Pouvoirs:', barX, powersY);
   const powerLines = state.powers; // affiche tous
   powerLines.forEach((p, idx) => {
@@ -1628,6 +1629,30 @@ function renderHUD() {
   talentLines.forEach((t, idx) => {
     ctx.fillText(`- ${t.name} (Lv. ${t.level})`, barX, talentsY + 20 + idx * 18);
   });
+
+  // Histogramme dégâts par pouvoir (en bas à droite)
+  const talentsBlockHeight = 20 + talentLines.length * 18;
+  const listBottom = talentsY + talentsBlockHeight;
+  const histY = Math.min(CONFIG.height - 140, listBottom + 30);
+  const histX = barX;
+  const entries = Object.entries(state.damageByPower || {}).sort((a, b) => b[1] - a[1]).slice(0, 6);
+  if (entries.length) {
+    ctx.fillText('Dégâts par pouvoir', histX, histY - 8);
+    const barHeight = 12;
+    const barGap = 8;
+    const maxVal = Math.max(...entries.map(([, v]) => v));
+    entries.forEach(([name, val], idx) => {
+      const y = histY + idx * (barHeight + barGap);
+      const ratio = maxVal > 0 ? val / maxVal : 0;
+      const w = barW * ratio;
+      ctx.fillStyle = 'rgba(255,255,255,0.12)';
+      ctx.fillRect(histX, y, barW, barHeight);
+      ctx.fillStyle = getPowerColor(name) || '#fbbf24';
+      ctx.fillRect(histX, y, w, barHeight);
+      ctx.fillStyle = '#e2e8f0';
+      ctx.fillText(`${name} (${val})`, histX, y - 2);
+    });
+  }
 
   if (!state.running) {
     ctx.fillStyle = 'rgba(0,0,0,0.6)';
