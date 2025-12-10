@@ -541,7 +541,7 @@ function spawnBrickRow() {
   const { brickWidth, startX } = computeBrickLayout();
 
   // Si un boss est proche du haut, on évite de spawner une rangée pour ne pas chevaucher.
-  const boss = state.bricks.find((b) => b.alive && b.type === 'boss');
+  const boss = getAliveBoss();
   if (boss && boss.y < brickHeight * 3) {
     return;
   }
@@ -682,6 +682,19 @@ function spawnBossBrick(level) {
     effectColor: 'rgba(248, 113, 113, 0.35)',
     effectUntil: Number.POSITIVE_INFINITY
   });
+}
+
+function getAliveBoss() {
+  return state.bricks.find((b) => b.alive && b.type === 'boss') || null;
+}
+
+function maybeSpawnBoss() {
+  const boss = getAliveBoss();
+  if (boss) return; // on ne cumule pas les boss
+  if (state.level > state.lastBossLevelSpawned) {
+    spawnBossBrick(state.level);
+    state.lastBossLevelSpawned = state.level;
+  }
 }
 
 function spawnRewardBall(brick) {
@@ -869,10 +882,7 @@ function update(dt) {
     state.speedTimer -= speedInterval;
     state.brickSpeed *= CONFIG.speedIncreaseMultiplier;
     state.level += 1;
-    if (state.level > state.lastBossLevelSpawned) {
-      spawnBossBrick(state.level);
-      state.lastBossLevelSpawned = state.level;
-    }
+    maybeSpawnBoss();
   }
 
   if (!state.ballHeld && (state.ballCount > 0 || state.specialPocket.length > 0)) {
@@ -1464,7 +1474,9 @@ function renderHUD() {
   const availableBalls = state.ballCount + state.specialPocket.length + (state.ballHeld ? 1 : 0);
   const totalBalls = availableBalls + state.balls.length;
   ctx.fillText(`Balles: ${availableBalls}/${totalBalls}`, 14, 68);
-  ctx.fillText(`Vitesse: ${Math.round(CONFIG.ballSpeed)} px/s`, 14, 90);
+  const speedSpecial = Math.round(getBallSpeed(true));
+  const speedNormal = Math.round(getBallSpeed(false));
+  ctx.fillText(`Vitesse: ${speedNormal}/${speedSpecial} px/s`, 14, 90);
   ctx.fillText(`Cadence: ${(1000 / CONFIG.normalShotCooldownMs).toFixed(1)} /s`, 14, 112);
   ctx.fillText(`Cadence spé: ${(1000 / CONFIG.specialShotCooldownMs).toFixed(1)} /s`, 14, 134);
   ctx.fillText(`Briques: ${state.brickSpeed.toFixed(1)} px/s`, 14, 156);
