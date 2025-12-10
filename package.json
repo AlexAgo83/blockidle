@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "dev": "vite",
-    "build": "node scripts/bump-build.js && node -e \"const fs=require('fs'); if(!fs.existsSync('node_modules/vite')){console.log('Installing deps via npm ci...'); require('child_process').execSync('npm ci --include=dev', {stdio:'inherit'});} \" && npm run build:app",
+    "build": "sh -c \"if [ -d .git ]; then git fetch --unshallow --tags || git fetch --tags; fi\" && node scripts/bump-build.js && node -e \"const fs=require('fs'); if(!fs.existsSync('node_modules/vite')){console.log('Installing deps via npm ci...'); require('child_process').execSync('npm ci --include=dev', {stdio:'inherit'});} \" && npm run build:app",
     "build:app": "vite build",
     "preview": "vite preview",
     "start": "node server.js",
