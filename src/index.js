@@ -181,10 +181,6 @@ const bonusState = {
   lastBonus: 0
 };
 
-const WALL = {
-  width: 12
-};
-
 function degToRad(deg) {
   return (deg * Math.PI) / 180;
 }
@@ -204,49 +200,8 @@ function clampPaddlePosition() {
   // Bordures extérieures
   paddle.x = clamp(paddle.x, -minOffset, CONFIG.width - maxOffset);
 
-  // Collision avec les murs internes
-  for (const wall of getWalls()) {
-    const minX = paddle.x + minOffset;
-    const maxX = paddle.x + maxOffset;
-    const overlapsWall = maxX > wall.x && minX < wall.x + wall.w;
-    if (!overlapsWall) continue;
-    // Si le centre du paddle est à gauche du mur, on se cale à gauche, sinon à droite.
-    const center = paddle.x + paddle.w / 2;
-    if (center < wall.x) {
-      paddle.x = wall.x - maxOffset;
-    } else if (center > wall.x + wall.w) {
-      paddle.x = wall.x + wall.w - minOffset;
-    } else {
-      // Si on est "dedans", pousse vers le côté le plus proche.
-      const distLeft = Math.abs(minX - wall.x);
-      const distRight = Math.abs(maxX - (wall.x + wall.w));
-      if (distLeft < distRight) {
-        paddle.x = wall.x - maxOffset;
-      } else {
-        paddle.x = wall.x + wall.w - minOffset;
-      }
-    }
-  }
-
   // Clamp final aux bords après ajustements
   paddle.x = clamp(paddle.x, -minOffset, CONFIG.width - maxOffset);
-}
-
-function clampBallAgainstWalls(ball) {
-  if (!ball) return;
-  for (const wall of getWalls()) {
-    if (ball.x + ball.r <= wall.x || ball.x - ball.r >= wall.x + wall.w) continue;
-    // ball overlaps wall on X; push to nearest side and flip vx to keep it out.
-    const distLeft = Math.abs(ball.x - (wall.x - ball.r));
-    const distRight = Math.abs(ball.x - (wall.x + wall.w + ball.r));
-    if (distLeft < distRight) {
-      ball.x = wall.x - ball.r;
-      if (ball.vx > 0) ball.vx *= -1;
-    } else {
-      ball.x = wall.x + wall.w + ball.r;
-      if (ball.vx < 0) ball.vx *= -1;
-    }
-  }
 }
 
 function computeHudSignature() {
@@ -743,11 +698,6 @@ function computeBrickLayout() {
   const totalWidth = brickCols * brickWidth + brickPadding * (brickCols - 1);
   const startX = (CONFIG.width - totalWidth) / 2;
   return { brickWidth, startX };
-}
-
-function getWalls() {
-  // Murs internes retirés
-  return [];
 }
 
 function getBrickHP() {
@@ -1709,38 +1659,6 @@ function update(dt) {
       ball.vy *= -1;
     }
 
-    // Murs latéraux internes (détection traversée, sans tunnel)
-    for (const wall of getWalls()) {
-      const yOverlap = ball.y + ball.r >= wall.y && ball.y - ball.r <= wall.y + wall.h;
-      if (!yOverlap) continue;
-
-      const crossedFromLeft = prevX + ball.r <= wall.x && ball.x + ball.r >= wall.x && ball.vx > 0;
-      const crossedFromRight = prevX - ball.r >= wall.x + wall.w && ball.x - ball.r <= wall.x + wall.w && ball.vx < 0;
-      const overlappedX = ball.x + ball.r > wall.x && ball.x - ball.r < wall.x + wall.w;
-
-      if (crossedFromLeft || crossedFromRight || overlappedX) {
-        // Choisir le côté le plus proche en fonction de la position précédente
-        if (prevX < wall.x) {
-          ball.x = wall.x - ball.r;
-          ball.vx = -Math.abs(ball.vx);
-        } else if (prevX > wall.x + wall.w) {
-          ball.x = wall.x + wall.w + ball.r;
-          ball.vx = Math.abs(ball.vx);
-        } else {
-          // Si "dedans", pousser vers le côté le plus proche
-          const distLeft = Math.abs((ball.x - ball.r) - wall.x);
-          const distRight = Math.abs((wall.x + wall.w) - (ball.x + ball.r));
-          if (distLeft <= distRight) {
-            ball.x = wall.x - ball.r;
-            ball.vx = -Math.abs(ball.vx);
-          } else {
-            ball.x = wall.x + wall.w + ball.r;
-            ball.vx = Math.abs(ball.vx);
-          }
-        }
-      }
-    }
-
     // Paddle
     const mirrorLevel = getTalentLevel('Miroir');
     const paddles = [{ x: paddle.x, w: paddle.w }];
@@ -1865,16 +1783,6 @@ function renderBackground() {
   gradient.addColorStop(1, 'rgba(59, 130, 246, 0.12)');
   ctx.fillStyle = gradient;
   ctx.fillRect(0, 0, CONFIG.width, CONFIG.height);
-}
-
-function renderWalls() {
-  ctx.fillStyle = 'rgba(148, 163, 184, 0.35)';
-  ctx.strokeStyle = 'rgba(148, 163, 184, 0.6)';
-  ctx.lineWidth = 1.5;
-  for (const wall of getWalls()) {
-    ctx.fillRect(wall.x, wall.y, wall.w, wall.h);
-    ctx.strokeRect(wall.x, wall.y, wall.w, wall.h);
-  }
 }
 
 function renderBricks() {
@@ -2278,7 +2186,6 @@ function renderHUD() {
 
 function render() {
   renderBackground();
-  renderWalls();
   renderBricks();
   renderPaddle();
   renderXpDrops();
