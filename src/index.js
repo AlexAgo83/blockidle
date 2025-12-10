@@ -1425,11 +1425,15 @@ function renderTopScoresPanel() {
   list.slice(0, TOP_LIMIT).forEach((entry, idx) => {
     const e = typeof entry === 'object' ? entry : { score: entry };
     const item = document.createElement('div');
-    item.className = 'commit-item';
-    const line = document.createElement('div');
-    line.className = 'commit-msg';
-    line.textContent = `${idx + 1}. ${(e.player || '???').slice(0, 12)} - ${formatScore(e.score || 0)} pts`;
-    item.appendChild(line);
+    item.className = 'score-item';
+    const name = document.createElement('div');
+    name.className = 'score-player';
+    name.textContent = `${idx + 1}. ${(e.player || '???').slice(0, 12)}`;
+    const pts = document.createElement('div');
+    pts.className = 'score-points';
+    pts.textContent = `${formatScore(e.score || 0)} pts`;
+    item.appendChild(name);
+    item.appendChild(pts);
     scoreListEl.appendChild(item);
   });
 }
