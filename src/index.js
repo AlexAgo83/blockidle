@@ -24,7 +24,9 @@ const POWER_DEFS = [
 const TALENT_DEFS = [
   { name: 'Bottes', maxLevel: 3 },
   { name: 'Plume', maxLevel: 3 },
-  { name: 'Gants', maxLevel: 3 }
+  { name: 'Gants', maxLevel: 3 },
+  { name: 'Raquette', maxLevel: 3 },
+  { name: 'Miroir', maxLevel: 2 }
 ];
 
 const CONFIG = {
@@ -170,6 +172,12 @@ function getCooldowns(nextIsSpecial) {
   return base * mult;
 }
 
+function getPaddleWidth() {
+  const level = getTalentLevel('Raquette');
+  const mult = 1 + 0.1 * level;
+  return CONFIG.paddleWidth * mult;
+}
+
 function getPowerDef(name) {
   return POWER_DEFS.find((p) => p.name === name) || { name, maxLevel: 1 };
 }
@@ -241,6 +249,16 @@ function getTalentDescription(name) {
       return {
         plain: 'Augmente la cadence de tir de 10% par niveau',
         rich: 'Cadence de tir <span class="power-desc-accent">+10%</span> par niveau'
+      };
+    case 'Raquette':
+      return {
+        plain: 'Augmente la largeur du paddle de 10% par niveau',
+        rich: 'Largeur du paddle <span class="power-desc-accent">+10%</span> par niveau'
+      };
+    case 'Miroir':
+      return {
+        plain: 'Ajoute des demi-paddles : gauche au niveau 1, droite au niveau 2',
+        rich: 'Ajoute des demi-paddles : <span class="power-desc-accent">gauche</span> au Lv1, <span class="power-desc-accent">droite</span> au Lv2'
       };
     default:
       return { plain: '', rich: '' };
@@ -758,7 +776,7 @@ function selectTargetBrick() {
 
 function placeBallOnPaddle({ centerPaddle = false, refill = false } = {}) {
   const { paddle, heldBall } = state;
-  paddle.w = CONFIG.paddleWidth;
+  paddle.w = getPaddleWidth();
   paddle.h = CONFIG.paddleHeight;
   if (centerPaddle) {
     paddle.x = (CONFIG.width - paddle.w) / 2;
@@ -1109,13 +1127,21 @@ function update(dt) {
     }
 
     // Paddle
-    const hitPaddle = !ball.returning && (
+    const mirrorLevel = getTalentLevel('Miroir');
+    const paddles = [{ x: paddle.x, w: paddle.w }];
+    const halfWidth = paddle.w * 0.5;
+    const gap = 8;
+    if (mirrorLevel >= 1) paddles.push({ x: paddle.x - halfWidth - gap, w: halfWidth });
+    if (mirrorLevel >= 2) paddles.push({ x: paddle.x + paddle.w + gap, w: halfWidth });
+
+    const hitPaddle = paddles.some((p) => (
+      !ball.returning &&
       ball.y + ball.r >= paddle.y &&
       ball.y - ball.r <= paddle.y + paddle.h &&
-      ball.x >= paddle.x - ball.r &&
-      ball.x <= paddle.x + paddle.w + ball.r &&
+      ball.x >= p.x - ball.r &&
+      ball.x <= p.x + p.w + ball.r &&
       ball.vy > 0
-    );
+    ));
 
     if (hitPaddle) {
       ball.y = paddle.y - ball.r;
@@ -1123,7 +1149,6 @@ function update(dt) {
 
       const speed = Math.hypot(ball.vx, ball.vy);
       if (state.autoPlay) {
-        // Vise le centre de la brique la plus haute encore vivante.
         const target = selectTargetBrick();
         if (target) {
           const tx = target.x + target.w / 2;
@@ -1136,7 +1161,7 @@ function update(dt) {
           const aimed = withAimJitter(nx * speed, ny * speed);
           ball.vx = aimed.vx;
           ball.vy = aimed.vy;
-          if (ball.vy > -40) ball.vy = -Math.abs(ball.vy) - 40; // évite un angle trop plat vers le bas
+          if (ball.vy > -40) ball.vy = -Math.abs(ball.vy) - 40;
         } else {
           const aimed = withAimJitter(ball.vx, -Math.abs(ball.vy));
           ball.vx = aimed.vx;
@@ -1144,7 +1169,8 @@ function update(dt) {
         }
       } else {
         // Ajuste l'angle selon le point d'impact côté joueur.
-        const hitPos = (ball.x - paddle.x) / paddle.w; // 0 -> 1
+        const mainPaddle = paddles[0];
+        const hitPos = (ball.x - mainPaddle.x) / mainPaddle.w; // 0 -> 1 basé sur le paddle principal
         const offset = (hitPos - 0.5) * 2; // -1 -> 1
         const maxAngle = (70 * Math.PI) / 180;
         const angle = offset * maxAngle;
@@ -1319,7 +1345,13 @@ function renderBricks() {
       const spacing = starR * 2.2;
       const total = spacing * (starCount - 1);
       const sy = drawY - starR * 0.3;
-      ctx.fillStyle = `rgba(255, 255, 255, ${0.9 * alpha})`;
+      let starColor = `rgba(255, 255, 255, ${0.9 * alpha})`;
+      if (brick.hp > 10) {
+        starColor = `rgba(239, 68, 68, ${0.9 * alpha})`; // rouge si >10 PV
+      } else if (brick.hp > 5) {
+        starColor = `rgba(59, 130, 246, ${0.9 * alpha})`; // bleu si >5 PV
+      }
+      ctx.fillStyle = starColor;
       for (let i = 0; i < starCount; i += 1) {
         const sx = drawX + drawW / 2 - total / 2 + i * spacing;
         ctx.beginPath();
@@ -1366,8 +1398,21 @@ function renderXpDrops() {
 
 function renderPaddle() {
   const { paddle } = state;
-  ctx.fillStyle = '#38bdf8';
+  const raquetteLv = getTalentLevel('Raquette');
+  const baseColor = raquetteLv > 0 ? '#22d3ee' : '#38bdf8';
+  ctx.fillStyle = baseColor;
   ctx.fillRect(paddle.x, paddle.y, paddle.w, paddle.h);
+  const mirrorLevel = getTalentLevel('Miroir');
+  const halfWidth = paddle.w * 0.5;
+  const gap = 8;
+  if (mirrorLevel >= 1) {
+    ctx.fillStyle = baseColor;
+    ctx.fillRect(paddle.x - halfWidth - gap, paddle.y, halfWidth, paddle.h);
+  }
+  if (mirrorLevel >= 2) {
+    ctx.fillStyle = baseColor;
+    ctx.fillRect(paddle.x + paddle.w + gap, paddle.y, halfWidth, paddle.h);
+  }
 }
 
 function renderAimCone() {
@@ -1669,7 +1714,10 @@ function damageBrick(brick, amount, now) {
     brick.alive = false;
     brick.deathTime = now;
     state.score += 50 + brick.row * 10;
-    spawnXpDrop(brick);
+    const xpDropCount = brick.type === 'boss' ? 5 : 1;
+    for (let k = 0; k < xpDropCount; k += 1) {
+      spawnXpDrop(brick);
+    }
     if (brick.type === 'bonus') {
       bonusState.lastBonus = brick.deathTime;
       spawnRewardBall(brick);
