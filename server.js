@@ -78,7 +78,7 @@ app.post('/scores', async (req, res) => {
   try {
     const result = await pool.query(
       `
-        INSERT INTO scores (player, score, stage, level, ended_at)
+        INSERT INTO scores (player, score, stage, level, ended_at, build)
         VALUES ($1, $2, COALESCE($3, 1), COALESCE($4, 1), $5, $6)
         ON CONFLICT (player)
         DO UPDATE SET

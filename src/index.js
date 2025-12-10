@@ -66,7 +66,7 @@ const TALENT_DEFS = [
 const CONFIG = {
   width: 880,
   height: 1728,
-  paddleWidth: 80,
+  paddleWidth: 160,
   paddleHeight: 16,
   paddleSpeed: 600,
   paddleMaxSpeed: 600, // vitesse max (légèrement supérieure à la balle)
