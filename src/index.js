@@ -102,7 +102,7 @@ const CONFIG = {
   ballSpeedCap: 1500,
   speedIncreaseInterval: 30,
   speedIncreaseMultiplier: 1.05,
-  xpSpeed: 1200,
+  xpSpeed: 2000,
   xpSize: 7,
   maxLives: 10,
   startLives: 10,
@@ -1573,7 +1573,7 @@ function update(dt) {
     const dx = targetX - drop.x;
     const dy = targetY - drop.y;
     const dist = Math.hypot(dx, dy);
-    if (dist < drop.size + 6) {
+    if (dist < drop.size + 16) {
       state.xpDrops.splice(i, 1);
       gainXp(1);
       continue;
