@@ -23,7 +23,7 @@
       flex-direction: column;
       align-items: center;
       gap: 12px;
-      padding-top: 5vh;
+      padding-top: 2.5vh;
     }
     .narrow {
       width: 90vw;
@@ -313,15 +313,25 @@
       margin-top: 10px;
       display: flex;
       justify-content: space-between;
+      flex-wrap: wrap;
       gap: 12px;
     }
     .time-left {
       display: flex;
       align-items: center;
+      flex: 1 1 220px;
       gap: 10px;
+    }
+    #abandon-btn {
+      background: linear-gradient(135deg, #fca5a5, #f87171);
+      color: #0b1223;
+    }
+    #abandon-btn:hover {
+      box-shadow: 0 8px 16px rgba(248, 113, 113, 0.3);
     }
     .time-right {
       display: flex;
+      flex: 1 1 220px;
       justify-content: flex-end;
       gap: 8px;
     }
@@ -340,8 +350,8 @@
     <canvas id="game" width="880" height="1728" class="narrow"></canvas>
     <div class="time-controls narrow">
       <div class="time-left">
-        <button id="auto-toggle" type="button">Activer auto-visée</button>
         <button id="abandon-btn" type="button">Abandonner</button>
+        <button id="auto-toggle" type="button">Activer auto-visée</button>
         <button id="info-btn" type="button">Infos</button>
       </div>
       <div class="time-right">
