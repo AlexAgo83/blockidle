@@ -1282,7 +1282,7 @@ function saveScore(score) {
     const entry = typeof score === 'object'
       ? score
       : {
-          player: state.playerName || 'Anonyme',
+          player: state.playerName || 'Anonymous',
           score,
           stage: state.level,
           level: state.playerLevel,
@@ -1320,9 +1320,9 @@ async function submitScoreToBackend(payload) {
 }
 
 async function fetchTopScoresFromBackend(limit = TOP_LIMIT) {
-  if (scoreListEl) scoreListEl.textContent = 'Chargement...';
+  if (scoreListEl) scoreListEl.textContent = 'Loading...';
   try {
-    const res = await fetch(apiUrl(`/scores?limit=${limit}`));
+    const res = await fetch(apiUrl(`/scores?limit=${limit}`), { headers: authHeaders() });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
     if (Array.isArray(data)) {
@@ -1337,17 +1337,17 @@ async function fetchTopScoresFromBackend(limit = TOP_LIMIT) {
 
 async function fetchCommits() {
   if (!commitListEl) return;
-  commitListEl.textContent = 'Chargement...';
+  commitListEl.textContent = 'Loading...';
   try {
-    const res = await fetch(apiUrl('/commits'));
+    const res = await fetch(apiUrl('/commits'), { headers: authHeaders() });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
-    if (!Array.isArray(data)) throw new Error('format inattendu');
+    if (!Array.isArray(data)) throw new Error('unexpected format');
     state.commitCache = data;
     renderCommitList();
   } catch (err) {
     console.error('fetchCommits failed', err);
-    commitListEl.textContent = 'Impossible de charger les commits.';
+    commitListEl.textContent = 'Unable to load commits.';
   }
 }
 
@@ -1362,7 +1362,7 @@ function renderCommitList() {
   const limit = state.commitExpanded ? 10 : 1;
   const commits = state.commitCache.slice(0, limit);
   if (!commits.length) {
-    commitListEl.textContent = 'Aucun commit.';
+    commitListEl.textContent = 'No commits.';
     return;
   }
   commits.forEach((c) => {
@@ -1392,7 +1392,7 @@ function renderTopScoresPanel() {
     ? state.backendTopScores
     : getTopScores();
   if (!list || list.length === 0) {
-    scoreListEl.textContent = 'Aucun score.';
+    scoreListEl.textContent = 'No scores.';
     return;
   }
   list.slice(0, TOP_LIMIT).forEach((entry, idx) => {
@@ -2085,8 +2085,8 @@ function renderHUD() {
     h.fillStyle = '#7dd3fc';
     h.fillText(`Version: ${BUILD_LABEL}`, leftX, leftY);
     leftY += 26;
-    const displayName = state.playerName ? state.playerName : 'Pseudo ?';
-    h.fillText(`Joueur: ${displayName}`, leftX, leftY);
+    const displayName = state.playerName ? state.playerName : 'Name?';
+    h.fillText(`Player: ${displayName}`, leftX, leftY);
     leftY += 26;
     h.fillStyle = '#e2e8f0';
     h.fillText(`Score: ${formatScore(state.score)}`, leftX, leftY);
@@ -2102,7 +2102,7 @@ function renderHUD() {
     const maxLife = getMaxLives();
     const lifeProgress = Math.min(state.lives / maxLife, 1);
     h.fillStyle = '#34d399';
-    h.fillText(`Vies: ${state.lives}/${maxLife}`, barX, barY - 8);
+    h.fillText(`Lives: ${state.lives}/${maxLife}`, barX, barY - 8);
     h.fillStyle = 'rgba(255,255,255,0.12)';
     h.fillRect(barX, barY, barW, barH);
     h.fillStyle = '#34d399';
@@ -2146,7 +2146,7 @@ function renderHUD() {
     let powersBlockHeight = 0;
     if (powerLines.length) {
       const powersY = infoY;
-      h.fillText('Pouvoirs:', barX, powersY);
+    h.fillText('Powers:', barX, powersY);
       powerLines.forEach((p, idx) => {
         h.fillText(`- ${p.name} (Lv. ${p.level})`, barX, powersY + 20 + idx * 18);
       });
@@ -2159,7 +2159,7 @@ function renderHUD() {
     let talentsY = infoY;
     let talentsBlockHeight = 0;
     if (talentLines.length) {
-      h.fillText('Talents:', barX, talentsY);
+    h.fillText('Talents:', barX, talentsY);
       talentLines.forEach((t, idx) => {
         h.fillText(`- ${t.name} (Lv. ${t.level})`, barX, talentsY + 20 + idx * 18);
       });
@@ -2174,7 +2174,7 @@ function renderHUD() {
     if (entries.length) {
       const labelY = histY;
       const startY = labelY + 32; // plus d'espace avant le premier pouvoir
-      h.fillText('Dégâts par pouvoir', histX, labelY);
+      h.fillText('Damage by power', histX, labelY);
       const barHeight = 8; // même hauteur que les barres de progression
       const barGap = 32; // même spacing vertical que les autres sections
       const maxVal = Math.max(...entries.map(([, v]) => v));
@@ -2198,7 +2198,7 @@ function renderHUD() {
       h.fillRect(0, 0, CONFIG.width, CONFIG.height);
       h.fillStyle = '#e2e8f0';
       h.font = '32px "Segoe UI", sans-serif';
-      h.fillText('Partie terminée - Appuyez sur Entrée pour rejouer', 120, CONFIG.height / 2);
+      h.fillText('Game over - Press Enter to replay', 120, CONFIG.height / 2);
       h.fillText(`Score: ${formatScore(state.score)}`, 120, CONFIG.height / 2 + 36);
     }
   }
@@ -2250,7 +2250,7 @@ function bindControls() {
   });
   autoBtn.addEventListener('click', () => {
     state.autoPlay = !state.autoPlay;
-    autoBtn.textContent = state.autoPlay ? 'Désactiver auto-visée' : 'Activer auto-visée';
+    autoBtn.textContent = state.autoPlay ? 'Disable auto-aim' : 'Enable auto-aim';
     savePreferences();
   });
   if (autoFireToggle) {
@@ -2339,7 +2339,7 @@ function init() {
   resetGame();
   loadPreferences();
   const restored = loadSession();
-  autoBtn.textContent = state.autoPlay ? 'Désactiver auto-visée' : 'Activer auto-visée';
+  autoBtn.textContent = state.autoPlay ? 'Disable auto-aim' : 'Enable auto-aim';
   if (autoFireToggle) autoFireToggle.checked = state.autoFire;
   if (!savedName && !state.playerName) {
     openNameModal();

@@ -350,9 +350,9 @@
     <canvas id="game" width="880" height="1728" class="narrow"></canvas>
     <div class="time-controls narrow">
       <div class="time-left">
-        <button id="abandon-btn" type="button">Abandonner</button>
-        <button id="auto-toggle" type="button">Activer auto-visée</button>
-        <button id="info-btn" type="button">Infos</button>
+        <button id="abandon-btn" type="button">Forfeit</button>
+        <button id="auto-toggle" type="button">Enable auto-aim</button>
+        <button id="info-btn" type="button">Info</button>
       </div>
       <div class="time-right">
         <button class="time-btn" data-speed="1" type="button">x1</button>
@@ -363,7 +363,7 @@
     <div class="commits narrow">
       <div class="commit-header" id="commit-toggle">
         <span class="commit-chevron" id="commit-chevron">▼</span>
-        <h3 class="commit-title">Commits récents</h3>
+        <h3 class="commit-title">Recent commits</h3>
       </div>
       <div id="commit-list"></div>
     </div>
@@ -376,27 +376,27 @@
   </div>
   <div id="info-modal-backdrop" class="modal-backdrop">
     <div class="modal">
-      <h2>Règles du jeu</h2>
-      <p class="subtitle">Déplace la raquette pour lancer la balle et briser les briques… ou laisse moi faire.</p>
+      <h2>Game rules</h2>
+      <p class="subtitle">Move the paddle to launch the ball and break bricks… or let me handle it.</p>
       <ul>
-        <li>Auto-visée : active/désactive l’assistance de tir.</li>
-        <li>Pouvoirs/Talents : choisis des améliorations quand l’interface te les propose.</li>
-        <li>Objectif : ne laisse pas les briques atteindre le bas, gagne des points et des niveaux.</li>
+        <li>Auto-aim: toggle the aim assist.</li>
+        <li>Powers/Talents: pick upgrades when prompted.</li>
+        <li>Goal: don’t let bricks reach the bottom, rack up points and levels.</li>
       </ul>
       <div class="modal-actions">
-        <button id="info-close" type="button">Fermer</button>
+        <button id="info-close" type="button">Close</button>
       </div>
     </div>
   </div>
   <div id="power-modal-backdrop" class="modal-backdrop">
     <div class="modal">
-      <h2>Choisissez un pouvoir</h2>
-      <p class="subtitle">Chaque niveau vous accorde une amélioration. Sélectionnez l’option qui vous convient :</p>
+      <h2>Choose a power</h2>
+      <p class="subtitle">Each level grants you an upgrade. Pick the option you prefer:</p>
       <div class="power-grid">
-        <button class="power-btn" data-power="Pouvoir 1">Pouvoir 1</button>
-        <button class="power-btn" data-power="Pouvoir 2">Pouvoir 2</button>
-        <button class="power-btn" data-power="Pouvoir 3">Pouvoir 3</button>
-        <button class="power-btn" data-power="Pouvoir 4">Pouvoir 4</button>
+        <button class="power-btn" data-power="Pouvoir 1">Power 1</button>
+        <button class="power-btn" data-power="Pouvoir 2">Power 2</button>
+        <button class="power-btn" data-power="Pouvoir 3">Power 3</button>
+        <button class="power-btn" data-power="Pouvoir 4">Power 4</button>
       </div>
       <h3>Talents</h3>
       <div class="talent-grid">
@@ -407,22 +407,22 @@
       <div class="power-preview" id="power-preview">
         <div class="power-preview-icon" id="power-preview-icon">?</div>
         <div class="power-preview-text">
-          <p class="power-preview-name" id="power-preview-name">Pouvoir</p>
-          <p class="power-preview-desc" id="power-preview-desc">Survolez un pouvoir pour voir ses effets.</p>
+          <p class="power-preview-name" id="power-preview-name">Power</p>
+          <p class="power-preview-desc" id="power-preview-desc">Hover or tap a power to see its effects.</p>
         </div>
       </div>
     </div>
   </div>
   <div id="name-modal-backdrop" class="modal-backdrop">
     <div class="modal">
-      <h2>Votre nom</h2>
-      <p class="subtitle">Choisissez un pseudo pour enregistrer vos scores.</p>
+      <h2>Your name</h2>
+      <p class="subtitle">Pick a nickname to save your scores.</p>
       <div class="input-group">
-        <label for="player-name-input">Pseudo</label>
-        <input id="player-name-input" type="text" maxlength="32" placeholder="Ex: BrickMaster" />
+        <label for="player-name-input">Nickname</label>
+        <input id="player-name-input" type="text" maxlength="32" placeholder="e.g., BrickMaster" />
       </div>
       <div class="modal-actions">
-        <button id="player-name-submit" type="button">Commencer</button>
+        <button id="player-name-submit" type="button">Start</button>
       </div>
     </div>
   </div>
