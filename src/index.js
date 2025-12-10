@@ -23,13 +23,29 @@ const commitChevron = document.getElementById('commit-chevron');
 const commitListEl = document.getElementById('commit-list');
 const scoreListEl = document.getElementById('score-list');
 const scoreFilterCheckbox = document.getElementById('score-filter-current');
+const settingsBtn = document.getElementById('settings-btn');
+const settingsModalBackdrop = document.getElementById('settings-modal-backdrop');
+const settingsLeftInput = document.getElementById('key-left');
+const settingsRightInput = document.getElementById('key-right');
+const settingsLaunchInput = document.getElementById('key-launch');
+const settingsSaveBtn = document.getElementById('settings-save');
+const settingsCancelBtn = document.getElementById('settings-cancel');
+const settingsDamageToggle = document.getElementById('toggle-damage-graph');
+const settingsFpsToggle = document.getElementById('toggle-fps');
 const timeButtons = Array.from(document.querySelectorAll('.time-btn'));
 const hudBuffer = document.createElement('canvas');
 const hudCtx = hudBuffer.getContext('2d');
 let hudSignature = null;
+let fpsCounter = 0;
+let fpsLastTime = 0;
 const TOP_LIMIT = 10;
 const BUILD_LABEL = buildInfo?.build ? `b${buildInfo.build}` : 'Old';
 const API_TOKEN = (import.meta?.env?.VITE_API_TOKEN || '').trim() || null;
+const DEFAULT_KEYS = {
+  left: 'ArrowLeft',
+  right: 'ArrowRight',
+  launch: 'Space'
+};
 
 const API_BASE = (() => {
   const envBase = (import.meta?.env?.VITE_API_BASE || '').trim();
@@ -130,6 +146,7 @@ const state = {
     left: false,
     right: false
   },
+  keyBindings: { ...DEFAULT_KEYS },
   paddle: {
     x: 0,
     y: 0,
@@ -179,6 +196,9 @@ const state = {
   commitCache: [],
   filterCurrentBuild: false,
   timeScale: 1,
+  fps: 0,
+  showDamageByPower: true,
+  showFps: true,
   pendingPowerChoices: 0,
   powerModalOpen: false,
   currentPowerOptions: [],
@@ -197,6 +217,27 @@ function degToRad(deg) {
 
 function clamp(value, min, max) {
   return Math.min(Math.max(value, min), max);
+}
+
+function normalizeKeyValue(value) {
+  if (!value) return '';
+  const raw = `${value}`.trim();
+  if (!raw) return '';
+  const lower = raw.toLowerCase();
+  if (raw === ' ') return 'space';
+  if (lower === 'spacebar') return 'space';
+  return lower;
+}
+
+function sanitizeKeyBindings(raw) {
+  const next = { ...DEFAULT_KEYS };
+  if (raw && typeof raw === 'object') {
+    ['left', 'right', 'launch'].forEach((key) => {
+      const val = (raw[key] || '').trim();
+      if (val) next[key] = val;
+    });
+  }
+  return next;
 }
 
 function clampPaddlePosition() {
@@ -229,7 +270,10 @@ function computeHudSignature() {
     playerName: state.playerName,
     powers: state.powers.map((p) => `${p.name}:${p.level}`).join('|'),
     talents: state.talents.map((t) => `${t.name}:${t.level}`).join('|'),
-    damage: dmgEntries.map(([k, v]) => `${k}:${v}`).join('|')
+    damage: dmgEntries.map(([k, v]) => `${k}:${v}`).join('|'),
+    showDamageByPower: state.showDamageByPower,
+    showFps: state.showFps,
+    fps: state.fps
   });
 }
 
@@ -354,6 +398,26 @@ function loadPreferences() {
       state.filterCurrentBuild = data.filterCurrentBuild;
       if (scoreFilterCheckbox) scoreFilterCheckbox.checked = state.filterCurrentBuild;
     }
+    if (typeof data.showDamageByPower === 'boolean') {
+      state.showDamageByPower = data.showDamageByPower;
+      if (settingsDamageToggle) settingsDamageToggle.checked = state.showDamageByPower;
+    } else if (settingsDamageToggle) {
+      settingsDamageToggle.checked = state.showDamageByPower;
+    }
+    if (typeof data.showFps === 'boolean') {
+      state.showFps = data.showFps;
+      if (settingsFpsToggle) settingsFpsToggle.checked = state.showFps;
+    } else if (settingsFpsToggle) {
+      settingsFpsToggle.checked = state.showFps;
+    }
+    if (data.keyBindings) {
+      state.keyBindings = sanitizeKeyBindings(data.keyBindings);
+    }
+    if (settingsLeftInput && settingsRightInput && settingsLaunchInput) {
+      settingsLeftInput.value = state.keyBindings.left;
+      settingsRightInput.value = state.keyBindings.right;
+      settingsLaunchInput.value = state.keyBindings.launch;
+    }
   } catch (_) {
     // ignore parsing/storage errors
   }
@@ -365,7 +429,10 @@ function savePreferences() {
       timeScale: state.timeScale,
       autoPlay: state.autoPlay,
       commitExpanded: state.commitExpanded,
-      filterCurrentBuild: state.filterCurrentBuild
+      filterCurrentBuild: state.filterCurrentBuild,
+      showDamageByPower: state.showDamageByPower,
+      showFps: state.showFps,
+      keyBindings: state.keyBindings
     };
     localStorage.setItem(PREFS_KEY, JSON.stringify(payload));
   } catch (_) {
@@ -493,6 +560,44 @@ function closeInfoModal() {
   if (!state.powerModalOpen && !state.awaitingName) {
     state.paused = false;
   }
+}
+
+function openSettingsModal() {
+  if (!settingsModalBackdrop) return;
+  state.paused = true;
+  settingsLeftInput.value = state.keyBindings.left;
+  settingsRightInput.value = state.keyBindings.right;
+  settingsLaunchInput.value = state.keyBindings.launch;
+  if (settingsDamageToggle) settingsDamageToggle.checked = !!state.showDamageByPower;
+  if (settingsFpsToggle) settingsFpsToggle.checked = !!state.showFps;
+  settingsModalBackdrop.classList.add('open');
+  setTimeout(() => settingsLeftInput?.focus(), 0);
+}
+
+function closeSettingsModal() {
+  if (!settingsModalBackdrop) return;
+  settingsModalBackdrop.classList.remove('open');
+  if (!state.powerModalOpen && !state.awaitingName) {
+    state.paused = false;
+  }
+}
+
+function applySettingsBindings() {
+  const left = (settingsLeftInput?.value || '').trim();
+  const right = (settingsRightInput?.value || '').trim();
+  const launch = (settingsLaunchInput?.value || '').trim();
+  state.keyBindings = sanitizeKeyBindings({
+    left,
+    right,
+    launch
+  });
+  if (settingsDamageToggle) {
+    state.showDamageByPower = !!settingsDamageToggle.checked;
+  }
+  if (settingsFpsToggle) {
+    state.showFps = !!settingsFpsToggle.checked;
+  }
+  savePreferences();
 }
 
 function setTimeScale(scale) {
@@ -2115,6 +2220,12 @@ function renderHUD() {
     leftY += 26;
     h.fillStyle = '#e2e8f0';
     h.fillText(`Score: ${formatScore(state.score)}`, leftX, leftY);
+    leftY += 26;
+    if (state.showFps) {
+      const fpsText = Number.isFinite(state.fps) && state.fps > 0 ? `${state.fps} fps` : '--';
+      h.fillText(`FPS: ${fpsText}`, leftX, leftY);
+      leftY += 26;
+    }
 
     // Barres de progression (ordre: Vies, Stage, Level)
     const barW = 180;
@@ -2196,7 +2307,7 @@ function renderHUD() {
     const histY = Math.min(CONFIG.height - 140, listBottom + 50); // plus d'espace avant l'histogramme
     const histX = barX;
     const entries = Object.entries(state.damageByPower || {}).sort((a, b) => b[1] - a[1]).slice(0, 6);
-    if (entries.length) {
+    if (state.showDamageByPower && entries.length) {
       const labelY = histY;
       const startY = labelY + 32; // plus d'espace avant le premier pouvoir
       h.fillText('Damage by power', histX, labelY);
@@ -2244,9 +2355,19 @@ function render() {
 function loop(timestamp) {
   if (typeof loop.lastTime === 'undefined') {
     loop.lastTime = timestamp;
+    fpsLastTime = timestamp;
   }
   const dt = Math.min((timestamp - loop.lastTime) / 1000, 0.033);
   loop.lastTime = timestamp;
+
+  fpsCounter += 1;
+  const fpsElapsed = timestamp - fpsLastTime;
+  if (fpsElapsed >= 400) {
+    const fps = Math.round((fpsCounter / fpsElapsed) * 1000);
+    state.fps = fps;
+    fpsCounter = 0;
+    fpsLastTime = timestamp;
+  }
 
   const scaledDt = dt * (state.timeScale || 1);
   update(scaledDt);
@@ -2256,22 +2377,34 @@ function loop(timestamp) {
 }
 
 function bindControls() {
+  const isKeyBinding = (event, binding) => {
+    const eventKey = normalizeKeyValue(event?.key || event?.code);
+    const bindingKey = normalizeKeyValue(binding);
+    return !!eventKey && !!bindingKey && eventKey === bindingKey;
+  };
+  const isSettingsOpen = () => settingsModalBackdrop?.classList.contains('open');
+
   window.addEventListener('keydown', (event) => {
-    if (state.awaitingName) return;
-    if (state.ballHeld && (event.code === 'Space' || event.key === 'ArrowUp' || event.key === 'Enter')) {
+    if (state.awaitingName || isSettingsOpen()) return;
+    const keyValue = normalizeKeyValue(event.key || event.code);
+    if (
+      state.ballHeld &&
+      (isKeyBinding(event, state.keyBindings.launch) || keyValue === 'enter' || keyValue === 'arrowup')
+    ) {
       launchBall();
       return;
     }
-    if (event.key === 'ArrowLeft' || event.key === 'q') state.keys.left = true;
-    if (event.key === 'ArrowRight' || event.key === 'd') state.keys.right = true;
-    if (event.key === 'Enter' && !state.running) {
+    if (isKeyBinding(event, state.keyBindings.left)) state.keys.left = true;
+    if (isKeyBinding(event, state.keyBindings.right)) state.keys.right = true;
+    if (keyValue === 'enter' && !state.running) {
       state.running = true;
       resetGame();
     }
   });
   window.addEventListener('keyup', (event) => {
-    if (event.key === 'ArrowLeft' || event.key === 'q') state.keys.left = false;
-    if (event.key === 'ArrowRight' || event.key === 'd') state.keys.right = false;
+    if (isSettingsOpen()) return;
+    if (isKeyBinding(event, state.keyBindings.left)) state.keys.left = false;
+    if (isKeyBinding(event, state.keyBindings.right)) state.keys.right = false;
   });
   autoBtn.addEventListener('click', () => {
     state.autoPlay = !state.autoPlay;
@@ -2293,6 +2426,26 @@ function bindControls() {
   infoModalBackdrop?.addEventListener('click', (event) => {
     if (event.target === infoModalBackdrop) closeInfoModal();
   });
+  settingsBtn?.addEventListener('click', () => openSettingsModal());
+  settingsCancelBtn?.addEventListener('click', () => closeSettingsModal());
+  settingsModalBackdrop?.addEventListener('click', (event) => {
+    if (event.target === settingsModalBackdrop) closeSettingsModal();
+  });
+  settingsSaveBtn?.addEventListener('click', () => {
+    applySettingsBindings();
+    closeSettingsModal();
+  });
+  const captureKey = (input) => {
+    if (!input) return;
+    input.addEventListener('keydown', (event) => {
+      event.preventDefault();
+      const key = event.key === ' ' ? 'Space' : event.key;
+      input.value = key;
+    });
+  };
+  captureKey(settingsLeftInput);
+  captureKey(settingsRightInput);
+  captureKey(settingsLaunchInput);
   timeButtons.forEach((btn) => {
     btn.addEventListener('click', () => {
       const val = Number(btn.dataset.speed) || 1;
