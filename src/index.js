@@ -964,6 +964,7 @@ function resetGame() {
   bonusState.lastBonus = 0;
   state.paused = false;
   state.powers = [];
+  state.talents = [];
   state.specialPocket = [];
   state.pendingPowerChoices = 0;
   state.powerModalOpen = false;
