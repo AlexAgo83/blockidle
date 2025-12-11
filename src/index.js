@@ -779,6 +779,13 @@ function getMaxLives() {
   return CONFIG.maxLives + 5 * getTalentLevel('Endurance');
 }
 
+function clampLivesToMax() {
+  const maxLife = getMaxLives();
+  if (state.lives > maxLife) {
+    state.lives = maxLife;
+  }
+}
+
 function getPaddleSpeed() {
   const level = getTalentLevel('Boots');
   const mult = 1 + 0.1 * level;
@@ -1227,6 +1234,7 @@ function handlePowerSelect(powerName) {
   if (newLevel <= 2) {
     state.specialPocket.push(powerName);
   }
+  clampLivesToMax();
   state.pendingPowerChoices = Math.max(0, state.pendingPowerChoices - 1);
   powerModalBackdrop.classList.remove('open');
   state.powerModalOpen = false;
@@ -1263,6 +1271,7 @@ function handleTalentSelect(talentName) {
     }
     state.pendingPowerChoices = Math.max(0, state.pendingPowerChoices - 1);
   }
+  clampLivesToMax();
   powerModalBackdrop.classList.remove('open');
   state.powerModalOpen = false;
   if (state.pendingPowerChoices > 0) {
