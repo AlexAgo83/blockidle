@@ -395,6 +395,11 @@
       display: grid;
       gap: 4px;
     }
+    .slots-label {
+      font-size: 0.95rem;
+      color: #94a3b8;
+      margin-left: 8px;
+    }
     .catalog-item h4 {
       margin: 0;
       font-size: 1rem;
@@ -525,6 +530,7 @@
         <li>Fire: manual mode lets you aim and launch; auto-aim fires for you.</li>
         <li>Powers: each level offers a power or upgrade; marked balls apply it on hit.</li>
         <li>Talents: passive bonuses (speed, paddle width, precision, etc.).</li>
+        <li>Slots: max 4 powers and 4 talents; fusions can replace ingredients to fit.</li>
         <li>Fusions: some pairs at level 3 unlock a Fusion (e.g., Fire + Light → Sun) and taking it consumes the ingredients.</li>
       </ul>
       <div class="modal-actions">
@@ -552,14 +558,14 @@
     <div class="modal">
       <h2>Choose a power</h2>
       <p class="subtitle">Each level grants you an upgrade. Pick the option you prefer:</p>
-      <h3>Powers</h3>
+      <h3>Powers <span id="power-slots-label" class="slots-label"></span></h3>
       <div class="power-grid">
         <button class="power-btn" data-power="Fire">Fire</button>
         <button class="power-btn" data-power="Poison">Poison</button>
         <button class="power-btn" data-power="Metal">Metal</button>
         <button class="power-btn" data-power="Ice">Ice</button>
       </div>
-      <h3>Talents</h3>
+      <h3>Talents <span id="talent-slots-label" class="slots-label"></span></h3>
       <div class="talent-grid">
         <button class="talent-btn" data-talent="Boots">Boots</button>
         <button class="talent-btn" data-talent="Feather">Feather</button>

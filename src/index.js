@@ -38,6 +38,8 @@ const settingsSaveBtn = document.getElementById('settings-save');
 const settingsCancelBtn = document.getElementById('settings-cancel');
 const settingsDamageToggle = document.getElementById('toggle-damage-graph');
 const settingsFpsToggle = document.getElementById('toggle-fps');
+const powerSlotsLabel = document.getElementById('power-slots-label');
+const talentSlotsLabel = document.getElementById('talent-slots-label');
 const timeButtons = Array.from(document.querySelectorAll('.time-btn'));
 const hudBuffer = document.createElement('canvas');
 const hudCtx = hudBuffer.getContext('2d');
@@ -52,6 +54,8 @@ const DEFAULT_KEYS = {
   right: 'ArrowRight',
   launch: 'Space'
 };
+const MAX_POWERS = 4;
+const MAX_TALENTS = 4;
 const formatDesc = (desc) => desc?.plain || desc?.rich || '';
 
 const API_BASE = (() => {
@@ -994,6 +998,17 @@ function getFusionDef(name) {
   return FUSION_DEFS.find((f) => f.name === name);
 }
 
+function isTalentName(name) {
+  return TALENT_DEFS.some((t) => t.name === name);
+}
+
+function fusionKind(fusion) {
+  if (!fusion?.fusion) return 'power';
+  const ingredients = fusion.ingredients || [];
+  const allTalents = ingredients.length > 0 && ingredients.every(isTalentName);
+  return allTalents ? 'talent' : 'power';
+}
+
 function hasFusionIngredients(fusion) {
   if (!fusion || !Array.isArray(fusion.ingredients)) return false;
   return fusion.ingredients.every((n) => {
@@ -1011,6 +1026,7 @@ function getTalentLevel(name) {
 function canUpgradePower(name) {
   const def = getPowerDef(name);
   const fusion = getFusionDef(name);
+  if (fusion && fusionKind(fusion) === 'talent') return false;
   if (fusion && !hasFusionIngredients(fusion)) return false;
   return getPowerLevel(name) < def.maxLevel;
 }
@@ -1120,8 +1136,13 @@ function gainXp(amount) {
 
 function tryOpenPowerModal() {
   if (state.powerModalOpen || state.pendingPowerChoices <= 0) return;
-  const availablePowers = ALL_POWER_DEFS.map((p) => p.name).filter((name) => canUpgradePower(name));
-  const availableTalents = TALENT_DEFS.map((t) => t.name).filter((name) => canUpgradeTalent(name));
+  const availablePowers = ALL_POWER_DEFS
+    .filter((p) => fusionKind(p) === 'power')
+    .map((p) => p.name)
+    .filter((name) => canUpgradePower(name));
+  const availableTalents = [...TALENT_DEFS, ...FUSION_DEFS.filter((f) => fusionKind(f) === 'talent')]
+    .map((t) => t.name)
+    .filter((name) => canUpgradeTalent(name));
 
   if (!availablePowers.length && !availableTalents.length) {
     state.pendingPowerChoices = 0;
@@ -1142,6 +1163,12 @@ function tryOpenPowerModal() {
 function handlePowerSelect(powerName) {
   const def = getPowerDef(powerName);
   const existing = state.powers.find((p) => p.name === powerName);
+  const fusion = getFusionDef(powerName);
+  if (fusion && fusionKind(fusion) === 'talent') return; // route talent fusions elsewhere
+  const powerCount = state.powers.length;
+  const consumedPower = fusion ? fusion.ingredients.filter((n) => !isTalentName(n)).length : 0;
+  if (!existing && !fusion && powerCount >= MAX_POWERS) return;
+  if (!existing && fusion && powerCount - consumedPower + 1 > MAX_POWERS) return;
   let newLevel = 1;
   if (existing) {
     if (existing.level >= def.maxLevel) {
@@ -1156,7 +1183,6 @@ function handlePowerSelect(powerName) {
     newLevel = existing.level;
   } else {
     state.powers.push({ name: powerName, level: 1 });
-    const fusion = getFusionDef(powerName);
     if (fusion && Array.isArray(fusion.ingredients)) {
       // Consumes ingredients when picking the fusion
       state.powers = state.powers.filter((p) => !fusion.ingredients.includes(p.name));
@@ -1181,6 +1207,13 @@ function handlePowerSelect(powerName) {
 function handleTalentSelect(talentName) {
   const def = getTalentDef(talentName);
   const existing = state.talents.find((t) => t.name === talentName);
+  const fusion = getFusionDef(talentName);
+  const kind = fusion ? fusionKind(fusion) : 'talent';
+  if (fusion && kind !== 'talent') return; // should be handled as power fusion
+  const talentCount = state.talents.length;
+  const consumedTalents = fusion ? fusion.ingredients.filter((n) => isTalentName(n)).length : 0;
+  if (!existing && !fusion && talentCount >= MAX_TALENTS) return;
+  if (!existing && fusion && talentCount - consumedTalents + 1 > MAX_TALENTS) return;
   if (existing) {
     if (existing.level >= def.maxLevel) {
       state.pendingPowerChoices = Math.max(0, state.pendingPowerChoices - 1);
@@ -1190,6 +1223,10 @@ function handleTalentSelect(talentName) {
     }
   } else {
     state.talents.push({ name: talentName, level: 1 });
+    if (fusion && Array.isArray(fusion.ingredients)) {
+      state.powers = state.powers.filter((p) => !fusion.ingredients.includes(p.name));
+      state.talents = state.talents.filter((t) => !fusion.ingredients.includes(t.name));
+    }
     state.pendingPowerChoices = Math.max(0, state.pendingPowerChoices - 1);
   }
   powerModalBackdrop.classList.remove('open');
@@ -1261,6 +1298,10 @@ function renderPowerModal(powerOptions, talentOptions) {
 
   const firstPower = powerOptions && powerOptions.find(Boolean);
   const firstTalent = talentOptions && talentOptions.find(Boolean);
+  const powerSlots = `${state.powers.length}/${MAX_POWERS} slots`;
+  const talentSlots = `${state.talents.length}/${MAX_TALENTS} slots`;
+  if (powerSlotsLabel) powerSlotsLabel.textContent = powerSlots;
+  if (talentSlotsLabel) talentSlotsLabel.textContent = talentSlots;
   if (firstPower) {
     const label = powerButtons.find((b) => b.dataset.power === firstPower)?.textContent || firstPower;
     updatePowerPreview(firstPower, label, 'power', getFusionDef(firstPower));
@@ -2929,6 +2970,8 @@ init();
 function applyPowerOnHit(ball, brick, now) {
   if (!brick.alive) return;
   const power = ball.specialPower;
+  const fusion = getFusionDef(power);
+  if (fusion && fusionKind(fusion) === 'talent') return; // shouldn't be on power balls
   if (power === 'Ice') {
     brick.slowUntil = Math.max(brick.slowUntil || 0, now + 3000); // 3s de gel
     brick.effectColor = getPowerColor(power);
