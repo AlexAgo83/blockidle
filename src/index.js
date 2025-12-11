@@ -1,4 +1,5 @@
 import buildInfo from './build-info.json';
+import { loadImage } from './assets.js';
 
 const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
@@ -46,6 +47,8 @@ const hudCtx = hudBuffer.getContext('2d');
 let hudSignature = null;
 let fpsCounter = 0;
 let fpsLastTime = 0;
+let paddleSprite = null;
+let paddleSpriteReady = false;
 const TOP_LIMIT = 10;
 const BUILD_LABEL = buildInfo?.build ? `b${buildInfo.build}` : 'Old';
 const API_TOKEN = (import.meta?.env?.VITE_API_TOKEN || '').trim() || null;
@@ -2535,8 +2538,28 @@ function renderPaddle() {
   const { paddle } = state;
   const raquetteLv = getTalentLevel('Paddle');
   const baseColor = raquetteLv > 0 ? '#22d3ee' : '#38bdf8';
-  ctx.fillStyle = baseColor;
-  ctx.fillRect(paddle.x, paddle.y, paddle.w, paddle.h);
+  const drawSprite = (x, w, h) => {
+    const img = paddleSprite;
+    const targetW = w;
+    const targetH = h * 2; // allow some height beyond paddle
+    const scale = Math.min(targetW / img.width, targetH / img.height);
+    const drawW = targetW;
+    const drawH = img.height * (drawW / img.width);
+    const dx = x;
+    const dy = paddle.y + (h - drawH) / 2;
+    ctx.drawImage(img, dx, dy, drawW, drawH);
+  };
+
+  if (paddleSpriteReady && paddleSprite) {
+    // Draw base paddle underneath for collision visibility
+    ctx.fillStyle = baseColor;
+    ctx.fillRect(paddle.x, paddle.y, paddle.w, paddle.h);
+    drawSprite(paddle.x, paddle.w, paddle.h);
+  } else {
+    ctx.fillStyle = baseColor;
+    ctx.fillRect(paddle.x, paddle.y, paddle.w, paddle.h);
+  }
+
   const mirrorLevel = getTalentLevel('Mirror');
   const halfWidth = paddle.w * 0.5;
   const gap = 8;
@@ -2980,6 +3003,15 @@ function bindControls() {
 }
 
 function init() {
+  loadImage('paddle.png')
+    .then((img) => {
+      paddleSprite = img;
+      paddleSpriteReady = true;
+    })
+    .catch(() => {
+      console.warn('Paddle sprite failed to load, using default shape.');
+      paddleSpriteReady = false;
+    });
   resizeCanvas();
   bindControls();
   window.addEventListener('resize', () => {

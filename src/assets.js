@@ -5,8 +5,19 @@
 
 const cache = new Map();
 
+function buildUrl(name) {
+  try {
+    // Try bundled asset path (src/assets)
+    return new URL(`./assets/${name}`, import.meta.url).href;
+  } catch (e) {
+    // Fallback to public assets
+    const base = (import.meta?.env?.BASE_URL || '/').replace(/\/?$/, '/');
+    return `${base}assets/${name}`;
+  }
+}
+
 export function loadImage(name) {
-  const url = `/assets/${name}`;
+  const url = buildUrl(name);
   if (cache.has(url)) return cache.get(url);
   const promise = new Promise((resolve, reject) => {
     const img = new Image();
