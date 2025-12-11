@@ -209,7 +209,10 @@ const TALENT_DEFS = [
   { name: 'Paddle', maxLevel: 3 },
   { name: 'Mirror', maxLevel: 2 },
   { name: 'Endurance', maxLevel: 3 },
-  { name: 'Scope', maxLevel: 3 }
+  { name: 'Scope', maxLevel: 3 },
+  { name: 'Momentum', maxLevel: 3 },
+  { name: 'Resilience', maxLevel: 3 },
+  { name: 'Surge', maxLevel: 3 }
 ];
 
 const CONFIG = {
@@ -961,6 +964,21 @@ function getTalentDescription(name) {
       return {
         plain: 'Reduces aim jitter cone by 1° per level (more precise shots)',
         rich: 'Aim jitter cone <span class=\"power-desc-accent\">-1°</span> per level <span class=\"power-desc-muted\">(more precise)</span>'
+      };
+    case 'Momentum':
+      return {
+        plain: 'After each rebound, ball speed +5% per level (resets on next launch)',
+        rich: 'After each rebound, ball speed <span class=\"power-desc-accent\">+5%</span> per level <span class=\"power-desc-muted\">(resets on next launch)</span>'
+      };
+    case 'Resilience':
+      return {
+        plain: 'After losing a life: 1s invulnerable, paddle speed +10% for 4s (+1s per level)',
+        rich: 'After losing a life: <span class=\"power-desc-accent\">1s</span> invulnerable, paddle speed <span class=\"power-desc-accent\">+10%</span> for <span class=\"power-desc-accent\">4s</span> <span class=\"power-desc-muted\">(+1s per level)</span>'
+      };
+    case 'Surge':
+      return {
+        plain: 'On new stage: ball speed +15% for 3s (+1s per level)',
+        rich: 'On stage start: ball speed <span class=\"power-desc-accent\">+15%</span> for <span class=\"power-desc-accent\">3s</span> <span class=\"power-desc-muted\">(+1s per level)</span>'
       };
     default:
       return { plain: '', rich: '' };
@@ -1999,20 +2017,20 @@ function update(dt) {
 
   // Tick poison sur les briques
   for (const brick of state.bricks) {
-    if (!brick.alive || !brick.poisonActive) continue;
-    if (brick.poisonNextTick && brick.poisonNextTick <= now) {
-      brick.poisonNextTick = now + 1000;
-      damageBrick(brick, 1, now, 'Poison');
-      if (brick.leechActive) {
-        const maxLife = getMaxLives();
-        if (state.lives < maxLife) {
-          state.lives = Math.min(maxLife, state.lives + 0.5);
-        }
+  if (!brick.alive || !brick.poisonActive) continue;
+  if (brick.poisonNextTick && brick.poisonNextTick <= now) {
+    brick.poisonNextTick = now + 1000;
+    damageBrick(brick, 1, now, 'Poison');
+    if (brick.leechActive) {
+      const maxLife = getMaxLives();
+      if (state.lives < maxLife) {
+        state.lives = Math.min(maxLife, state.lives + 0.5);
       }
     }
   }
+}
 
-  // Propagation malédiction (si la brique est encore en vie après 1s)
+// Propagation malédiction (si la brique est encore en vie après 1s)
   for (const brick of state.bricks) {
     if (!brick.alive) {
       brick.curseSpreadAt = null;
