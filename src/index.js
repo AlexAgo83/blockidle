@@ -1027,6 +1027,7 @@ function hasPowerSlotFor(name) {
   const fusion = getFusionDef(name);
   const kind = fusion ? fusionKind(fusion) : 'power';
   if (kind === 'talent') return false;
+  if (getPowerLevel(name) > 0) return true; // upgrading existing power ignores slot cap
   const powerCount = state.powers.length;
   if (!fusion) return powerCount < MAX_POWERS;
   const consumed = fusion.ingredients.filter((n) => !isTalentName(n)).length;
@@ -1037,6 +1038,7 @@ function hasTalentSlotFor(name) {
   const fusion = getFusionDef(name);
   const kind = fusion ? fusionKind(fusion) : 'talent';
   if (kind !== 'talent') return false;
+  if (getTalentLevel(name) > 0) return true; // upgrading existing talent ignores slot cap
   const talentCount = state.talents.length;
   if (!fusion) return talentCount < MAX_TALENTS;
   const consumed = fusion.ingredients.filter((n) => isTalentName(n)).length;
