@@ -1023,16 +1023,41 @@ function getTalentLevel(name) {
   return existing ? existing.level : 0;
 }
 
+function hasPowerSlotFor(name) {
+  const fusion = getFusionDef(name);
+  const kind = fusion ? fusionKind(fusion) : 'power';
+  if (kind === 'talent') return false;
+  const powerCount = state.powers.length;
+  if (!fusion) return powerCount < MAX_POWERS;
+  const consumed = fusion.ingredients.filter((n) => !isTalentName(n)).length;
+  return powerCount - consumed + 1 <= MAX_POWERS;
+}
+
+function hasTalentSlotFor(name) {
+  const fusion = getFusionDef(name);
+  const kind = fusion ? fusionKind(fusion) : 'talent';
+  if (kind !== 'talent') return false;
+  const talentCount = state.talents.length;
+  if (!fusion) return talentCount < MAX_TALENTS;
+  const consumed = fusion.ingredients.filter((n) => isTalentName(n)).length;
+  return talentCount - consumed + 1 <= MAX_TALENTS;
+}
+
 function canUpgradePower(name) {
   const def = getPowerDef(name);
   const fusion = getFusionDef(name);
   if (fusion && fusionKind(fusion) === 'talent') return false;
   if (fusion && !hasFusionIngredients(fusion)) return false;
+  if (!hasPowerSlotFor(name)) return false;
   return getPowerLevel(name) < def.maxLevel;
 }
 
 function canUpgradeTalent(name) {
   const def = getTalentDef(name);
+  const fusion = getFusionDef(name);
+  if (fusion && fusionKind(fusion) !== 'talent') return false;
+  if (fusion && !hasFusionIngredients(fusion)) return false;
+  if (!hasTalentSlotFor(name)) return false;
   return getTalentLevel(name) < def.maxLevel;
 }
 
