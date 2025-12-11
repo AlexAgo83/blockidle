@@ -3057,7 +3057,8 @@ function init() {
 }
 
 init();
-function applyPowerOnHit(ball, brick, now) {
+function applyPowerOnHit(ball, brick, now, options = {}) {
+  const { allowSplash = true } = options;
   if (!brick.alive) return;
   const power = ball.specialPower;
   const fusion = getFusionDef(power);
@@ -3276,7 +3277,9 @@ function applyPowerOnHit(ball, brick, now) {
     brick.curseSpreadAt = now + 800;
     brick.effectColor = getPowerColor(power);
     brick.effectUntil = brick.curseTick;
-    applyFireSplash({ ...ball, specialPower: 'Plaguefire' }, brick, now, getBallBaseDamage(ball));
+    if (allowSplash) {
+      applyFireSplash({ ...ball, specialPower: 'Plaguefire' }, brick, now, getBallBaseDamage(ball));
+    }
     const cx = brick.x + brick.w / 2;
     const cy = brick.y + brick.h / 2;
     const targets = state.bricks
@@ -3356,7 +3359,7 @@ function applyFireSplash(ball, hitBrick, now, baseDamage) {
   }
   const targets = nearest.slice(0, 2);
   for (const { brick } of targets) {
-    applyPowerOnHit(ball, brick, now);
+    applyPowerOnHit(ball, brick, now, { allowSplash: false });
     damageBrick(brick, baseDamage, now, sourcePower);
   }
 }
