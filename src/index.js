@@ -834,8 +834,8 @@ function getPowerDescription(name) {
       };
     case 'Light':
       return {
-        plain: 'Stuns the hit brick and 3 nearby for 1.5s',
-        rich: 'Stuns hit brick + <span class="power-desc-accent">3 nearby</span> for <span class="power-desc-accent">1.5s</span>'
+        plain: 'Stuns the hit brick and 3 nearby for 0.75s',
+        rich: 'Stuns hit brick + <span class="power-desc-accent">3 nearby</span> for <span class="power-desc-accent">0.75s</span>'
       };
     case 'Thorns':
       return {
@@ -849,8 +849,8 @@ function getPowerDescription(name) {
       };
     case 'Sun':
       return {
-        plain: 'Fusion of Fire + Light: spreads to 2 nearby bricks and stuns the hit brick plus 3 nearby for 1.5s',
-        rich: '<strong>Fusion</strong> of <span class="power-desc-accent">Fire + Light</span>: spreads to <span class="power-desc-accent">2</span> nearby bricks and stuns the target + <span class="power-desc-accent">3 nearby</span> for <span class="power-desc-accent">1.5s</span>'
+        plain: 'Fusion of Fire + Light: spreads to 2 nearby bricks and stuns the hit brick plus 3 nearby for 0.75s',
+        rich: '<strong>Fusion</strong> of <span class="power-desc-accent">Fire + Light</span>: spreads to <span class="power-desc-accent">2</span> nearby bricks and stuns the target + <span class="power-desc-accent">3 nearby</span> for <span class="power-desc-accent">0.75s</span>'
       };
     case 'Tundra':
       return {
@@ -869,8 +869,8 @@ function getPowerDescription(name) {
       };
     case 'Prism':
       return {
-        plain: 'Fusion of Light + Ice: stuns the target and chains a light stun to 2 nearby',
-        rich: '<strong>Fusion</strong> of <span class="power-desc-accent">Light + Ice</span>: stuns target and chains to <span class="power-desc-accent">2 nearby</span>'
+        plain: 'Fusion of Light + Ice: stuns the target and chains a short stun to 2 nearby',
+        rich: '<strong>Fusion</strong> of <span class="power-desc-accent">Light + Ice</span>: stuns target and chains a brief stun to <span class="power-desc-accent">2 nearby</span>'
       };
     case 'Spikes':
       return {
@@ -1363,7 +1363,7 @@ function updatePowerPreview(name, labelOverride, kind = 'power', fusionDef = nul
 }
 
 function applyLightStun(target, ball, now) {
-  const duration = 1500;
+  const duration = 750;
   const color = getPowerColor('Light');
   const stun = (brick) => {
     brick.freezeUntil = Math.max(brick.freezeUntil || 0, now + duration);
@@ -2714,16 +2714,26 @@ function renderHUD() {
     h.strokeRect(barX, barY, barW, barH);
     h.fillText(`${Math.floor(state.xp)}/${state.xpNeeded}`, barX + barW - 70, barY - 8);
 
-    // Liste des pouvoirs acquis (à droite, sous les infos).
+    // Liste des pouvoirs acquis (à droite, sous les infos) avec léger fond.
     h.fillStyle = '#e2e8f0';
     let infoY = barY + 36; // espace accru au-dessus de la liste des pouvoirs
+    const panelWidth = 220;
+    const panelX = barX - 10;
     const powerLines = state.powers; // affiche tous
     let powersBlockHeight = 0;
     if (powerLines.length) {
       const powersY = infoY;
-    h.fillText('Powers:', barX, powersY);
+      const blockH = 26 + powerLines.length * 18;
+      h.fillStyle = 'rgba(15,23,42,0.55)';
+      h.fillRect(panelX, powersY - 22, panelWidth, blockH);
+      h.strokeStyle = 'rgba(148,163,184,0.35)';
+      h.strokeRect(panelX, powersY - 22, panelWidth, blockH);
+      h.fillStyle = '#e2e8f0';
+      h.fillText('Powers:', barX, powersY);
       powerLines.forEach((p, idx) => {
-        h.fillText(`- ${p.name} (Lv. ${p.level})`, barX, powersY + 20 + idx * 18);
+        const def = getPowerDef(p.name);
+        const label = p.level >= def.maxLevel ? 'MAX' : `Lv. ${p.level}`;
+        h.fillText(`- ${p.name} (${label})`, barX, powersY + 20 + idx * 18);
       });
       powersBlockHeight = 20 + powerLines.length * 18;
       infoY += powersBlockHeight + 10;
@@ -2734,9 +2744,17 @@ function renderHUD() {
     let talentsY = infoY;
     let talentsBlockHeight = 0;
     if (talentLines.length) {
-    h.fillText('Talents:', barX, talentsY);
+      const blockH = 26 + talentLines.length * 18;
+      h.fillStyle = 'rgba(15,23,42,0.55)';
+      h.fillRect(panelX, talentsY - 22, panelWidth, blockH);
+      h.strokeStyle = 'rgba(148,163,184,0.35)';
+      h.strokeRect(panelX, talentsY - 22, panelWidth, blockH);
+      h.fillStyle = '#e2e8f0';
+      h.fillText('Talents:', barX, talentsY);
       talentLines.forEach((t, idx) => {
-        h.fillText(`- ${t.name} (Lv. ${t.level})`, barX, talentsY + 20 + idx * 18);
+        const def = getTalentDef(t.name);
+        const label = t.level >= def.maxLevel ? 'MAX' : `Lv. ${t.level}`;
+        h.fillText(`- ${t.name} (${label})`, barX, talentsY + 20 + idx * 18);
       });
       talentsBlockHeight = 20 + talentLines.length * 18;
     }
@@ -3091,7 +3109,7 @@ function applyPowerOnHit(ball, brick, now) {
   } else if (power === 'Prism') {
     applyLightStun(brick, ball, now);
     brick.effectColor = getPowerColor(power);
-    brick.effectUntil = now + 1500;
+    brick.effectUntil = now + 800;
     const cx = brick.x + brick.w / 2;
     const cy = brick.y + brick.h / 2;
     const targets = state.bricks
@@ -3106,7 +3124,7 @@ function applyPowerOnHit(ball, brick, now) {
     for (const { b } of targets) {
       applyLightStun(b, ball, now);
       b.effectColor = getPowerColor(power);
-      b.effectUntil = now + 1200;
+      b.effectUntil = now + 600;
     }
   } else if (power === 'Spikes') {
     // On-hit bonus damage and later paddle reflect handled elsewhere
@@ -3114,7 +3132,7 @@ function applyPowerOnHit(ball, brick, now) {
     brick.effectUntil = now + 600;
     damageBrick(brick, 1, now, 'Spikes');
   } else if (power === 'Aurora') {
-    applyLightStun(brick, ball, now + 1000); // extend stun
+    applyLightStun(brick, ball, now + 500); // shorter extension
     brick.curseTick = now + 3000;
     brick.curseSpreadAt = now + 1000;
     brick.effectColor = getPowerColor(power);
