@@ -766,6 +766,10 @@ function getBallSpeed(isSpecial) {
   return (isSpecial ? base : base * CONFIG.standardBallSpeedMultiplier) * mult;
 }
 
+function getBallBaseDamage(ball) {
+  return ball?.specialPower === 'Metal' ? 3 : 1;
+}
+
 function getBallRadius(isSpecial) {
   const base = CONFIG.ballRadius;
   return isSpecial ? base : base * CONFIG.standardBallRadiusMultiplier;
