@@ -3042,9 +3042,7 @@ function renderPaddle() {
   };
 
   if (paddleSpriteReady && paddleSprite) {
-    // Draw base paddle underneath for collision visibility
-    ctx.fillStyle = baseColor;
-    ctx.fillRect(paddle.x, paddle.y, paddle.w, paddle.h);
+    // Draw only the sprite for the main paddle; collision uses geometry, not fill.
     drawSprite(paddle.x, paddle.w, paddle.h);
   } else {
     ctx.fillStyle = baseColor;
@@ -3510,7 +3508,7 @@ function bindControls() {
 
 function init() {
   warnMissingMediaMappings();
-  loadImage('paddle.png')
+  loadImage('bl_paddle_cp.png')
     .then((img) => {
       paddleSprite = img;
       paddleSpriteReady = true;
