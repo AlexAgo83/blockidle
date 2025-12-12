@@ -411,7 +411,7 @@ const state = {
   scoreSubmitted: false,
   commitExpanded: false,
   commitCache: [],
-  filterCurrentBuild: false,
+  filterCurrentBuild: true,
   filterMyScores: false,
   scoreSort: 'score',
   timeScale: 1,
