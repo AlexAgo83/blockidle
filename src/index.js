@@ -104,6 +104,7 @@ const FUSION_SPRITES = [
   'fusion-plaguefire.png'
 ];
 const TOP_LIMIT = Infinity;
+const PASS_LIMIT_PER_MODAL = 3;
 const BUILD_LABEL = 'b20';
 const API_TOKEN = (
   import.meta?.env?.VITE_API_TOKEN ||
@@ -423,6 +424,7 @@ const state = {
   currentPowerOptions: [],
   currentTalentOptions: [],
   currentSelection: null, // { kind: 'power'|'talent', name }
+  passRemaining: PASS_LIMIT_PER_MODAL,
   lastHitSpecial: null,
   lastVampireHeal: 0,
   lastBossLevelSpawned: 0,
@@ -1473,7 +1475,9 @@ function handlePowerPass() {
   if (!state.powerModalOpen || state.pendingPowerChoices <= 0) {
     return;
   }
+  if (state.passRemaining <= 0) return;
   state.currentSelection = null;
+  state.passRemaining = Math.max(0, state.passRemaining - 1);
   state.pendingPowerChoices = Math.max(0, state.pendingPowerChoices - 1);
   closePowerModal();
   if (state.pendingPowerChoices > 0) {
@@ -1491,9 +1495,17 @@ function closePowerModal() {
   powerButtons.forEach((btn) => btn.classList.remove('selected'));
   talentButtons.forEach((btn) => btn.classList.remove('selected'));
   if (powerConfirmBtn) powerConfirmBtn.disabled = true;
+  if (powerPassBtn) {
+    powerPassBtn.disabled = state.passRemaining <= 0;
+    powerPassBtn.textContent = `Pass (${state.passRemaining})`;
+  }
 }
 
 function renderPowerModal(powerOptions, talentOptions) {
+  if (powerPassBtn) {
+    powerPassBtn.disabled = state.passRemaining <= 0;
+    powerPassBtn.textContent = `Pass (${state.passRemaining})`;
+  }
   powerButtons.forEach((btn, idx) => {
     const power = powerOptions[idx];
     if (power) {
@@ -1945,6 +1957,7 @@ function resetGame() {
   state.currentPowerOptions = [];
   state.currentTalentOptions = [];
   state.lastHitSpecial = null;
+  state.passRemaining = PASS_LIMIT_PER_MODAL;
   state.lastVampireHeal = 0;
   state.lastBossLevelSpawned = 0;
   state.damageByPower = {};
