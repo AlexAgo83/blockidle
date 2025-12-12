@@ -1,0 +1,9 @@
+node_modules
+dist
+backend/dist
+coverage
+npm-debug.log
+Dockerfile.frontend
+Dockerfile.backend
+.git
+.gitignore
