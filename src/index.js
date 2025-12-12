@@ -276,6 +276,13 @@ const FUSION_DEFS = [
     fusion: true,
     ingredients: ['Wind', 'Scope'],
     color: 'rgba(94, 234, 212, 0.5)'
+  },
+  {
+    name: 'Cyclone',
+    maxLevel: 1,
+    fusion: true,
+    ingredients: ['Wind', 'Curse'],
+    color: 'rgba(52, 211, 153, 0.5)'
   }
 ];
 const ALL_POWER_DEFS = [...POWER_DEFS, ...FUSION_DEFS];
@@ -1091,6 +1098,11 @@ function getPowerDescription(name) {
       return {
         plain: 'Fusion of Wind + Scope: pierces 3 bricks with light auto-steer, then snaps back faster',
         rich: '<strong>Fusion</strong> of <span class="power-desc-accent">Wind + Scope</span>: pierces <span class="power-desc-accent">3 bricks</span> with light auto-steer, then <span class="power-desc-accent">snaps back faster</span>'
+      };
+    case 'Cyclone':
+      return {
+        plain: 'Fusion of Wind + Curse: pierces 3 bricks, curses each pierced brick (+2 dmg after 2s), then snaps back fast',
+        rich: '<strong>Fusion</strong> of <span class="power-desc-accent">Wind + Curse</span>: pierces <span class="power-desc-accent">3 bricks</span>, curses pierced bricks (<span class="power-desc-accent">+2 dmg @2s</span>), then <span class="power-desc-accent">snaps back fast</span>'
       };
     default:
       return { plain: '', rich: '' };
@@ -1951,7 +1963,7 @@ function launchBall() {
     vy,
     returning: false,
     specialPower,
-    windPierceLeft: specialPower === 'Wind' || specialPower === 'Jetstream' ? 3 : 0
+    windPierceLeft: specialPower === 'Wind' || specialPower === 'Jetstream' || specialPower === 'Cyclone' ? 3 : 0
   });
 }
 
@@ -3085,7 +3097,7 @@ function update(dt) {
         damageBrick(brick, damage, now, ball.specialPower || null);
         applyFireSplash(ball, brick, now, damage);
 
-        if ((ball.specialPower === 'Wind' || ball.specialPower === 'Jetstream') && ball.windPierceLeft !== undefined) {
+        if ((ball.specialPower === 'Wind' || ball.specialPower === 'Jetstream' || ball.specialPower === 'Cyclone') && ball.windPierceLeft !== undefined) {
           if (ball.lastWindBrick === brick && ball.lastWindHit && now - ball.lastWindHit < 20) {
             // Already pierced this brick this frame; skip further processing.
           } else {
@@ -3104,7 +3116,7 @@ function update(dt) {
             ball.y = brick.y + brick.h + ball.r + 0.1;
           }
           if (ball.windPierceLeft <= 0 && !ball.returning) {
-            const snapSpeed = ball.specialPower === 'Jetstream' ? 0.8 : 0.5;
+            const snapSpeed = ball.specialPower === 'Jetstream' || ball.specialPower === 'Cyclone' ? 0.8 : 0.5;
             redirectBallToPaddle(ball, snapSpeed);
           }
           continue;
@@ -3873,6 +3885,7 @@ function applyPowerOnHit(ball, brick, now, options = {}) {
   const fusion = getFusionDef(power);
   if (fusion && fusionKind(fusion) === 'talent') return; // shouldn't be on power balls
   const isJetstream = power === 'Jetstream';
+  const isCyclone = power === 'Cyclone';
   if (power === 'Ice') {
     brick.slowUntil = Math.max(brick.slowUntil || 0, now + 3000); // 3s de gel
     brick.effectColor = getPowerColor(power);
@@ -4106,6 +4119,11 @@ function applyPowerOnHit(ball, brick, now, options = {}) {
       b.effectColor = getPowerColor(power);
       b.effectUntil = b.curseTick;
     }
+  } else if (power === 'Cyclone') {
+    // Apply a short curse on pierced bricks.
+    brick.curseTick = now + 2000;
+    brick.effectColor = getPowerColor(power);
+    brick.effectUntil = brick.curseTick;
   }
 }
 
