@@ -8,6 +8,9 @@ import enLocale from './locales/en.json';
 import frLocale from './locales/fr.json';
 import esLocale from './locales/es.json';
 import { loadImage, preloadAssets } from './assets.js';
+import { buildSettingsModal } from './ui/organisms/settings-modal.js';
+
+buildSettingsModal();
 
 const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
@@ -483,6 +486,7 @@ function setAutoButtonLabel() {
 function applyTranslations() {
   const lang = state.language || 'en';
   const locale = LOCALES[lang] || LOCALES.en;
+  if (!locale) return;
   document.querySelectorAll('[data-i18n]').forEach((el) => {
     const key = el.dataset.i18n;
     const val = t(key);
@@ -703,19 +707,25 @@ function loadPreferences() {
       state.autoPlay = data.autoPlay;
       setAutoButtonLabel();
     }
-  if (typeof data.commitExpanded === 'boolean') {
-    state.commitExpanded = data.commitExpanded;
-    updateCommitChevron();
-  }
-  if (typeof data.topScoresExpanded === 'boolean') {
-    state.topScoresExpanded = data.topScoresExpanded;
-    updateScoreChevron();
-  }
-  if (typeof data.suggestionExpanded === 'boolean') {
-    state.suggestionExpanded = data.suggestionExpanded;
-    updateSuggestionChevron();
-    updateSuggestionVisibility();
-  }
+    if (typeof data.language === 'string' && ['en', 'fr', 'es'].includes(data.language)) {
+      state.language = data.language;
+      if (languageSelect) languageSelect.value = state.language;
+    } else if (languageSelect) {
+      languageSelect.value = state.language;
+    }
+    if (typeof data.commitExpanded === 'boolean') {
+      state.commitExpanded = data.commitExpanded;
+      updateCommitChevron();
+    }
+    if (typeof data.topScoresExpanded === 'boolean') {
+      state.topScoresExpanded = data.topScoresExpanded;
+      updateScoreChevron();
+    }
+    if (typeof data.suggestionExpanded === 'boolean') {
+      state.suggestionExpanded = data.suggestionExpanded;
+      updateSuggestionChevron();
+      updateSuggestionVisibility();
+    }
     if (typeof data.filterCurrentBuild === 'boolean') {
       state.filterCurrentBuild = data.filterCurrentBuild;
       if (scoreFilterCheckbox) scoreFilterCheckbox.checked = state.filterCurrentBuild;
@@ -760,14 +770,15 @@ function savePreferences() {
     const payload = {
       timeScale: state.timeScale,
       autoPlay: state.autoPlay,
+      language: state.language,
       commitExpanded: state.commitExpanded,
       topScoresExpanded: state.topScoresExpanded,
-    suggestionExpanded: state.suggestionExpanded,
-    filterCurrentBuild: state.filterCurrentBuild,
-    filterMyScores: state.filterMyScores,
-    scoreSort: state.scoreSort,
-    showDamageByPower: state.showDamageByPower,
-    showFps: state.showFps,
+      suggestionExpanded: state.suggestionExpanded,
+      filterCurrentBuild: state.filterCurrentBuild,
+      filterMyScores: state.filterMyScores,
+      scoreSort: state.scoreSort,
+      showDamageByPower: state.showDamageByPower,
+      showFps: state.showFps,
       keyBindings: state.keyBindings
     };
     localStorage.setItem(PREFS_KEY, JSON.stringify(payload));

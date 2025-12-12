@@ -125,6 +125,10 @@
       width: min(90vw, 360px);
       box-shadow: 0 16px 40px rgba(0, 0, 0, 0.4);
     }
+    .modal-body {
+      display: grid;
+      gap: 12px;
+    }
     .modal h2 {
       margin: 0 0 6px;
       font-size: 1.25rem;
@@ -355,6 +359,11 @@
     .settings-modal {
       display: grid;
       gap: 12px;
+    }
+    .form-field {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
     }
     .settings-grid {
       display: grid;
@@ -754,40 +763,6 @@
       <p class="subtitle" data-i18n="score.ok_body">Your score was submitted successfully.</p>
       <div class="modal-actions">
         <button id="score-ok-close" type="button" data-i18n="score.ok_close">Close</button>
-      </div>
-    </div>
-  </div>
-  <div id="settings-modal-backdrop" class="modal-backdrop">
-    <div class="modal settings-modal">
-      <h2 data-i18n="settings.title">Settings</h2>
-      <p class="subtitle" data-i18n="settings.subtitle">Customize your keys for movement and launch.</p>
-      <div class="settings-grid">
-        <label for="key-left" data-i18n="settings.move_left">Move left</label>
-        <input id="key-left" type="text" maxlength="20" placeholder="e.g., ArrowLeft or A" />
-        <label for="key-right" data-i18n="settings.move_right">Move right</label>
-        <input id="key-right" type="text" maxlength="20" placeholder="e.g., ArrowRight or D" />
-        <label for="key-launch" data-i18n="settings.launch_ball">Launch ball</label>
-        <input id="key-launch" type="text" maxlength="20" placeholder="e.g., Space" />
-      </div>
-      <label class="settings-option">
-        <input id="toggle-damage-graph" type="checkbox" />
-        <span data-i18n="settings.show_damage">Show damage by power</span>
-      </label>
-      <label class="settings-option">
-        <input id="toggle-fps" type="checkbox" />
-        <span data-i18n="settings.show_fps">Show FPS</span>
-      </label>
-      <label class="settings-option">
-        <span data-i18n="settings.language">Language</span>
-        <select id="language-select">
-          <option value="en" data-i18n="settings.lang_en">English</option>
-          <option value="fr" data-i18n="settings.lang_fr">Français</option>
-          <option value="es" data-i18n="settings.lang_es">Español</option>
-        </select>
-      </label>
-      <div class="modal-actions">
-        <button id="settings-cancel" type="button" data-i18n="settings.cancel">Cancel</button>
-        <button id="settings-save" type="button" data-i18n="settings.save">Save</button>
       </div>
     </div>
   </div>
