@@ -155,7 +155,9 @@ const POWER_DEFS = [
   { name: 'Light', maxLevel: 3 },
   { name: 'Thorns', maxLevel: 3 },
   { name: 'Curse', maxLevel: 3 },
-  { name: 'Wind', maxLevel: 3 }
+  { name: 'Wind', maxLevel: 3 },
+  { name: 'Beamline', maxLevel: 3 },
+  { name: 'Pillar', maxLevel: 3 }
 ];
 const FUSION_DEFS = [
   {
@@ -283,6 +285,13 @@ const FUSION_DEFS = [
     fusion: true,
     ingredients: ['Wind', 'Curse'],
     color: 'rgba(52, 211, 153, 0.5)'
+  },
+  {
+    name: 'Crossfire',
+    maxLevel: 1,
+    fusion: true,
+    ingredients: ['Beamline', 'Pillar'],
+    color: 'rgba(250, 204, 21, 0.5)'
   }
 ];
 const ALL_POWER_DEFS = [...POWER_DEFS, ...FUSION_DEFS];
@@ -443,10 +452,13 @@ const state = {
   lastHitSpecial: null,
   lastVampireHeal: 0,
   lastBossLevelSpawned: 0,
-  damageByPower: {}
+  damageByPower: {},
+  beamCooldown: {},
+  beamEffects: []
 };
 
 const bonusState = {};
+const beamCooldownMs = 1000;
 
 function degToRad(deg) {
   return (deg * Math.PI) / 180;
@@ -1014,6 +1026,16 @@ function getPowerDescription(name) {
         plain: 'Ball pierces up to 3 bricks then returns to the paddle (1 hit per brick)',
         rich: 'Ball pierces <span class="power-desc-accent">up to 3 bricks</span> then returns to the paddle <span class="power-desc-muted">(1 hit per brick)</span>'
       };
+    case 'Beamline':
+      return {
+        plain: 'On hit: spawns a horizontal laser that hits all bricks on that row (1 dmg, 1s cooldown)',
+        rich: 'On hit: fires a <span class="power-desc-accent">horizontal laser</span> hitting all bricks on that row <span class="power-desc-muted">(1 dmg, 1s cd)</span>'
+      };
+    case 'Pillar':
+      return {
+        plain: 'On hit: spawns a vertical laser that hits all bricks on that column (1 dmg, 1s cooldown)',
+        rich: 'On hit: fires a <span class="power-desc-accent">vertical laser</span> hitting all bricks on that column <span class="power-desc-muted">(1 dmg, 1s cd)</span>'
+      };
     case 'Sun':
       return {
         plain: 'Fusion of Fire + Light: spreads to 2 nearby bricks and stuns the hit brick plus 3 nearby for 0.75s',
@@ -1103,6 +1125,11 @@ function getPowerDescription(name) {
       return {
         plain: 'Fusion of Wind + Curse: pierces 3 bricks, curses each pierced brick (+2 dmg after 2s), then snaps back fast',
         rich: '<strong>Fusion</strong> of <span class="power-desc-accent">Wind + Curse</span>: pierces <span class="power-desc-accent">3 bricks</span>, curses pierced bricks (<span class="power-desc-accent">+2 dmg @2s</span>), then <span class="power-desc-accent">snaps back fast</span>'
+      };
+    case 'Crossfire':
+      return {
+        plain: 'Fusion of Beamline + Pillar: fires both horizontal and vertical lasers on hit (1 dmg, 1s cooldown)',
+        rich: '<strong>Fusion</strong> of <span class="power-desc-accent">Beamline + Pillar</span>: fires <span class="power-desc-accent">horizontal + vertical</span> lasers on hit <span class="power-desc-muted">(1 dmg, 1s cd)</span>'
       };
     default:
       return { plain: '', rich: '' };
@@ -1261,6 +1288,10 @@ function getPowerColor(name) {
   switch (name) {
     case 'Wind':
       return 'rgba(125, 211, 252, 0.35)';
+    case 'Beamline':
+      return 'rgba(94, 234, 212, 0.35)';
+    case 'Pillar':
+      return 'rgba(192, 132, 252, 0.35)';
     case 'Fire':
       return 'rgba(255, 215, 0, 0.35)';
     case 'Ice':
@@ -1981,6 +2012,29 @@ function redirectBallToPaddle(ball, speedScale = 0.5) {
   ball.reward = false;
 }
 
+function fireLaser(powerName, brick, now, modes = []) {
+  if (!Array.isArray(modes) || modes.length === 0) return;
+  const last = state.beamCooldown[powerName] || 0;
+  if (now - last < beamCooldownMs) return;
+  state.beamCooldown[powerName] = now;
+  const dmg = getBallBaseDamage({ specialPower: powerName }) + Math.max(0, getPowerLevel(powerName) - 1);
+  const cx = brick.x + brick.w / 2;
+  const cy = brick.y + brick.h / 2;
+  const color = getPowerColor(powerName);
+  const duration = 200;
+  for (const mode of modes) {
+    if (mode === 'h') {
+      const targets = state.bricks.filter((b) => b.alive && b !== brick && cy >= b.y && cy <= b.y + b.h);
+      targets.forEach((b) => damageBrick(b, dmg, now, powerName));
+      state.beamEffects.push({ mode: 'h', y: cy, color, until: now + duration });
+    } else if (mode === 'v') {
+      const targets = state.bricks.filter((b) => b.alive && b !== brick && cx >= b.x && cx <= b.x + b.w);
+      targets.forEach((b) => damageBrick(b, dmg, now, powerName));
+      state.beamEffects.push({ mode: 'v', x: cx, color, until: now + duration });
+    }
+  }
+}
+
 function resetGame() {
   state.score = 0;
   const maxLife = getMaxLives();
@@ -2013,6 +2067,8 @@ function resetGame() {
   state.lastVampireHeal = 0;
   state.lastBossLevelSpawned = 0;
   state.damageByPower = {};
+  state.beamCooldown = {};
+  state.beamEffects = [];
   state.backendTopScores = [];
   state.gameOverHandled = false;
   state.lastEndedAt = null;
@@ -3152,6 +3208,29 @@ function renderBackground() {
   ctx.fillRect(0, 0, CONFIG.width, CONFIG.height);
 }
 
+function renderBeams(timeNow) {
+  if (!state.beamEffects) state.beamEffects = [];
+  state.beamEffects = state.beamEffects.filter((beam) => beam.until > timeNow);
+  if (!state.beamEffects.length) return;
+  ctx.save();
+  ctx.globalAlpha = 0.8;
+  ctx.lineWidth = 4;
+  ctx.lineCap = 'round';
+  state.beamEffects.forEach((beam) => {
+    ctx.strokeStyle = beam.color || 'rgba(94,234,212,0.7)';
+    ctx.beginPath();
+    if (beam.mode === 'h') {
+      ctx.moveTo(0, beam.y);
+      ctx.lineTo(CONFIG.width, beam.y);
+    } else if (beam.mode === 'v') {
+      ctx.moveTo(beam.x, 0);
+      ctx.lineTo(beam.x, CONFIG.height);
+    }
+    ctx.stroke();
+  });
+  ctx.restore();
+}
+
 function renderBricks() {
   const timeNow = performance.now ? performance.now() : Date.now();
   const hueShift = (timeNow / 50) % 360; // variation progressive des teintes
@@ -3631,8 +3710,10 @@ function renderHUD() {
 }
 
 function render() {
+  const timeNow = performance.now ? performance.now() : Date.now();
   renderBackground();
   renderBricks();
+  renderBeams(timeNow);
   renderPaddle();
   renderXpDrops();
   renderAimCone();
@@ -4124,6 +4205,12 @@ function applyPowerOnHit(ball, brick, now, options = {}) {
     brick.curseTick = now + 2000;
     brick.effectColor = getPowerColor(power);
     brick.effectUntil = brick.curseTick;
+  } else if (power === 'Beamline') {
+    fireLaser(power, brick, now, ['h']);
+  } else if (power === 'Pillar') {
+    fireLaser(power, brick, now, ['v']);
+  } else if (power === 'Crossfire') {
+    fireLaser(power, brick, now, ['h', 'v']);
   }
 }
 

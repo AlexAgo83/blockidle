@@ -73,7 +73,10 @@ const MEDIA_LIST = [
   { name: 'Shard', imageUrl: fusionShard, color: '#7dd3fc' },
   { name: 'Plaguefire', imageUrl: fusionPlaguefire, color: '#f97316' },
   { name: 'Jetstream', imageUrl: null, color: '#5eead4' },
-  { name: 'Cyclone', imageUrl: null, color: '#34d399' }
+  { name: 'Cyclone', imageUrl: null, color: '#34d399' },
+  { name: 'Beamline', imageUrl: null, color: '#5eead4' },
+  { name: 'Pillar', imageUrl: null, color: '#c084fc' },
+  { name: 'Crossfire', imageUrl: null, color: '#facc15' }
 ];
 
 export const MEDIA_BY_NAME = MEDIA_LIST.reduce((acc, media) => {
