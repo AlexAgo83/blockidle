@@ -70,6 +70,23 @@ test('POST /scores succeeds with valid API key', async () => {
   assert.equal(res.body.score, 1);
 });
 
+test('POST /scores sanitizes player name', async () => {
+  const res = await api
+    .post('/scores')
+    .set('X-API-Key', 'testkey')
+    .send({ player: '  $$A   B!!', score: 5, stage: 1, level: 1 });
+  assert.equal(res.status, 200);
+  assert.equal(res.body.player, 'A B');
+});
+
+test('POST /scores rejects empty after sanitize', async () => {
+  const res = await api
+    .post('/scores')
+    .set('X-API-Key', 'testkey')
+    .send({ player: '!!!!', score: 1, stage: 1, level: 1 });
+  assert.equal(res.status, 400);
+});
+
 test('POST /suggestions succeeds with valid API key', async () => {
   const res = await api
     .post('/suggestions')

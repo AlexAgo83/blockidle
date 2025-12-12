@@ -42,6 +42,15 @@ const API_KEYS = (process.env.API_KEYS || process.env.API_KEY || '')
   .map((k) => k.trim())
   .filter(Boolean);
 
+function sanitizePlayerName(raw) {
+  if (typeof raw !== 'string') return '';
+  return raw
+    .replace(/[^\p{L}\p{N}\-'_.\s]/gu, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, 64);
+}
+
 function requireApiKey(req, res, next) {
   if (!API_KEYS.length) return res.status(503).json({ error: 'API key not configured' });
   const key = req.header('x-api-key')?.trim();
@@ -110,14 +119,12 @@ if (SHOULD_INIT_DB) {
 
 app.post('/scores', mutateLimiter, requireApiKey, async (req, res) => {
   const { player, score, stage, level, endedAt, build } = req.body || {};
-  if (!player || typeof player !== 'string' || !player.trim()) {
-    return res.status(400).json({ error: 'player requis' });
-  }
+  const name = sanitizePlayerName(player);
+  if (!name) return res.status(400).json({ error: 'player requis' });
   if (typeof score !== 'number' || !Number.isFinite(score)) {
     return res.status(400).json({ error: 'score numérique requis' });
   }
 
-  const name = player.trim().slice(0, 64);
   const safeStage = Number.isFinite(stage) ? Math.max(1, Math.floor(stage)) : null;
   const safeLevel = Number.isFinite(level) ? Math.max(1, Math.floor(level)) : null;
   const endedAtIso = (() => {
@@ -169,14 +176,12 @@ app.get('/scores', readLimiter, async (req, res) => {
 
 app.post('/suggestions', mutateLimiter, requireApiKey, async (req, res) => {
   const { player, message, category } = req.body || {};
-  if (!player || typeof player !== 'string' || !player.trim()) {
-    return res.status(400).json({ error: 'player requis' });
-  }
+  const name = sanitizePlayerName(player);
+  if (!name) return res.status(400).json({ error: 'player requis' });
   if (!message || typeof message !== 'string' || !message.trim()) {
     return res.status(400).json({ error: 'message requis' });
   }
 
-  const name = player.trim().slice(0, 64);
   const text = message.trim().slice(0, 1000);
   const cat = ALLOWED_SUGGESTION_CATEGORIES.includes((category || '').trim())
     ? category.trim()
