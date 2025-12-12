@@ -104,7 +104,7 @@ const FUSION_SPRITES = [
   'fusion-plaguefire.png'
 ];
 const TOP_LIMIT = Infinity;
-const BUILD_LABEL = buildInfo?.build ? `b${buildInfo.build}` : 'Old';
+const BUILD_LABEL = 'b20';
 const API_TOKEN = (
   import.meta?.env?.VITE_API_TOKEN ||
   import.meta?.env?.VITE_API_KEY ||
