@@ -8,7 +8,10 @@
     "build": "sh -c \"if [ -d .git ]; then git fetch --unshallow --tags || git fetch --tags; fi\" && node scripts/bump-build.js && node -e \"const fs=require('fs'); if(!fs.existsSync('node_modules/vite')){console.log('Installing deps via npm ci...'); require('child_process').execSync('npm ci --include=dev', {stdio:'inherit'});} \" && npm run build:app",
     "build:app": "vite build",
     "preview": "vite preview",
-    "start": "node server.js",
+    "start": "node --loader ts-node/esm backend/main.ts",
+    "api:dev": "node --loader ts-node/esm backend/main.ts",
+    "api:build": "tsc -p tsconfig.backend.json",
+    "api:start:prod": "node backend/dist/main.js",
     "test": "node --test"
   },
   "keywords": [],
@@ -16,13 +19,24 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
+    "@nestjs/common": "^11.0.6",
+    "@nestjs/core": "^11.0.6",
+    "@nestjs/platform-express": "^11.0.6",
+    "class-transformer": "^0.5.1",
+    "class-validator": "^0.14.1",
     "cors": "^2.8.5",
     "express": "^5.2.1",
     "express-rate-limit": "^7.5.1",
     "pg": "^8.16.3",
+    "reflect-metadata": "^0.2.2",
+    "rxjs": "^7.8.1",
     "vite": "^7.2.7"
   },
   "devDependencies": {
+    "@types/express": "^5.0.0",
+    "@types/pg": "^8.11.11",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.3.3",
     "supertest": "^7.1.1"
   }
 }
