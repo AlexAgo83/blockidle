@@ -179,6 +179,26 @@ app.get('/suggestions', async (req, res) => {
   }
 });
 
+app.delete('/suggestions/:id', async (req, res) => {
+  const id = Number(req.params.id);
+  if (!Number.isFinite(id) || id <= 0) {
+    return res.status(400).json({ error: 'id invalide' });
+  }
+  try {
+    const result = await pool.query(
+      'DELETE FROM suggestions WHERE id = $1 RETURNING id',
+      [id]
+    );
+    if (!result.rowCount) {
+      return res.status(404).json({ error: 'Not found' });
+    }
+    res.json({ ok: true, id });
+  } catch (err) {
+    console.error('DELETE /suggestions/:id error', err);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
 app.get('/health', async (_req, res) => {
   try {
     await pool.query('SELECT 1');

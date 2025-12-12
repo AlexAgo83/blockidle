@@ -484,7 +484,7 @@
       background: linear-gradient(135deg, rgba(15,23,42,0.7), rgba(30,41,59,0.7));
       border: 1px solid rgba(255, 255, 255, 0.08);
       display: grid;
-      gap: 4px;
+      gap: 6px;
     }
     .suggestion-meta {
       display: flex;
@@ -504,6 +504,30 @@
     }
     .suggestion-pill.bug {
       background: linear-gradient(135deg, #fca5a5, #f97316);
+    }
+    .suggestion-actions {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+    .suggestion-delete {
+      background: transparent;
+      color: #fca5a5;
+      border: 1px solid rgba(248, 113, 113, 0.45);
+      padding: 4px 8px;
+      border-radius: 8px;
+      font-weight: 700;
+      font-size: 0.9rem;
+      cursor: pointer;
+      transition: border-color 120ms ease, color 120ms ease, transform 120ms ease;
+    }
+    .suggestion-delete:hover {
+      border-color: rgba(248, 113, 113, 0.8);
+      color: #fecdd3;
+      transform: translateY(-1px);
+    }
+    .suggestion-delete:active {
+      transform: translateY(0);
     }
     .suggestion-chevron {
       font-size: 1rem;

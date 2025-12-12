@@ -52,6 +52,7 @@ const suggestionTextarea = document.getElementById('suggestion-text');
 const suggestionTypeSelect = document.getElementById('suggestion-type');
 const suggestionStatusEl = document.getElementById('suggestion-status');
 const suggestionListEl = document.getElementById('suggestion-list');
+const IS_LOCALHOST = ['localhost', '127.0.0.1'].includes(window.location.hostname);
 const hudBuffer = document.createElement('canvas');
 const hudCtx = hudBuffer.getContext('2d');
 let hudSignature = null;
@@ -2039,6 +2040,18 @@ function renderSuggestionList() {
     message.textContent = s.message || '';
     item.appendChild(meta);
     item.appendChild(message);
+
+    if (IS_LOCALHOST && Number.isFinite(s.id)) {
+      const actions = document.createElement('div');
+      actions.className = 'suggestion-actions';
+      const del = document.createElement('button');
+      del.className = 'suggestion-delete';
+      del.type = 'button';
+      del.textContent = 'Delete';
+      del.onclick = () => deleteSuggestion(s.id);
+      actions.appendChild(del);
+      item.appendChild(actions);
+    }
     suggestionListEl.appendChild(item);
   });
 }
@@ -2083,6 +2096,30 @@ async function submitSuggestionToBackend(payload) {
   } finally {
     state.submittingSuggestion = false;
   }
+}
+
+async function deleteSuggestionFromBackend(id) {
+  try {
+    const res = await fetch(apiUrl(`/suggestions/${id}`), {
+      method: 'DELETE',
+      headers: { ...authHeaders() }
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return true;
+  } catch (err) {
+    console.error('deleteSuggestionFromBackend failed', err);
+    return false;
+  }
+}
+
+function deleteSuggestion(id) {
+  if (!IS_LOCALHOST) return;
+  deleteSuggestionFromBackend(id).then((ok) => {
+    if (ok) {
+      state.suggestions = state.suggestions.filter((s) => s.id !== id);
+      renderSuggestionList();
+    }
+  });
 }
 
 function bindCommitToggle() {
