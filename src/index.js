@@ -1,3 +1,7 @@
+// NE PAS SUPPRIMER : force Vite à inclure les variables d'env côté client
+import.meta.env.VITE_API_TOKEN;
+import.meta.env.VITE_API_KEY;
+
 import buildInfo from './build-info.json';
 import { loadImage } from './assets.js';
 
