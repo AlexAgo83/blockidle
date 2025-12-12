@@ -269,6 +269,13 @@ const FUSION_DEFS = [
     fusion: true,
     ingredients: ['Fire', 'Curse'],
     color: 'rgba(251, 191, 36, 0.55)'
+  },
+  {
+    name: 'Jetstream',
+    maxLevel: 1,
+    fusion: true,
+    ingredients: ['Wind', 'Scope'],
+    color: 'rgba(94, 234, 212, 0.5)'
   }
 ];
 const ALL_POWER_DEFS = [...POWER_DEFS, ...FUSION_DEFS];
@@ -1079,6 +1086,11 @@ function getPowerDescription(name) {
       return {
         plain: 'Fusion of Fire + Curse: applies fire splash and a curse that can spread to 2',
         rich: '<strong>Fusion</strong> of <span class="power-desc-accent">Fire + Curse</span>: fire splash + curse that can spread to <span class="power-desc-accent">2</span>'
+      };
+    case 'Jetstream':
+      return {
+        plain: 'Fusion of Wind + Scope: pierces 3 bricks with light auto-steer, then snaps back faster',
+        rich: '<strong>Fusion</strong> of <span class="power-desc-accent">Wind + Scope</span>: pierces <span class="power-desc-accent">3 bricks</span> with light auto-steer, then <span class="power-desc-accent">snaps back faster</span>'
       };
     default:
       return { plain: '', rich: '' };
@@ -1939,7 +1951,7 @@ function launchBall() {
     vy,
     returning: false,
     specialPower,
-    windPierceLeft: specialPower === 'Wind' ? 3 : 0
+    windPierceLeft: specialPower === 'Wind' || specialPower === 'Jetstream' ? 3 : 0
   });
 }
 
@@ -2924,6 +2936,24 @@ function update(dt) {
     const ball = state.balls[i];
     const prevX = ball.x;
     const prevY = ball.y;
+    // Jetstream: léger aim assist si balle spéciale Jetstream et non en retour
+    if (ball.specialPower === 'Jetstream' && !ball.returning) {
+      const target = selectTargetBrick();
+      if (target) {
+        const cx = target.x + target.w / 2;
+        const cy = target.y + target.h / 2;
+        const dx = cx - ball.x;
+        const dy = cy - ball.y;
+        const dist = Math.hypot(dx, dy) || 1;
+        const homing = 0.6; // facteur de mélange faible pour éviter un virage brusque
+        const speed = Math.hypot(ball.vx, ball.vy) || getBallSpeed(true);
+        const desiredVx = (dx / dist) * speed;
+        const desiredVy = (dy / dist) * speed;
+        ball.vx = ball.vx * (1 - homing * dt) + desiredVx * (homing * dt);
+        ball.vy = ball.vy * (1 - homing * dt) + desiredVy * (homing * dt);
+      }
+    }
+
     ball.x += ball.vx * dt;
     ball.y += ball.vy * dt;
 
@@ -3055,8 +3085,14 @@ function update(dt) {
         damageBrick(brick, damage, now, ball.specialPower || null);
         applyFireSplash(ball, brick, now, damage);
 
-        if (ball.specialPower === 'Wind' && ball.windPierceLeft !== undefined) {
-          if (ball.windPierceLeft > 0) ball.windPierceLeft -= 1;
+        if ((ball.specialPower === 'Wind' || ball.specialPower === 'Jetstream') && ball.windPierceLeft !== undefined) {
+          if (ball.lastWindBrick === brick && ball.lastWindHit && now - ball.lastWindHit < 20) {
+            // Already pierced this brick this frame; skip further processing.
+          } else {
+            if (ball.windPierceLeft > 0) ball.windPierceLeft -= 1;
+            ball.lastWindBrick = brick;
+            ball.lastWindHit = now;
+          }
           // Push the ball just past the brick to avoid repeated hits.
           if (minOverlap === overlapLeft) {
             ball.x = brick.x - ball.r - 0.1;
@@ -3068,7 +3104,8 @@ function update(dt) {
             ball.y = brick.y + brick.h + ball.r + 0.1;
           }
           if (ball.windPierceLeft <= 0 && !ball.returning) {
-            redirectBallToPaddle(ball);
+            const snapSpeed = ball.specialPower === 'Jetstream' ? 0.8 : 0.5;
+            redirectBallToPaddle(ball, snapSpeed);
           }
           continue;
         }
@@ -3835,6 +3872,7 @@ function applyPowerOnHit(ball, brick, now, options = {}) {
   const power = ball.specialPower;
   const fusion = getFusionDef(power);
   if (fusion && fusionKind(fusion) === 'talent') return; // shouldn't be on power balls
+  const isJetstream = power === 'Jetstream';
   if (power === 'Ice') {
     brick.slowUntil = Math.max(brick.slowUntil || 0, now + 3000); // 3s de gel
     brick.effectColor = getPowerColor(power);

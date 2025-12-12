@@ -34,6 +34,7 @@ import fusionBramble from './fusion-bramble.png';
 import fusionRadiance from './fusion-radiance.png';
 import fusionShard from './fusion-shard.png';
 import fusionPlaguefire from './fusion-plaguefire.png';
+import fusionJetstream from './fusion-echo.png';
 
 const MEDIA_LIST = [
   { name: 'Fire', imageUrl: powerFire, color: '#f97316' },
@@ -71,7 +72,8 @@ const MEDIA_LIST = [
   { name: 'Bramble', imageUrl: fusionBramble, color: '#16a34a' },
   { name: 'Radiance', imageUrl: fusionRadiance, color: '#fde047' },
   { name: 'Shard', imageUrl: fusionShard, color: '#7dd3fc' },
-  { name: 'Plaguefire', imageUrl: fusionPlaguefire, color: '#f97316' }
+  { name: 'Plaguefire', imageUrl: fusionPlaguefire, color: '#f97316' },
+  { name: 'Jetstream', imageUrl: fusionJetstream, color: '#5eead4' }
 ];
 
 export const MEDIA_BY_NAME = MEDIA_LIST.reduce((acc, media) => {
