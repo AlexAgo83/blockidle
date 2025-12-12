@@ -62,6 +62,18 @@
       transform: translateY(0);
       box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
     }
+    .ghost-btn {
+      background: transparent;
+      color: #e2e8f0;
+      border: 1px solid #334155;
+      box-shadow: none;
+    }
+    .ghost-btn:hover {
+      box-shadow: 0 0 0 3px rgba(148, 163, 184, 0.25);
+    }
+    .ghost-btn:active {
+      box-shadow: 0 0 0 2px rgba(148, 163, 184, 0.35);
+    }
     #pause-btn {
       background: linear-gradient(135deg, #f59e0b, #f97316);
       color: #0b1223;
@@ -759,6 +771,10 @@
           <p class="power-preview-name" id="power-preview-name">Power</p>
           <p class="power-preview-desc" id="power-preview-desc">Hover or tap a power to see its effects.</p>
         </div>
+      </div>
+      <div class="modal-actions" style="justify-content: space-between;">
+        <button id="power-open-catalog" type="button" class="ghost-btn">Catalog</button>
+        <button id="power-pass-btn" type="button" class="ghost-btn">Pass</button>
       </div>
     </div>
   </div>

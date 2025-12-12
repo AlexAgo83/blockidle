@@ -12,6 +12,8 @@ const autoBtn = document.getElementById('auto-toggle');
 const aimToggle = null;
 const autoFireToggle = null;
 const powerModalBackdrop = document.getElementById('power-modal-backdrop');
+const powerPassBtn = document.getElementById('power-pass-btn');
+const powerCatalogBtn = document.getElementById('power-open-catalog');
 const powerButtons = Array.from(document.querySelectorAll('.power-btn'));
 const talentButtons = Array.from(document.querySelectorAll('.talent-btn'));
 const powerPreviewName = document.getElementById('power-preview-name');
@@ -380,6 +382,7 @@ const state = {
   manualPause: false,
   infoOpen: false,
   catalogOpen: false,
+  catalogReturnToPower: false,
   settingsOpen: false,
   gameOverHandled: false,
   lastEndedAt: null,
@@ -785,7 +788,15 @@ function closeCatalogModal() {
   if (!catalogModalBackdrop) return;
   catalogModalBackdrop.classList.remove('open');
   state.catalogOpen = false;
-  if (!state.powerModalOpen && !state.awaitingName) {
+  if (state.catalogReturnToPower && state.pendingPowerChoices > 0) {
+    state.catalogReturnToPower = false;
+    // Re-open the power modal with the same options the player was viewing.
+    state.paused = true;
+    state.powerModalOpen = true;
+    renderPowerModal(state.currentPowerOptions, state.currentTalentOptions);
+    powerModalBackdrop.classList.add('open');
+    refreshPauseState();
+  } else if (!state.powerModalOpen && !state.awaitingName) {
     refreshPauseState();
   }
 }
@@ -1299,8 +1310,7 @@ function handlePowerSelect(powerName) {
   if (existing) {
     if (existing.level >= def.maxLevel) {
       state.pendingPowerChoices = Math.max(0, state.pendingPowerChoices - 1);
-      state.powerModalOpen = false;
-      powerModalBackdrop.classList.remove('open');
+      closePowerModal();
       refreshPauseState();
       if (state.pendingPowerChoices > 0) tryOpenPowerModal();
       return;
@@ -1321,12 +1331,10 @@ function handlePowerSelect(powerName) {
   }
   clampLivesToMax();
   state.pendingPowerChoices = Math.max(0, state.pendingPowerChoices - 1);
-  powerModalBackdrop.classList.remove('open');
-  state.powerModalOpen = false;
+  closePowerModal();
   if (state.pendingPowerChoices > 0) {
     tryOpenPowerModal();
   } else {
-    state.powerModalOpen = false;
     refreshPauseState();
   }
   markSessionDirty();
@@ -1352,20 +1360,38 @@ function handleTalentSelect(talentName) {
   } else {
     state.talents.push({ name: talentName, level: 1 });
     if (fusion && Array.isArray(fusion.ingredients)) {
-      state.powers = state.powers.filter((p) => !fusion.ingredients.includes(p.name));
-      state.talents = state.talents.filter((t) => !fusion.ingredients.includes(t.name));
+    state.powers = state.powers.filter((p) => !fusion.ingredients.includes(p.name));
+    state.talents = state.talents.filter((t) => !fusion.ingredients.includes(t.name));
     }
     state.pendingPowerChoices = Math.max(0, state.pendingPowerChoices - 1);
   }
   clampLivesToMax();
-  powerModalBackdrop.classList.remove('open');
-  state.powerModalOpen = false;
+  closePowerModal();
   if (state.pendingPowerChoices > 0) {
     tryOpenPowerModal();
   } else {
     refreshPauseState();
   }
   markSessionDirty();
+}
+
+function handlePowerPass() {
+  if (!state.powerModalOpen || state.pendingPowerChoices <= 0) {
+    return;
+  }
+  state.pendingPowerChoices = Math.max(0, state.pendingPowerChoices - 1);
+  closePowerModal();
+  if (state.pendingPowerChoices > 0) {
+    tryOpenPowerModal();
+  } else {
+    refreshPauseState();
+  }
+  markSessionDirty();
+}
+
+function closePowerModal() {
+  powerModalBackdrop.classList.remove('open');
+  state.powerModalOpen = false;
 }
 
 function renderPowerModal(powerOptions, talentOptions) {
@@ -3476,6 +3502,12 @@ function bindControls() {
       event.preventDefault();
       handleNameSubmit();
     }
+  });
+  powerPassBtn?.addEventListener('click', handlePowerPass);
+  powerCatalogBtn?.addEventListener('click', () => {
+    state.catalogReturnToPower = state.powerModalOpen;
+    closePowerModal();
+    openCatalogModal();
   });
   const updateAim = (clientX, clientY) => {
     const rect = canvas.getBoundingClientRect();
