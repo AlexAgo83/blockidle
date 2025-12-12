@@ -3039,7 +3039,8 @@ function renderPaddle() {
     const drawW = targetW;
     const drawH = img.height * (drawW / img.width);
     const dx = x;
-    const dy = paddle.y + (h - drawH) / 2;
+    const isModule = img === moduleSprite;
+    const dy = paddle.y + (h - drawH) / 2 + (isModule ? drawH * 0.25 : 0);
     ctx.drawImage(img, dx, dy, drawW, drawH);
   };
 
@@ -3255,8 +3256,11 @@ function renderHUD() {
       powerLines.forEach((p, idx) => {
         const def = getPowerDef(p.name);
         const label = p.level >= def.maxLevel ? 'MAX' : `Lv. ${p.level}`;
+        const fusion = getFusionDef(p.name);
+        h.fillStyle = fusion ? '#16a34a' : '#e2e8f0';
         h.fillText(`- ${p.name} (${label})`, barX, powersY + 20 + idx * 18);
       });
+      h.fillStyle = '#e2e8f0';
       powersBlockHeight = 20 + powerLines.length * 18;
       infoY += powersBlockHeight + 10;
     }
