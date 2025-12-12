@@ -155,7 +155,7 @@ const POWER_DEFS = [
   { name: 'Light', maxLevel: 3 },
   { name: 'Thorns', maxLevel: 3 },
   { name: 'Curse', maxLevel: 3 },
-  { name: 'Wind', maxLevel: 1 }
+  { name: 'Wind', maxLevel: 3 }
 ];
 const FUSION_DEFS = [
   {
