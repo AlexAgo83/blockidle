@@ -34,6 +34,18 @@ const pool = new Pool({
 const GITHUB_OWNER = process.env.GITHUB_OWNER || 'AlexAgo83';
 const GITHUB_REPO = process.env.GITHUB_REPO || 'blockidle';
 const ALLOWED_SUGGESTION_CATEGORIES = ['feature', 'bug'];
+const API_KEYS = (process.env.API_KEYS || process.env.API_KEY || '')
+  .split(',')
+  .map((k) => k.trim())
+  .filter(Boolean);
+
+function requireApiKey(req, res, next) {
+  if (!API_KEYS.length) return res.status(503).json({ error: 'API key not configured' });
+  const key = req.header('x-api-key')?.trim();
+  if (!key) return res.status(401).json({ error: 'API key required' });
+  if (!API_KEYS.includes(key)) return res.status(403).json({ error: 'Invalid API key' });
+  return next();
+}
 
 async function initDb() {
   await pool.query(`
@@ -70,7 +82,7 @@ initDb().catch((err) => {
   process.exit(1);
 });
 
-app.post('/scores', async (req, res) => {
+app.post('/scores', requireApiKey, async (req, res) => {
   const { player, score, stage, level, endedAt, build } = req.body || {};
   if (!player || typeof player !== 'string' || !player.trim()) {
     return res.status(400).json({ error: 'player requis' });
@@ -129,7 +141,7 @@ app.get('/scores', async (req, res) => {
   }
 });
 
-app.post('/suggestions', async (req, res) => {
+app.post('/suggestions', requireApiKey, async (req, res) => {
   const { player, message, category } = req.body || {};
   if (!player || typeof player !== 'string' || !player.trim()) {
     return res.status(400).json({ error: 'player requis' });
@@ -179,7 +191,7 @@ app.get('/suggestions', async (req, res) => {
   }
 });
 
-app.delete('/suggestions/:id', async (req, res) => {
+app.delete('/suggestions/:id', requireApiKey, async (req, res) => {
   const id = Number(req.params.id);
   if (!Number.isFinite(id) || id <= 0) {
     return res.status(400).json({ error: 'id invalide' });
