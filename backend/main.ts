@@ -39,11 +39,10 @@ async function bootstrap() {
   const __dirname = path.dirname(__filename);
   const distPath = path.join(__dirname, '..', 'dist');
 
-  app.useStaticAssets(distPath);
-
   const expressApp = app.getHttpAdapter().getInstance();
   expressApp.set('trust proxy', 1);
-  expressApp.get('*', (_req: Request, res: Response) => {
+  app.useStaticAssets(distPath);
+  expressApp.get('/*', (_req: Request, res: Response) => {
     res.sendFile(path.join(distPath, 'index.html'));
   });
 
