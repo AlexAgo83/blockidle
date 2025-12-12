@@ -78,6 +78,8 @@ let fpsCounter = 0;
 let fpsLastTime = 0;
 let paddleSprite = null;
 let paddleSpriteReady = false;
+let moduleSprite = null;
+let moduleSpriteReady = false;
 const TOP_LIMIT = 10;
 const BUILD_LABEL = buildInfo?.build ? `b${buildInfo.build}` : 'Old';
 const API_TOKEN = (
@@ -3029,8 +3031,8 @@ function renderPaddle() {
   const { paddle } = state;
   const raquetteLv = getTalentLevel('Paddle');
   const baseColor = raquetteLv > 0 ? '#22d3ee' : '#38bdf8';
-  const drawSprite = (x, w, h) => {
-    const img = paddleSprite;
+  const drawSprite = (img, x, w, h) => {
+    if (!img) return;
     const targetW = w;
     const targetH = h * 2; // allow some height beyond paddle
     const scale = Math.min(targetW / img.width, targetH / img.height);
@@ -3043,7 +3045,7 @@ function renderPaddle() {
 
   if (paddleSpriteReady && paddleSprite) {
     // Draw only the sprite for the main paddle; collision uses geometry, not fill.
-    drawSprite(paddle.x, paddle.w, paddle.h);
+    drawSprite(paddleSprite, paddle.x, paddle.w, paddle.h);
   } else {
     ctx.fillStyle = baseColor;
     ctx.fillRect(paddle.x, paddle.y, paddle.w, paddle.h);
@@ -3053,12 +3055,20 @@ function renderPaddle() {
   const halfWidth = paddle.w * 0.5;
   const gap = 8;
   if (mirrorLevel >= 1) {
-    ctx.fillStyle = baseColor;
-    ctx.fillRect(paddle.x - halfWidth - gap, paddle.y, halfWidth, paddle.h);
+    if (moduleSpriteReady && moduleSprite) {
+      drawSprite(moduleSprite, paddle.x - halfWidth - gap, halfWidth, paddle.h);
+    } else {
+      ctx.fillStyle = baseColor;
+      ctx.fillRect(paddle.x - halfWidth - gap, paddle.y, halfWidth, paddle.h);
+    }
   }
   if (mirrorLevel >= 2) {
-    ctx.fillStyle = baseColor;
-    ctx.fillRect(paddle.x + paddle.w + gap, paddle.y, halfWidth, paddle.h);
+    if (moduleSpriteReady && moduleSprite) {
+      drawSprite(moduleSprite, paddle.x + paddle.w + gap, halfWidth, paddle.h);
+    } else {
+      ctx.fillStyle = baseColor;
+      ctx.fillRect(paddle.x + paddle.w + gap, paddle.y, halfWidth, paddle.h);
+    }
   }
 }
 
@@ -3516,6 +3526,15 @@ function init() {
     .catch(() => {
       console.warn('Paddle sprite failed to load, using default shape.');
       paddleSpriteReady = false;
+    });
+  loadImage('bl_module_cp.png')
+    .then((img) => {
+      moduleSprite = img;
+      moduleSpriteReady = true;
+    })
+    .catch(() => {
+      console.warn('Module sprite failed to load, using default shapes.');
+      moduleSpriteReady = false;
     });
   resizeCanvas();
   bindControls();
