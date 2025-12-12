@@ -3051,7 +3051,7 @@ function update(dt) {
         damageBrick(brick, damage, now, ball.specialPower || null);
         applyFireSplash(ball, brick, now, damage);
 
-        if (ball.specialPower === 'Wind' && ball.windPierceLeft !== undefined && brick.type !== 'boss') {
+        if (ball.specialPower === 'Wind' && ball.windPierceLeft !== undefined) {
           if (ball.windPierceLeft > 0) ball.windPierceLeft -= 1;
           // Push the ball just past the brick to avoid repeated hits.
           if (minOverlap === overlapLeft) {
