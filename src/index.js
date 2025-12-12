@@ -1,4 +1,4 @@
-// NE PAS SUPPRIMER : force Vite à inclure les variables d'env côté client
+// DO NOT REMOVE
 import.meta.env.VITE_API_TOKEN;
 import.meta.env.VITE_API_KEY;
 
@@ -1849,7 +1849,7 @@ async function submitScoreToBackend(payload) {
   try {
     const res = await fetch(apiUrl('/scores'), {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
       body: JSON.stringify({ ...payload, build: BUILD_LABEL })
     });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
