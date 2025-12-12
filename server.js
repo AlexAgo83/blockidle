@@ -10,13 +10,27 @@ const __dirname = path.dirname(__filename);
 
 const app = express();
 app.set('trust proxy', 1);
+
+const ALLOWED_ORIGINS = new Set([
+  'https://block-idle.onrender.com',
+  'https://blockidle-backend.onrender.com'
+]);
+
+function isLocalOrigin(origin) {
+  try {
+    const url = new URL(origin);
+    return url.hostname === 'localhost' || url.hostname === '127.0.0.1';
+  } catch (_) {
+    return false;
+  }
+}
+
 app.use(cors({
-  origin: [
-    'https://block-idle.onrender.com',
-    'https://blockidle-backend.onrender.com',
-    'http://localhost:5173',
-    'http://localhost:3000'
-  ],
+  origin: (origin, callback) => {
+    if (!origin) return callback(null, true);
+    if (ALLOWED_ORIGINS.has(origin) || isLocalOrigin(origin)) return callback(null, true);
+    return callback(new Error('Not allowed by CORS'));
+  },
   methods: ['GET', 'POST', 'DELETE', 'PATCH', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'X-API-Key'],
   credentials: false

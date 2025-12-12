@@ -68,28 +68,15 @@ let paddleSprite = null;
 let paddleSpriteReady = false;
 const TOP_LIMIT = 10;
 const BUILD_LABEL = buildInfo?.build ? `b${buildInfo.build}` : 'Old';
-function resolveApiToken() {
-  try {
-    const params = new URL(window.location.href).searchParams;
-    const fromQuery = (params.get('apiKey') || params.get('apikey') || '').trim();
-    if (fromQuery) {
-      localStorage.setItem('brickidle_api_token', fromQuery);
-      return fromQuery;
-    }
-    const stored = (localStorage.getItem('brickidle_api_token') || '').trim();
-    if (stored) return stored;
-  } catch (_) {
-    // ignore storage errors
-  }
-  const fromEnv = (
-    import.meta?.env?.VITE_API_TOKEN ||
-    import.meta?.env?.VITE_API_KEY ||
-    ''
-  ).trim();
-  return fromEnv || null;
-}
+const API_TOKEN = (
+  import.meta?.env?.VITE_API_TOKEN ||
+  import.meta?.env?.VITE_API_KEY ||
+  ''
+).trim() || null;
 
-let API_TOKEN = resolveApiToken();
+if (!API_TOKEN) {
+  console.warn('API token missing: set VITE_API_TOKEN or VITE_API_KEY.');
+}
 const DEFAULT_KEYS = {
   left: 'ArrowLeft',
   right: 'ArrowRight',
