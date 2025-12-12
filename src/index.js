@@ -57,6 +57,8 @@ const scoreErrorModal = document.getElementById('score-error-modal-backdrop');
 const scoreErrorRetryBtn = document.getElementById('score-error-retry');
 const scoreErrorCancelBtn = document.getElementById('score-error-cancel');
 const scoreErrorStatus = document.getElementById('score-error-status');
+const scoreOkModal = document.getElementById('score-ok-modal-backdrop');
+const scoreOkClose = document.getElementById('score-ok-close');
 const hudBuffer = document.createElement('canvas');
 const hudCtx = hudBuffer.getContext('2d');
 let hudSignature = null;
@@ -2003,6 +2005,16 @@ function setScoreErrorStatus(text, isError = false) {
   scoreErrorStatus.style.color = isError ? '#fca5a5' : '#cbd5e1';
 }
 
+function openScoreOkModal() {
+  if (!scoreOkModal) return;
+  scoreOkModal.classList.add('open');
+}
+
+function closeScoreOkModal() {
+  if (!scoreOkModal) return;
+  scoreOkModal.classList.remove('open');
+}
+
 function updateSuggestionChevron() {
   if (!suggestionChevron) return;
   suggestionChevron.textContent = state.suggestionExpanded ? '▼' : '►';
@@ -2192,6 +2204,7 @@ function handleBackendScoreSubmit(payload) {
       if (res) {
         state.pendingScoreRetry = null;
         fetchTopScoresFromBackend().catch(() => {});
+        openScoreOkModal();
       } else {
         openScoreErrorModal(payload);
       }
@@ -2278,6 +2291,9 @@ function bindScoreErrorModal() {
           setScoreErrorStatus('Still failing, try again.', true);
         });
     };
+  }
+  if (scoreOkClose) {
+    scoreOkClose.onclick = () => closeScoreOkModal();
   }
 }
 
