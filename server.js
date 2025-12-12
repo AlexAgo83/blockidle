@@ -3,6 +3,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { Pool } from 'pg';
 import cors from 'cors';
+import rateLimit from 'express-rate-limit';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -47,6 +48,22 @@ function requireApiKey(req, res, next) {
   return next();
 }
 
+const mutateLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 30,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many requests, slow down.' }
+});
+
+const readLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 120,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many requests, slow down.' }
+});
+
 async function initDb() {
   await pool.query(`
     CREATE TABLE IF NOT EXISTS scores (
@@ -82,7 +99,7 @@ initDb().catch((err) => {
   process.exit(1);
 });
 
-app.post('/scores', requireApiKey, async (req, res) => {
+app.post('/scores', mutateLimiter, requireApiKey, async (req, res) => {
   const { player, score, stage, level, endedAt, build } = req.body || {};
   if (!player || typeof player !== 'string' || !player.trim()) {
     return res.status(400).json({ error: 'player requis' });
@@ -122,7 +139,7 @@ app.post('/scores', requireApiKey, async (req, res) => {
   }
 });
 
-app.get('/scores', async (req, res) => {
+app.get('/scores', readLimiter, async (req, res) => {
   const limit = Math.max(1, Math.min(100, Number(req.query.limit) || 10));
   try {
     const result = await pool.query(
@@ -141,7 +158,7 @@ app.get('/scores', async (req, res) => {
   }
 });
 
-app.post('/suggestions', requireApiKey, async (req, res) => {
+app.post('/suggestions', mutateLimiter, requireApiKey, async (req, res) => {
   const { player, message, category } = req.body || {};
   if (!player || typeof player !== 'string' || !player.trim()) {
     return res.status(400).json({ error: 'player requis' });
@@ -172,7 +189,7 @@ app.post('/suggestions', requireApiKey, async (req, res) => {
   }
 });
 
-app.get('/suggestions', async (req, res) => {
+app.get('/suggestions', readLimiter, async (req, res) => {
   const limit = Math.max(1, Math.min(50, Number(req.query.limit) || 10));
   try {
     const result = await pool.query(
@@ -191,7 +208,7 @@ app.get('/suggestions', async (req, res) => {
   }
 });
 
-app.delete('/suggestions/:id', requireApiKey, async (req, res) => {
+app.delete('/suggestions/:id', mutateLimiter, requireApiKey, async (req, res) => {
   const id = Number(req.params.id);
   if (!Number.isFinite(id) || id <= 0) {
     return res.status(400).json({ error: 'id invalide' });
