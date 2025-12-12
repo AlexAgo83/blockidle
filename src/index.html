@@ -62,6 +62,17 @@
       transform: translateY(0);
       box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
     }
+    #pause-btn {
+      background: linear-gradient(135deg, #f59e0b, #f97316);
+      color: #0b1223;
+      box-shadow: 0 6px 14px rgba(249, 115, 22, 0.25);
+    }
+    #pause-btn:hover {
+      box-shadow: 0 8px 18px rgba(249, 115, 22, 0.32);
+    }
+    #pause-btn:active {
+      box-shadow: 0 4px 10px rgba(249, 115, 22, 0.28);
+    }
     .modal-backdrop {
       position: fixed;
       inset: 0;
@@ -541,6 +552,7 @@
     <div class="time-controls narrow">
       <div class="time-left">
         <button id="abandon-btn" type="button">Quit</button>
+        <button id="pause-btn" type="button">Pause</button>
         <button id="auto-toggle" type="button">Enable auto-aim</button>
         <button id="settings-btn" type="button">Settings</button>
         <button id="info-btn" type="button">Info</button>

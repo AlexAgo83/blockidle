@@ -16,6 +16,7 @@ const nameModalBackdrop = document.getElementById('name-modal-backdrop');
 const playerNameInput = document.getElementById('player-name-input');
 const playerNameSubmit = document.getElementById('player-name-submit');
 const abandonBtn = document.getElementById('abandon-btn');
+const pauseBtn = document.getElementById('pause-btn');
 const infoBtn = document.getElementById('info-btn');
 const infoModalBackdrop = document.getElementById('info-modal-backdrop');
 const infoCloseBtn = document.getElementById('info-close');
@@ -334,6 +335,10 @@ const state = {
   loadingSuggestions: false,
   suggestionExpanded: false,
   topScoresExpanded: false,
+  manualPause: false,
+  infoOpen: false,
+  catalogOpen: false,
+  settingsOpen: false,
   gameOverHandled: false,
   lastEndedAt: null,
   awaitingName: false,
@@ -419,7 +424,9 @@ function computeHudSignature() {
     damage: dmgEntries.map(([k, v]) => `${k}:${v}`).join('|'),
     showDamageByPower: state.showDamageByPower,
     showFps: state.showFps,
-    fps: state.fps
+    fps: state.fps,
+    paused: state.paused,
+    manualPause: state.manualPause
   });
 }
 
@@ -534,7 +541,7 @@ function loadPreferences() {
   }
   if (typeof data.autoPlay === 'boolean') {
     state.autoPlay = data.autoPlay;
-    autoBtn.textContent = state.autoPlay ? 'Disable auto-aim' : 'Enable auto-aim';
+    autoBtn.textContent = state.autoPlay ? 'Disable auto' : 'Enable auto';
   }
   if (typeof data.commitExpanded === 'boolean') {
     state.commitExpanded = data.commitExpanded;
@@ -677,13 +684,14 @@ function openNameModal() {
   nameModalBackdrop.classList.add('open');
   setTimeout(() => playerNameInput?.focus(), 0);
   markSessionDirty();
+  refreshPauseState();
 }
 
 function closeNameModal() {
   nameModalBackdrop.classList.remove('open');
   state.awaitingName = false;
   if (!state.powerModalOpen) {
-    state.paused = false;
+    refreshPauseState();
   }
   markSessionDirty();
 }
@@ -708,35 +716,42 @@ function handleNameSubmit() {
 function openInfoModal() {
   if (!infoModalBackdrop) return;
   state.paused = true;
+  state.infoOpen = true;
   infoModalBackdrop.classList.add('open');
+  refreshPauseState();
 }
 
 function closeInfoModal() {
   if (!infoModalBackdrop) return;
   infoModalBackdrop.classList.remove('open');
+  state.infoOpen = false;
   if (!state.powerModalOpen && !state.awaitingName) {
-    state.paused = false;
+    refreshPauseState();
   }
 }
 
 function openCatalogModal() {
   if (!catalogModalBackdrop) return;
   state.paused = true;
+  state.catalogOpen = true;
   renderCatalogLists();
   catalogModalBackdrop.classList.add('open');
+  refreshPauseState();
 }
 
 function closeCatalogModal() {
   if (!catalogModalBackdrop) return;
   catalogModalBackdrop.classList.remove('open');
+  state.catalogOpen = false;
   if (!state.powerModalOpen && !state.awaitingName) {
-    state.paused = false;
+    refreshPauseState();
   }
 }
 
 function openSettingsModal() {
   if (!settingsModalBackdrop) return;
   state.paused = true;
+  state.settingsOpen = true;
   settingsLeftInput.value = state.keyBindings.left;
   settingsRightInput.value = state.keyBindings.right;
   settingsLaunchInput.value = state.keyBindings.launch;
@@ -744,13 +759,15 @@ function openSettingsModal() {
   if (settingsFpsToggle) settingsFpsToggle.checked = !!state.showFps;
   settingsModalBackdrop.classList.add('open');
   setTimeout(() => settingsLeftInput?.focus(), 0);
+  refreshPauseState();
 }
 
 function closeSettingsModal() {
   if (!settingsModalBackdrop) return;
   settingsModalBackdrop.classList.remove('open');
+  state.settingsOpen = false;
   if (!state.powerModalOpen && !state.awaitingName) {
-    state.paused = false;
+    refreshPauseState();
   }
 }
 
@@ -1212,7 +1229,7 @@ function tryOpenPowerModal() {
 
   if (!availablePowers.length && !availableTalents.length) {
     state.pendingPowerChoices = 0;
-    state.paused = false;
+    refreshPauseState();
     return;
   }
 
@@ -1224,6 +1241,7 @@ function tryOpenPowerModal() {
   state.paused = true;
   state.powerModalOpen = true;
   powerModalBackdrop.classList.add('open');
+  refreshPauseState();
 }
 
 function handlePowerSelect(powerName) {
@@ -1241,8 +1259,8 @@ function handlePowerSelect(powerName) {
       state.pendingPowerChoices = Math.max(0, state.pendingPowerChoices - 1);
       state.powerModalOpen = false;
       powerModalBackdrop.classList.remove('open');
-      state.paused = state.pendingPowerChoices > 0;
-      if (state.paused) tryOpenPowerModal();
+      refreshPauseState();
+      if (state.pendingPowerChoices > 0) tryOpenPowerModal();
       return;
     }
     existing.level = Math.min(existing.level + 1, def.maxLevel);
@@ -1266,7 +1284,8 @@ function handlePowerSelect(powerName) {
   if (state.pendingPowerChoices > 0) {
     tryOpenPowerModal();
   } else {
-    state.paused = false;
+    state.powerModalOpen = false;
+    refreshPauseState();
   }
   markSessionDirty();
 }
@@ -1302,7 +1321,7 @@ function handleTalentSelect(talentName) {
   if (state.pendingPowerChoices > 0) {
     tryOpenPowerModal();
   } else {
-    state.paused = false;
+    refreshPauseState();
   }
   markSessionDirty();
 }
@@ -1742,7 +1761,9 @@ function resetGame() {
   state.balls = [];
   state.lastLaunch = 0;
   CONFIG.ballSpeed = BASE_BALL_SPEED;
+  state.manualPause = false;
   state.paused = false;
+  updatePauseButton();
   state.powers = [];
   state.talents = [];
   state.specialPocket = [];
@@ -1960,6 +1981,16 @@ function setSuggestionStatus(text, isError = false) {
 function updateSuggestionChevron() {
   if (!suggestionChevron) return;
   suggestionChevron.textContent = state.suggestionExpanded ? '▼' : '►';
+}
+
+function updatePauseButton() {
+  if (!pauseBtn) return;
+  pauseBtn.textContent = state.manualPause ? 'Resume' : 'Pause';
+}
+
+function refreshPauseState() {
+  const modalPause = state.powerModalOpen || state.awaitingName || state.infoOpen || state.catalogOpen || state.settingsOpen;
+  state.paused = state.manualPause || modalPause;
 }
 
 function updateSuggestionVisibility() {
@@ -3047,6 +3078,16 @@ function renderHUD() {
       });
     }
 
+    if (state.manualPause) {
+      h.fillStyle = 'rgba(0,0,0,0.6)';
+      h.fillRect(0, 0, CONFIG.width, CONFIG.height);
+      h.fillStyle = '#e2e8f0';
+      h.font = '32px "Segoe UI", sans-serif';
+      h.fillText('Paused', 120, CONFIG.height / 2);
+      h.font = '20px "Segoe UI", sans-serif';
+      h.fillText('Press Resume to continue', 120, CONFIG.height / 2 + 32);
+    }
+
     if (!state.running) {
       h.fillStyle = 'rgba(0,0,0,0.6)';
       h.fillRect(0, 0, CONFIG.width, CONFIG.height);
@@ -3127,8 +3168,13 @@ function bindControls() {
   });
   autoBtn.addEventListener('click', () => {
     state.autoPlay = !state.autoPlay;
-    autoBtn.textContent = state.autoPlay ? 'Disable auto-aim' : 'Enable auto-aim';
+    autoBtn.textContent = state.autoPlay ? 'Disable auto' : 'Enable auto';
     savePreferences();
+  });
+  pauseBtn?.addEventListener('click', () => {
+    state.manualPause = !state.manualPause;
+    refreshPauseState();
+    updatePauseButton();
   });
   if (autoFireToggle) {
     autoFireToggle.addEventListener('change', (event) => {
@@ -3254,8 +3300,9 @@ function init() {
   resetGame();
   loadPreferences();
   const restored = loadSession();
-  autoBtn.textContent = state.autoPlay ? 'Disable auto-aim' : 'Enable auto-aim';
+  autoBtn.textContent = state.autoPlay ? 'Disable auto' : 'Enable auto';
   if (autoFireToggle) autoFireToggle.checked = state.autoFire;
+  updatePauseButton();
   if (!savedName && !state.playerName) {
     openNameModal();
   }
