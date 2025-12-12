@@ -42,7 +42,7 @@ async function bootstrap() {
   const expressApp = app.getHttpAdapter().getInstance();
   expressApp.set('trust proxy', 1);
   app.useStaticAssets(distPath);
-  expressApp.get('/*', (_req: Request, res: Response) => {
+  expressApp.get(/.*/, (_req: Request, res: Response) => {
     res.sendFile(path.join(distPath, 'index.html'));
   });
 
