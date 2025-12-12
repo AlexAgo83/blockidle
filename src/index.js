@@ -103,7 +103,7 @@ const FUSION_SPRITES = [
   'fusion-shard.png',
   'fusion-plaguefire.png'
 ];
-const TOP_LIMIT = 10;
+const TOP_LIMIT = Infinity;
 const BUILD_LABEL = buildInfo?.build ? `b${buildInfo.build}` : 'Old';
 const API_TOKEN = (
   import.meta?.env?.VITE_API_TOKEN ||
