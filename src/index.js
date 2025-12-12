@@ -41,6 +41,8 @@ const scoreListEl = document.getElementById('score-list');
 const scoreToggle = document.getElementById('score-toggle');
 const scoreChevron = document.getElementById('score-chevron');
 const scoreFilterCheckbox = document.getElementById('score-filter-current');
+const scoreFilterMineCheckbox = document.getElementById('score-filter-mine');
+const scoreSortSelect = document.getElementById('score-sort');
 const settingsBtn = document.getElementById('settings-btn');
 const settingsModalBackdrop = document.getElementById('settings-modal-backdrop');
 const settingsLeftInput = document.getElementById('key-left');
@@ -392,6 +394,8 @@ const state = {
   commitExpanded: false,
   commitCache: [],
   filterCurrentBuild: false,
+  filterMyScores: false,
+  scoreSort: 'score',
   timeScale: 1,
   fps: 0,
   showDamageByPower: true,
@@ -607,6 +611,16 @@ function loadPreferences() {
       state.filterCurrentBuild = data.filterCurrentBuild;
       if (scoreFilterCheckbox) scoreFilterCheckbox.checked = state.filterCurrentBuild;
     }
+    if (typeof data.filterMyScores === 'boolean') {
+      state.filterMyScores = data.filterMyScores;
+      if (scoreFilterMineCheckbox) scoreFilterMineCheckbox.checked = state.filterMyScores;
+    }
+    if (typeof data.scoreSort === 'string') {
+      state.scoreSort = data.scoreSort === 'date' ? 'date' : 'score';
+      if (scoreSortSelect) scoreSortSelect.value = state.scoreSort;
+    } else if (scoreSortSelect) {
+      scoreSortSelect.value = state.scoreSort;
+    }
     if (typeof data.showDamageByPower === 'boolean') {
       state.showDamageByPower = data.showDamageByPower;
       if (settingsDamageToggle) settingsDamageToggle.checked = state.showDamageByPower;
@@ -639,10 +653,12 @@ function savePreferences() {
       autoPlay: state.autoPlay,
       commitExpanded: state.commitExpanded,
       topScoresExpanded: state.topScoresExpanded,
-      suggestionExpanded: state.suggestionExpanded,
-      filterCurrentBuild: state.filterCurrentBuild,
-      showDamageByPower: state.showDamageByPower,
-      showFps: state.showFps,
+    suggestionExpanded: state.suggestionExpanded,
+    filterCurrentBuild: state.filterCurrentBuild,
+    filterMyScores: state.filterMyScores,
+    scoreSort: state.scoreSort,
+    showDamageByPower: state.showDamageByPower,
+    showFps: state.showFps,
       keyBindings: state.keyBindings
     };
     localStorage.setItem(PREFS_KEY, JSON.stringify(payload));
@@ -2121,12 +2137,44 @@ function renderTopScoresPanel() {
   const list = (state.backendTopScores && state.backendTopScores.length)
     ? state.backendTopScores
     : getTopScores();
-  const filtered = state.filterCurrentBuild
+  const filteredBuild = state.filterCurrentBuild
     ? list.filter((entry) => (entry.build || 'Old') === BUILD_LABEL)
     : list;
-  if (!filtered || filtered.length === 0) {
+  const player = (state.playerName || '').trim();
+  const filteredPlayer = state.filterMyScores && player
+    ? filteredBuild.filter((entry) => (entry.player || '').trim() === player)
+    : filteredBuild;
+  if (state.filterMyScores && !player) {
+    scoreListEl.textContent = 'Set a nickname to filter your scores.';
+    return;
+  }
+  if (!filteredPlayer || filteredPlayer.length === 0) {
     scoreListEl.textContent = 'No scores.';
     return;
+  }
+  const filtered = [...filteredPlayer];
+  const sortBy = state.scoreSort;
+  filtered.sort((a, b) => {
+    if (sortBy === 'date') {
+      const da = Date.parse(a.endedAt || a.updatedAt || 0) || 0;
+      const db = Date.parse(b.endedAt || b.updatedAt || 0) || 0;
+      if (db !== da) return db - da;
+    }
+    const sa = Number(a.score) || 0;
+    const sb = Number(b.score) || 0;
+    if (sb !== sa) return sb - sa;
+    const da = Date.parse(a.endedAt || a.updatedAt || 0) || 0;
+    const db = Date.parse(b.endedAt || b.updatedAt || 0) || 0;
+    return db - da;
+  });
+  let playerBest = null;
+  if (player) {
+    filtered.forEach((entry) => {
+      if ((entry.player || '').trim() === player) {
+        const sc = Number(entry.score) || 0;
+        if (playerBest === null || sc > playerBest) playerBest = sc;
+      }
+    });
   }
   const limit = state.topScoresExpanded ? TOP_LIMIT : Math.min(3, TOP_LIMIT);
   filtered.slice(0, limit).forEach((entry, idx) => {
@@ -2136,7 +2184,17 @@ function renderTopScoresPanel() {
     const name = document.createElement('div');
     name.className = 'score-player';
     const buildLabel = e.build ? e.build : 'Old';
-    name.textContent = `${idx + 1}. ${(e.player || '???').slice(0, 12)} (${buildLabel})`;
+    const playerName = (e.player || '???').slice(0, 12);
+    name.textContent = `${idx + 1}. ${playerName} (${buildLabel})`;
+    if (player && playerBest !== null && (e.player || '').trim() === player) {
+      const sc = Number(e.score) || 0;
+      if (sc === playerBest) {
+        const badge = document.createElement('span');
+        badge.className = 'score-badge';
+        badge.textContent = 'PB';
+        name.appendChild(badge);
+      }
+    }
     const pts = document.createElement('div');
     pts.className = 'score-points';
     pts.textContent = `${formatScore(e.score || 0)} pts`;
@@ -2399,6 +2457,23 @@ function bindScoreFilter() {
     savePreferences();
     renderTopScoresPanel();
   });
+  if (scoreFilterMineCheckbox) {
+    scoreFilterMineCheckbox.checked = state.filterMyScores;
+    scoreFilterMineCheckbox.addEventListener('change', (event) => {
+      state.filterMyScores = event.target.checked;
+      savePreferences();
+      renderTopScoresPanel();
+    });
+  }
+  if (scoreSortSelect) {
+    scoreSortSelect.value = state.scoreSort;
+    scoreSortSelect.addEventListener('change', (event) => {
+      const val = event.target.value === 'date' ? 'date' : 'score';
+      state.scoreSort = val;
+      savePreferences();
+      renderTopScoresPanel();
+    });
+  }
 }
 
 function handleBackendScoreSubmit(payload) {
