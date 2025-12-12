@@ -1164,11 +1164,15 @@ function fusionKind(fusion) {
 
 function hasFusionIngredients(fusion) {
   if (!fusion || !Array.isArray(fusion.ingredients)) return false;
-  // Require owning each ingredient (any level >= 1).
+  // Require each ingredient to be at max level.
   return fusion.ingredients.every((n) => {
     const powerLv = getPowerLevel(n);
     const talentLv = getTalentLevel(n);
-    return Math.max(powerLv, talentLv) >= 1;
+    const powerMax = getPowerDef(n).maxLevel || 1;
+    const talentMax = getTalentDef(n).maxLevel || 1;
+    const level = Math.max(powerLv, talentLv);
+    const max = isTalentName(n) ? talentMax : powerMax;
+    return level >= max;
   });
 }
 
