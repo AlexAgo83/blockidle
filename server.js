@@ -93,7 +93,7 @@ async function initDb() {
   await pool.query(`
     CREATE TABLE IF NOT EXISTS scores (
       id SERIAL PRIMARY KEY,
-      player TEXT NOT NULL UNIQUE,
+      player TEXT NOT NULL,
       score INTEGER NOT NULL,
       stage INTEGER DEFAULT 1,
       level INTEGER DEFAULT 1,
@@ -106,6 +106,10 @@ async function initDb() {
   await pool.query('ALTER TABLE scores ADD COLUMN IF NOT EXISTS level INTEGER DEFAULT 1');
   await pool.query('ALTER TABLE scores ADD COLUMN IF NOT EXISTS ended_at TIMESTAMPTZ DEFAULT now()');
   await pool.query('ALTER TABLE scores ADD COLUMN IF NOT EXISTS build TEXT');
+  await pool.query('ALTER TABLE scores DROP CONSTRAINT IF EXISTS scores_player_key');
+  await pool.query('ALTER TABLE scores ALTER COLUMN build SET DEFAULT \'Old\'');
+  await pool.query('UPDATE scores SET build = COALESCE(build, \'Old\') WHERE build IS NULL');
+  await pool.query('CREATE UNIQUE INDEX IF NOT EXISTS scores_player_build_idx ON scores (player, build)');
 
   await pool.query(`
     CREATE TABLE IF NOT EXISTS suggestions (
@@ -145,13 +149,14 @@ app.post('/scores', mutateLimiter, requireApiKey, async (req, res) => {
     const d = endedAt ? new Date(endedAt) : new Date();
     return Number.isNaN(d.getTime()) ? new Date().toISOString() : d.toISOString();
   })();
+  const safeBuild = (build || 'Old').slice(0, 32);
 
   try {
     const result = await pool.query(
       `
         INSERT INTO scores (player, score, stage, level, ended_at, build)
         VALUES ($1, $2, COALESCE($3, 1), COALESCE($4, 1), $5, $6)
-        ON CONFLICT (player)
+        ON CONFLICT (player, build)
         DO UPDATE SET
           score = GREATEST(scores.score, EXCLUDED.score),
           stage = CASE WHEN EXCLUDED.score > scores.score THEN EXCLUDED.stage ELSE scores.stage END,
@@ -160,7 +165,7 @@ app.post('/scores', mutateLimiter, requireApiKey, async (req, res) => {
           build = CASE WHEN EXCLUDED.score > scores.score THEN EXCLUDED.build ELSE scores.build END
         RETURNING player, score, stage, level, ended_at, created_at, build
       `,
-      [name, score, safeStage, safeLevel, endedAtIso, build || null]
+      [name, score, safeStage, safeLevel, endedAtIso, safeBuild]
     );
     res.json(result.rows[0]);
   } catch (err) {
