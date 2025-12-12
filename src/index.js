@@ -53,6 +53,10 @@ const suggestionTypeSelect = document.getElementById('suggestion-type');
 const suggestionStatusEl = document.getElementById('suggestion-status');
 const suggestionListEl = document.getElementById('suggestion-list');
 const IS_LOCALHOST = ['localhost', '127.0.0.1'].includes(window.location.hostname);
+const scoreErrorModal = document.getElementById('score-error-modal-backdrop');
+const scoreErrorRetryBtn = document.getElementById('score-error-retry');
+const scoreErrorCancelBtn = document.getElementById('score-error-cancel');
+const scoreErrorStatus = document.getElementById('score-error-status');
 const hudBuffer = document.createElement('canvas');
 const hudCtx = hudBuffer.getContext('2d');
 let hudSignature = null;
@@ -336,6 +340,7 @@ const state = {
   loadingSuggestions: false,
   suggestionExpanded: false,
   topScoresExpanded: false,
+  pendingScoreRetry: null,
   manualPause: false,
   infoOpen: false,
   catalogOpen: false,
@@ -1845,6 +1850,19 @@ async function submitScoreToBackend(payload) {
   }
 }
 
+function openScoreErrorModal(payload) {
+  if (!scoreErrorModal) return;
+  state.pendingScoreRetry = payload;
+  scoreErrorModal.classList.add('open');
+  setScoreErrorStatus('');
+}
+
+function closeScoreErrorModal() {
+  if (!scoreErrorModal) return;
+  scoreErrorModal.classList.remove('open');
+  setScoreErrorStatus('');
+}
+
 async function fetchTopScoresFromBackend(limit = TOP_LIMIT) {
   if (scoreListEl) scoreListEl.textContent = 'Loading...';
   try {
@@ -1977,6 +1995,12 @@ function setSuggestionStatus(text, isError = false) {
   if (!suggestionStatusEl) return;
   suggestionStatusEl.textContent = text || '';
   suggestionStatusEl.style.color = isError ? '#fca5a5' : '#cbd5e1';
+}
+
+function setScoreErrorStatus(text, isError = false) {
+  if (!scoreErrorStatus) return;
+  scoreErrorStatus.textContent = text || '';
+  scoreErrorStatus.style.color = isError ? '#fca5a5' : '#cbd5e1';
 }
 
 function updateSuggestionChevron() {
@@ -2161,6 +2185,23 @@ function bindScoreFilter() {
   });
 }
 
+function handleBackendScoreSubmit(payload) {
+  state.pendingScoreRetry = payload;
+  submitScoreToBackend(payload)
+    ?.then((res) => {
+      if (res) {
+        state.pendingScoreRetry = null;
+        fetchTopScoresFromBackend().catch(() => {});
+      } else {
+        openScoreErrorModal(payload);
+      }
+    })
+    .catch((err) => {
+      console.error('handleBackendScoreSubmit error', err);
+      openScoreErrorModal(payload);
+    });
+}
+
 function handleSuggestionSubmit(event) {
   event.preventDefault();
   if (state.submittingSuggestion || state.loadingSuggestions) return;
@@ -2209,6 +2250,37 @@ function bindSuggestionForm() {
   suggestionTextarea?.addEventListener('input', () => setSuggestionStatus(''));
 }
 
+function bindScoreErrorModal() {
+  if (scoreErrorCancelBtn) {
+    scoreErrorCancelBtn.onclick = () => closeScoreErrorModal();
+  }
+  if (scoreErrorRetryBtn) {
+    scoreErrorRetryBtn.onclick = () => {
+      if (state.submittingScore) return;
+      const payload = state.pendingScoreRetry;
+      if (!payload) {
+        closeScoreErrorModal();
+        return;
+      }
+      setScoreErrorStatus('Retrying...');
+      submitScoreToBackend(payload)
+        .then((res) => {
+          if (res) {
+            state.pendingScoreRetry = null;
+            fetchTopScoresFromBackend().catch(() => {});
+            closeScoreErrorModal();
+          } else {
+            setScoreErrorStatus('Still failing, try again.', true);
+          }
+        })
+        .catch((err) => {
+          console.error('retry submit score failed', err);
+          setScoreErrorStatus('Still failing, try again.', true);
+        });
+    };
+  }
+}
+
 function bindSuggestionToggle() {
   if (!suggestionToggle) return;
   suggestionToggle.addEventListener('click', () => {
@@ -2239,8 +2311,7 @@ function triggerGameOver() {
     endedAt
   };
   saveScore(payload);
-  submitScoreToBackend(payload)?.then(() => fetchTopScoresFromBackend().catch(() => {})).catch(() => {});
-  fetchTopScoresFromBackend();
+  handleBackendScoreSubmit(payload);
   markSessionDirty();
 }
 
@@ -3333,6 +3404,7 @@ function init() {
   bindScoreFilter();
   bindSuggestionForm();
   bindSuggestionToggle();
+  bindScoreErrorModal();
   const savedName = loadPlayerName();
   resetGame();
   loadPreferences();
