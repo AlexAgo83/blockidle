@@ -1975,7 +1975,6 @@ function resetGame() {
   state.powers = [];
   state.talents = [];
   state.specialPocket = [];
-  state.specialPocket.push('Wind');
   state.pendingPowerChoices = 0;
   state.powerModalOpen = false;
   state.currentPowerOptions = [];
