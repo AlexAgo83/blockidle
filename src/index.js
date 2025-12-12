@@ -1445,6 +1445,7 @@ function applyPower(powerName) {
       state.powers = state.powers.filter((p) => !fusion.ingredients.includes(p.name));
       state.talents = state.talents.filter((t) => !fusion.ingredients.includes(t.name));
       state.specialPocket = state.specialPocket.filter((p) => !fusion.ingredients.includes(p));
+      purgeFusionIngredients(fusion);
     }
   }
   if (newLevel <= 2) {
@@ -2010,6 +2011,15 @@ function redirectBallToPaddle(ball, speedScale = 0.5) {
   ball.vy = (dy / dist) * speed;
   ball.returning = true;
   ball.reward = false;
+}
+
+function purgeFusionIngredients(fusion) {
+  if (!fusion?.ingredients?.length) return;
+  const ingredients = new Set(fusion.ingredients);
+  state.specialPocket = state.specialPocket.filter((p) => !ingredients.has(p));
+  state.balls.forEach((b) => {
+    if (ingredients.has(b.specialPower)) b.specialPower = null;
+  });
 }
 
 function fireLaser(powerName, brick, now, modes = []) {
