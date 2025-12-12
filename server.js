@@ -17,7 +17,7 @@ app.use(cors({
     'http://localhost:5173',
     'http://localhost:3000'
   ],
-  methods: ['GET', 'POST', 'OPTIONS'],
+  methods: ['GET', 'POST', 'DELETE', 'PATCH', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'X-API-Key'],
   credentials: false
 }));
@@ -36,6 +36,7 @@ const pool = new Pool({
 const GITHUB_OWNER = process.env.GITHUB_OWNER || 'AlexAgo83';
 const GITHUB_REPO = process.env.GITHUB_REPO || 'blockidle';
 const ALLOWED_SUGGESTION_CATEGORIES = ['feature', 'bug'];
+const ALLOWED_STATUSES = ['open', 'done', 'rejected'];
 const API_KEYS = (process.env.API_KEYS || process.env.API_KEY || '')
   .split(',')
   .map((k) => k.trim())
@@ -89,9 +90,11 @@ async function initDb() {
       player TEXT NOT NULL,
       category TEXT DEFAULT 'feature',
       message TEXT NOT NULL,
+      status TEXT DEFAULT 'open',
       created_at TIMESTAMPTZ DEFAULT now()
     )
   `);
+  await pool.query('ALTER TABLE suggestions ADD COLUMN IF NOT EXISTS status TEXT DEFAULT \'open\'');
   await pool.query('CREATE INDEX IF NOT EXISTS suggestions_created_at_idx ON suggestions (created_at DESC)');
 }
 
@@ -178,15 +181,16 @@ app.post('/suggestions', mutateLimiter, requireApiKey, async (req, res) => {
   const cat = ALLOWED_SUGGESTION_CATEGORIES.includes((category || '').trim())
     ? category.trim()
     : 'feature';
+  const status = 'open';
 
   try {
     const result = await pool.query(
       `
-        INSERT INTO suggestions (player, category, message)
-        VALUES ($1, $2, $3)
-        RETURNING id, player, category, message, created_at
+        INSERT INTO suggestions (player, category, message, status)
+        VALUES ($1, $2, $3, $4)
+        RETURNING id, player, category, message, status, created_at
       `,
-      [name, cat, text]
+      [name, cat, text, status]
     );
     res.json(result.rows[0]);
   } catch (err) {
@@ -200,7 +204,7 @@ app.get('/suggestions', readLimiter, async (req, res) => {
   try {
     const result = await pool.query(
       `
-        SELECT id, player, category, message, created_at
+        SELECT id, player, category, message, status, created_at
         FROM suggestions
         ORDER BY created_at DESC
         LIMIT $1
@@ -230,6 +234,33 @@ app.delete('/suggestions/:id', mutateLimiter, requireApiKey, async (req, res) =>
     res.json({ ok: true, id });
   } catch (err) {
     console.error('DELETE /suggestions/:id error', err);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+app.patch('/suggestions/:id/status', mutateLimiter, requireApiKey, async (req, res) => {
+  const id = Number(req.params.id);
+  if (!Number.isFinite(id) || id <= 0) {
+    return res.status(400).json({ error: 'id invalide' });
+  }
+  const statusRaw = (req.body?.status || '').trim().toLowerCase();
+  if (!ALLOWED_STATUSES.includes(statusRaw)) {
+    return res.status(400).json({ error: 'statut invalide' });
+  }
+  try {
+    const result = await pool.query(
+      `
+        UPDATE suggestions
+        SET status = $1
+        WHERE id = $2
+        RETURNING id, player, category, message, status, created_at
+      `,
+      [statusRaw, id]
+    );
+    if (!result.rowCount) return res.status(404).json({ error: 'Not found' });
+    res.json(result.rows[0]);
+  } catch (err) {
+    console.error('PATCH /suggestions/:id/status error', err);
     res.status(500).json({ error: 'Erreur serveur' });
   }
 });

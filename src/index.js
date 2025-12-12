@@ -2071,6 +2071,15 @@ function renderSuggestionList() {
       dot.textContent = '· ' + dateLabel;
       meta.appendChild(dot);
     }
+    const statusPill = document.createElement('span');
+    statusPill.className = `suggestion-status-pill ${s.status || 'open'}`;
+    const statusLabel = (s.status || 'open') === 'done'
+      ? 'Done'
+      : (s.status || 'open') === 'rejected'
+        ? 'Rejected'
+        : 'Open';
+    statusPill.textContent = statusLabel;
+    meta.appendChild(statusPill);
 
     const message = document.createElement('div');
     message.textContent = s.message || '';
@@ -2085,6 +2094,22 @@ function renderSuggestionList() {
       del.type = 'button';
       del.textContent = 'Delete';
       del.onclick = () => deleteSuggestion(s.id);
+      const done = document.createElement('button');
+      done.className = 'suggestion-delete';
+      done.type = 'button';
+      done.textContent = 'Done';
+      done.style.color = '#bbf7d0';
+      done.style.borderColor = 'rgba(34,197,94,0.6)';
+      done.onclick = () => updateSuggestionStatus(s.id, 'done');
+      const rejected = document.createElement('button');
+      rejected.className = 'suggestion-delete';
+      rejected.type = 'button';
+      rejected.textContent = 'Rejected';
+      rejected.style.color = '#fecdd3';
+      rejected.style.borderColor = 'rgba(244,63,94,0.6)';
+      rejected.onclick = () => updateSuggestionStatus(s.id, 'rejected');
+      actions.appendChild(done);
+      actions.appendChild(rejected);
       actions.appendChild(del);
       item.appendChild(actions);
     }
@@ -2153,6 +2178,32 @@ function deleteSuggestion(id) {
   deleteSuggestionFromBackend(id).then((ok) => {
     if (ok) {
       state.suggestions = state.suggestions.filter((s) => s.id !== id);
+      renderSuggestionList();
+    }
+  });
+}
+
+async function updateSuggestionStatusBackend(id, status) {
+  try {
+    const res = await fetch(apiUrl(`/suggestions/${id}/status`), {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
+      body: JSON.stringify({ status })
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    return data;
+  } catch (err) {
+    console.error('updateSuggestionStatusBackend failed', err);
+    return null;
+  }
+}
+
+function updateSuggestionStatus(id, status) {
+  if (!IS_LOCALHOST) return;
+  updateSuggestionStatusBackend(id, status).then((updated) => {
+    if (updated) {
+      state.suggestions = state.suggestions.map((s) => (s.id === id ? { ...s, status: updated.status } : s));
       renderSuggestionList();
     }
   });
