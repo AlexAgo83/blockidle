@@ -3485,6 +3485,16 @@ function bindControls() {
   window.addEventListener('keydown', (event) => {
     if (state.awaitingName || isSettingsOpen() || isCatalogOpen()) return;
     const keyValue = normalizeKeyValue(event.key || event.code);
+    if (state.powerModalOpen) {
+      if (keyValue === 'enter') {
+        event.preventDefault();
+        handlePowerConfirm();
+      } else if (keyValue === 'escape' || keyValue === 'esc') {
+        event.preventDefault();
+        handlePowerPass();
+      }
+      return;
+    }
     if (
       state.ballHeld &&
       (isKeyBinding(event, state.keyBindings.launch) || keyValue === 'enter' || keyValue === 'arrowup')
