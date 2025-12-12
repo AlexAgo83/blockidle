@@ -3,6 +3,7 @@ import.meta.env.VITE_API_TOKEN;
 import.meta.env.VITE_API_KEY;
 
 import buildInfo from './build-info.json';
+import mediaList, { MEDIA_BY_NAME as MEDIA_MAP } from './assets/media-map.js';
 import { loadImage } from './assets.js';
 
 const canvas = document.getElementById('game');
@@ -63,6 +64,13 @@ const scoreErrorCancelBtn = document.getElementById('score-error-cancel');
 const scoreErrorStatus = document.getElementById('score-error-status');
 const scoreOkModal = document.getElementById('score-ok-modal-backdrop');
 const scoreOkClose = document.getElementById('score-ok-close');
+const MEDIA_BY_NAME = MEDIA_MAP || (() => {
+  const map = {};
+  (mediaList || []).forEach((m) => {
+    if (m?.name) map[m.name] = m;
+  });
+  return map;
+})();
 const hudBuffer = document.createElement('canvas');
 const hudCtx = hudBuffer.getContext('2d');
 let hudSignature = null;
@@ -250,6 +258,18 @@ const TALENT_DEFS = [
   { name: 'Resilience', maxLevel: 3 },
   { name: 'Surge', maxLevel: 3 }
 ];
+
+function warnMissingMediaMappings() {
+  const expected = new Set([...POWER_DEFS, ...FUSION_DEFS, ...TALENT_DEFS].map((d) => d.name));
+  const missing = [...expected].filter((name) => !MEDIA_BY_NAME[name]);
+  const extras = Object.keys(MEDIA_BY_NAME || {}).filter((name) => !expected.has(name));
+  if (missing.length) {
+    console.warn('No media asset mapped for:', missing.join(', '));
+  }
+  if (extras.length) {
+    console.warn('Media entries not used in definitions:', extras.join(', '));
+  }
+}
 
 const CONFIG = {
   width: 880,
@@ -1436,8 +1456,14 @@ function updatePowerPreview(name, labelOverride, kind = 'power', fusionDef = nul
   if (powerPreviewName) powerPreviewName.textContent = labelOverride || `${tag}${name}`;
   if (powerPreviewDesc) powerPreviewDesc.innerHTML = desc.rich || desc.plain || 'No details available.';
   if (powerPreviewIcon) {
-    powerPreviewIcon.textContent = name.slice(0, 2).toUpperCase();
-    powerPreviewIcon.style.background = color.replace('0.35', '0.55');
+    const media = MEDIA_BY_NAME[name];
+    if (media?.imageUrl) {
+      powerPreviewIcon.textContent = '';
+      powerPreviewIcon.style.background = `${color.replace('0.35', '0.55')} url(${media.imageUrl}) center/cover no-repeat`;
+    } else {
+      powerPreviewIcon.textContent = name.slice(0, 2).toUpperCase();
+      powerPreviewIcon.style.background = color.replace('0.35', '0.55');
+    }
     powerPreviewIcon.style.boxShadow = `0 0 12px ${color}`;
   }
 }
@@ -1953,6 +1979,7 @@ function renderCatalogLists() {
     if (!container) return;
     container.innerHTML = '';
     items.forEach((item) => {
+      const media = MEDIA_BY_NAME[item.name];
       const desc = kind === 'power'
         ? getPowerDescription(item.name)
         : kind === 'talent'
@@ -1960,11 +1987,32 @@ function renderCatalogLists() {
           : getPowerDescription(item.name);
       const el = document.createElement('div');
       el.className = 'catalog-item';
+      const header = document.createElement('div');
+      header.className = 'catalog-item-header';
+      if (media?.imageUrl) {
+        const img = document.createElement('img');
+        img.className = 'catalog-thumb';
+        img.src = media.imageUrl;
+        img.alt = `${item.name} icon`;
+        header.appendChild(img);
+      }
+      const titleWrap = document.createElement('div');
       const title = document.createElement('h4');
       title.textContent = item.name;
+      if (media?.color) {
+        title.style.color = media.color;
+      }
+      titleWrap.appendChild(title);
+      if (Array.isArray(item.ingredients) && item.ingredients.length) {
+        const ing = document.createElement('div');
+        ing.className = 'slots-label';
+        ing.textContent = item.ingredients.join(' + ');
+        titleWrap.appendChild(ing);
+      }
+      header.appendChild(titleWrap);
       const p = document.createElement('p');
       p.textContent = formatDesc(desc);
-      el.appendChild(title);
+      el.appendChild(header);
       el.appendChild(p);
       container.appendChild(el);
     });
@@ -3461,6 +3509,7 @@ function bindControls() {
 }
 
 function init() {
+  warnMissingMediaMappings();
   loadImage('paddle.png')
     .then((img) => {
       paddleSprite = img;
