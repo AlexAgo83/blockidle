@@ -62,6 +62,22 @@
       transform: translateY(0);
       box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
     }
+    .selected {
+      transform: translateY(-1px);
+    }
+    .selected.power {
+      outline: 2px solid #22d3ee;
+      box-shadow: 0 0 0 3px rgba(34, 211, 238, 0.35), 0 10px 20px rgba(0, 0, 0, 0.35);
+    }
+    .selected.talent {
+      outline: 2px solid #c084fc;
+      box-shadow: 0 0 0 3px rgba(192, 132, 252, 0.35), 0 10px 20px rgba(0, 0, 0, 0.35);
+    }
+    .selected.fusion {
+      outline: 2px solid #16a34a;
+      box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.35), 0 10px 20px rgba(0, 0, 0, 0.35);
+      transform: translateY(-1px);
+    }
     .ghost-btn {
       background: transparent;
       color: #e2e8f0;
@@ -603,6 +619,15 @@
       justify-content: flex-end;
       gap: 8px;
     }
+    .danger-btn {
+      background: linear-gradient(135deg, #fca5a5, #f87171);
+      color: #0b1223;
+      border: none;
+      box-shadow: 0 8px 16px rgba(248, 113, 113, 0.3);
+    }
+    .danger-btn:hover {
+      box-shadow: 0 10px 20px rgba(248, 113, 113, 0.35);
+    }
     .time-btn {
       padding: 6px 12px;
       font-size: 0.95rem;
@@ -774,8 +799,11 @@
         </div>
       </div>
       <div class="modal-actions" style="justify-content: space-between;">
-        <button id="power-open-catalog" type="button" class="ghost-btn">Catalog</button>
-        <button id="power-pass-btn" type="button" class="ghost-btn">Pass</button>
+        <div style="display:flex; gap:8px;">
+          <button id="power-open-catalog" type="button" class="ghost-btn">Catalog</button>
+          <button id="power-pass-btn" type="button" class="danger-btn">Pass</button>
+        </div>
+        <button id="power-confirm-btn" type="button" disabled>Confirm</button>
       </div>
     </div>
   </div>

@@ -14,6 +14,7 @@ const autoFireToggle = null;
 const powerModalBackdrop = document.getElementById('power-modal-backdrop');
 const powerPassBtn = document.getElementById('power-pass-btn');
 const powerCatalogBtn = document.getElementById('power-open-catalog');
+const powerConfirmBtn = document.getElementById('power-confirm-btn');
 const powerButtons = Array.from(document.querySelectorAll('.power-btn'));
 const talentButtons = Array.from(document.querySelectorAll('.talent-btn'));
 const powerPreviewName = document.getElementById('power-preview-name');
@@ -399,6 +400,7 @@ const state = {
   powerModalOpen: false,
   currentPowerOptions: [],
   currentTalentOptions: [],
+  currentSelection: null, // { kind: 'power'|'talent', name }
   lastHitSpecial: null,
   lastVampireHeal: 0,
   lastBossLevelSpawned: 0,
@@ -1293,11 +1295,26 @@ function tryOpenPowerModal() {
   renderPowerModal(powerOptions, talentOptions);
   state.paused = true;
   state.powerModalOpen = true;
+  state.currentSelection = null;
   powerModalBackdrop.classList.add('open');
   refreshPauseState();
 }
 
 function handlePowerSelect(powerName) {
+  selectPowerOrTalent({ kind: 'power', name: powerName });
+}
+
+function applySelection(selection) {
+  if (!selection) return;
+  if (selection.kind === 'power') {
+    return applyPower(selection.name);
+  }
+  if (selection.kind === 'talent') {
+    return applyTalent(selection.name);
+  }
+}
+
+function applyPower(powerName) {
   const def = getPowerDef(powerName);
   const existing = state.powers.find((p) => p.name === powerName);
   const fusion = getFusionDef(powerName);
@@ -1340,7 +1357,50 @@ function handlePowerSelect(powerName) {
   markSessionDirty();
 }
 
+function selectPowerOrTalent(selection) {
+  if (!selection || !selection.name) return;
+  state.currentSelection = selection;
+  const highlight = (btnList, key, name) => {
+    btnList.forEach((btn) => {
+      if (btn.dataset[key] === name) {
+        btn.classList.add('selected');
+        btn.classList.toggle('power', selection.kind === 'power');
+        const isFusion = selection.kind === 'power' && Boolean(getFusionDef(selection.name));
+        btn.classList.toggle('fusion', isFusion);
+        btn.classList.toggle('talent', selection.kind === 'talent' && !isFusion);
+      } else {
+        btn.classList.remove('selected');
+        btn.classList.remove('power', 'fusion', 'talent');
+      }
+    });
+  };
+  if (selection.kind === 'power') {
+    highlight(powerButtons, 'power', selection.name);
+    highlight(talentButtons, 'talent', '');
+  } else if (selection.kind === 'talent') {
+    highlight(powerButtons, 'power', '');
+    highlight(talentButtons, 'talent', selection.name);
+  }
+  if (powerConfirmBtn) {
+    powerConfirmBtn.disabled = false;
+  }
+}
+
 function handleTalentSelect(talentName) {
+  selectPowerOrTalent({ kind: 'talent', name: talentName });
+}
+
+function handlePowerConfirm() {
+  if (!state.currentSelection) return;
+  const sel = state.currentSelection;
+  if (sel.kind === 'power') {
+    applyPower(sel.name);
+  } else if (sel.kind === 'talent') {
+    applyTalent(sel.name);
+  }
+}
+
+function applyTalent(talentName) {
   const def = getTalentDef(talentName);
   const existing = state.talents.find((t) => t.name === talentName);
   const fusion = getFusionDef(talentName);
@@ -1379,6 +1439,7 @@ function handlePowerPass() {
   if (!state.powerModalOpen || state.pendingPowerChoices <= 0) {
     return;
   }
+  state.currentSelection = null;
   state.pendingPowerChoices = Math.max(0, state.pendingPowerChoices - 1);
   closePowerModal();
   if (state.pendingPowerChoices > 0) {
@@ -1392,6 +1453,10 @@ function handlePowerPass() {
 function closePowerModal() {
   powerModalBackdrop.classList.remove('open');
   state.powerModalOpen = false;
+  state.currentSelection = null;
+  powerButtons.forEach((btn) => btn.classList.remove('selected'));
+  talentButtons.forEach((btn) => btn.classList.remove('selected'));
+  if (powerConfirmBtn) powerConfirmBtn.disabled = true;
 }
 
 function renderPowerModal(powerOptions, talentOptions) {
@@ -3509,6 +3574,7 @@ function bindControls() {
     closePowerModal();
     openCatalogModal();
   });
+  powerConfirmBtn?.addEventListener('click', handlePowerConfirm);
   const updateAim = (clientX, clientY) => {
     const rect = canvas.getBoundingClientRect();
     state.aimPos = {
