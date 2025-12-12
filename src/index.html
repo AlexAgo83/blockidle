@@ -424,6 +424,81 @@
       font-size: 0.9rem;
       color: #e2e8f0;
     }
+    .suggestion-header {
+      display: flex;
+      align-items: center;
+      justify-content: flex-start;
+      gap: 8px;
+      cursor: pointer;
+      user-select: none;
+    }
+    .suggestion-note {
+      color: #cbd5e1;
+      font-size: 0.9rem;
+    }
+    .suggestion-form {
+      display: grid;
+      gap: 8px;
+      margin-top: 10px;
+    }
+    .suggestion-form textarea,
+    .suggestion-form select {
+      border-radius: 8px;
+      border: 1px solid #334155;
+      background: #0f172a;
+      color: #e2e8f0;
+      padding: 10px 12px;
+      font-size: 0.95rem;
+      outline: none;
+      transition: border-color 120ms ease, box-shadow 120ms ease;
+    }
+    .suggestion-form textarea:focus,
+    .suggestion-form select:focus {
+      border-color: #38bdf8;
+      box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.18);
+    }
+    .suggestion-status {
+      font-size: 0.9rem;
+      color: #cbd5e1;
+      min-height: 1.2em;
+    }
+    .suggestion-list {
+      margin-top: 10px;
+      display: grid;
+      gap: 8px;
+    }
+    .suggestion-item {
+      padding: 10px 12px;
+      border-radius: 10px;
+      background: linear-gradient(135deg, rgba(15,23,42,0.7), rgba(30,41,59,0.7));
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      display: grid;
+      gap: 4px;
+    }
+    .suggestion-meta {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.9rem;
+      color: #cbd5e1;
+    }
+    .suggestion-pill {
+      padding: 4px 8px;
+      border-radius: 999px;
+      font-weight: 700;
+      letter-spacing: 0.01em;
+      font-size: 0.82rem;
+      color: #0b1223;
+      background: linear-gradient(135deg, #a5b4fc, #6366f1);
+    }
+    .suggestion-pill.bug {
+      background: linear-gradient(135deg, #fca5a5, #f97316);
+    }
+    .suggestion-chevron {
+      font-size: 1rem;
+      color: #e2e8f0;
+      transition: transform 140ms ease;
+    }
     .time-controls {
       margin-top: 10px;
       display: flex;
@@ -484,14 +559,34 @@
       <div id="commit-list"></div>
     </div>
     <div class="commits narrow">
-      <div class="commit-header">
-        <h3 class="commit-title">Top scores</h3>
+      <div class="score-header">
+        <div class="commit-header" id="score-toggle">
+          <span class="commit-chevron" id="score-chevron">▼</span>
+          <h3 class="commit-title">Top scores</h3>
+        </div>
         <label class="score-filter">
           <input type="checkbox" id="score-filter-current" />
           <span>Current build only</span>
         </label>
       </div>
       <div id="score-list"></div>
+    </div>
+    <div class="commits narrow">
+      <div class="suggestion-header" id="suggestion-toggle">
+        <span class="suggestion-chevron" id="suggestion-chevron">▼</span>
+        <h3 class="commit-title">Suggestions & bugs</h3>
+        <span class="suggestion-note">Linked to your nickname</span>
+      </div>
+      <form id="suggestion-form" class="suggestion-form">
+        <select id="suggestion-type" aria-label="Suggestion type">
+          <option value="feature">Feature</option>
+          <option value="bug">Bug / fix</option>
+        </select>
+        <textarea id="suggestion-text" rows="3" maxlength="1000" placeholder="Describe a feature or bug to fix"></textarea>
+        <button id="suggestion-submit" type="submit">Submit</button>
+        <div id="suggestion-status" class="suggestion-status"></div>
+      </form>
+      <div id="suggestion-list" class="suggestion-list"></div>
     </div>
   </div>
   <div id="settings-modal-backdrop" class="modal-backdrop">

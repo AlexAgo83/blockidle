@@ -29,6 +29,8 @@ const commitToggle = document.getElementById('commit-toggle');
 const commitChevron = document.getElementById('commit-chevron');
 const commitListEl = document.getElementById('commit-list');
 const scoreListEl = document.getElementById('score-list');
+const scoreToggle = document.getElementById('score-toggle');
+const scoreChevron = document.getElementById('score-chevron');
 const scoreFilterCheckbox = document.getElementById('score-filter-current');
 const settingsBtn = document.getElementById('settings-btn');
 const settingsModalBackdrop = document.getElementById('settings-modal-backdrop');
@@ -42,6 +44,13 @@ const settingsFpsToggle = document.getElementById('toggle-fps');
 const powerSlotsLabel = document.getElementById('power-slots-label');
 const talentSlotsLabel = document.getElementById('talent-slots-label');
 const timeButtons = Array.from(document.querySelectorAll('.time-btn'));
+const suggestionToggle = document.getElementById('suggestion-toggle');
+const suggestionChevron = document.getElementById('suggestion-chevron');
+const suggestionForm = document.getElementById('suggestion-form');
+const suggestionTextarea = document.getElementById('suggestion-text');
+const suggestionTypeSelect = document.getElementById('suggestion-type');
+const suggestionStatusEl = document.getElementById('suggestion-status');
+const suggestionListEl = document.getElementById('suggestion-list');
 const hudBuffer = document.createElement('canvas');
 const hudCtx = hudBuffer.getContext('2d');
 let hudSignature = null;
@@ -320,11 +329,16 @@ const state = {
   playerName: '',
   backendTopScores: [],
   submittingScore: false,
+  suggestions: [],
+  submittingSuggestion: false,
+  loadingSuggestions: false,
+  suggestionExpanded: false,
+  topScoresExpanded: false,
   gameOverHandled: false,
   lastEndedAt: null,
   awaitingName: false,
   scoreSubmitted: false,
-  commitExpanded: true,
+  commitExpanded: false,
   commitCache: [],
   filterCurrentBuild: false,
   timeScale: 1,
@@ -516,16 +530,25 @@ function loadPreferences() {
     if (!raw) return;
     const data = JSON.parse(raw);
     if ([1, 2, 3].includes(Number(data.timeScale))) {
-      setTimeScale(Number(data.timeScale));
-    }
-    if (typeof data.autoPlay === 'boolean') {
-      state.autoPlay = data.autoPlay;
-      autoBtn.textContent = state.autoPlay ? 'Disable auto-aim' : 'Enable auto-aim';
-    }
-    if (typeof data.commitExpanded === 'boolean') {
-      state.commitExpanded = data.commitExpanded;
-      updateCommitChevron();
-    }
+    setTimeScale(Number(data.timeScale));
+  }
+  if (typeof data.autoPlay === 'boolean') {
+    state.autoPlay = data.autoPlay;
+    autoBtn.textContent = state.autoPlay ? 'Disable auto-aim' : 'Enable auto-aim';
+  }
+  if (typeof data.commitExpanded === 'boolean') {
+    state.commitExpanded = data.commitExpanded;
+    updateCommitChevron();
+  }
+  if (typeof data.topScoresExpanded === 'boolean') {
+    state.topScoresExpanded = data.topScoresExpanded;
+    updateScoreChevron();
+  }
+  if (typeof data.suggestionExpanded === 'boolean') {
+    state.suggestionExpanded = data.suggestionExpanded;
+    updateSuggestionChevron();
+    updateSuggestionVisibility();
+  }
     if (typeof data.filterCurrentBuild === 'boolean') {
       state.filterCurrentBuild = data.filterCurrentBuild;
       if (scoreFilterCheckbox) scoreFilterCheckbox.checked = state.filterCurrentBuild;
@@ -561,6 +584,8 @@ function savePreferences() {
       timeScale: state.timeScale,
       autoPlay: state.autoPlay,
       commitExpanded: state.commitExpanded,
+      topScoresExpanded: state.topScoresExpanded,
+      suggestionExpanded: state.suggestionExpanded,
       filterCurrentBuild: state.filterCurrentBuild,
       showDamageByPower: state.showDamageByPower,
       showFps: state.showFps,
@@ -1835,6 +1860,11 @@ function updateCommitChevron() {
   commitChevron.textContent = state.commitExpanded ? '▼' : '►';
 }
 
+function updateScoreChevron() {
+  if (!scoreChevron) return;
+  scoreChevron.textContent = state.topScoresExpanded ? '▼' : '►';
+}
+
 function renderCommitList() {
   if (!commitListEl) return;
   commitListEl.innerHTML = '';
@@ -1903,7 +1933,8 @@ function renderTopScoresPanel() {
     scoreListEl.textContent = 'No scores.';
     return;
   }
-  filtered.slice(0, TOP_LIMIT).forEach((entry, idx) => {
+  const limit = state.topScoresExpanded ? TOP_LIMIT : Math.min(3, TOP_LIMIT);
+  filtered.slice(0, limit).forEach((entry, idx) => {
     const e = typeof entry === 'object' ? entry : { score: entry };
     const item = document.createElement('div');
     item.className = 'score-item';
@@ -1918,6 +1949,109 @@ function renderTopScoresPanel() {
     item.appendChild(pts);
     scoreListEl.appendChild(item);
   });
+}
+
+function setSuggestionStatus(text, isError = false) {
+  if (!suggestionStatusEl) return;
+  suggestionStatusEl.textContent = text || '';
+  suggestionStatusEl.style.color = isError ? '#fca5a5' : '#cbd5e1';
+}
+
+function updateSuggestionChevron() {
+  if (!suggestionChevron) return;
+  suggestionChevron.textContent = state.suggestionExpanded ? '▼' : '►';
+}
+
+function updateSuggestionVisibility() {
+  if (suggestionForm) suggestionForm.style.display = state.suggestionExpanded ? 'grid' : 'none';
+  if (suggestionListEl) suggestionListEl.style.display = state.suggestionExpanded ? 'grid' : 'none';
+}
+
+function renderSuggestionList() {
+  if (!suggestionListEl) return;
+  suggestionListEl.innerHTML = '';
+  if (!state.suggestionExpanded) {
+    suggestionListEl.textContent = '';
+    updateSuggestionVisibility();
+    return;
+  }
+  updateSuggestionVisibility();
+  const list = Array.isArray(state.suggestions) ? state.suggestions : [];
+  if (!list.length) {
+    suggestionListEl.textContent = 'No suggestions yet.';
+    return;
+  }
+  list.forEach((s) => {
+    const item = document.createElement('div');
+    item.className = 'suggestion-item';
+
+    const meta = document.createElement('div');
+    meta.className = 'suggestion-meta';
+    const cat = document.createElement('span');
+    cat.className = `suggestion-pill ${s.category === 'bug' ? 'bug' : ''}`;
+    cat.textContent = s.category === 'bug' ? 'Bug' : 'Feature';
+    const author = document.createElement('span');
+    const d = s.created_at ? new Date(s.created_at) : null;
+    const dateLabel = d && !Number.isNaN(d.getTime())
+      ? d.toLocaleDateString('fr-FR', { month: 'short', day: 'numeric' })
+      : '';
+    author.textContent = s.player || '???';
+    meta.appendChild(cat);
+    meta.appendChild(author);
+    if (dateLabel) {
+      const dot = document.createElement('span');
+      dot.textContent = '· ' + dateLabel;
+      meta.appendChild(dot);
+    }
+
+    const message = document.createElement('div');
+    message.textContent = s.message || '';
+    item.appendChild(meta);
+    item.appendChild(message);
+    suggestionListEl.appendChild(item);
+  });
+}
+
+async function fetchSuggestionsFromBackend(limit = 8) {
+  if (!suggestionListEl) return;
+  state.loadingSuggestions = true;
+  if (state.suggestionExpanded) suggestionListEl.textContent = 'Loading...';
+  try {
+    const res = await fetch(apiUrl(`/suggestions?limit=${limit}`), { headers: authHeaders() });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    if (Array.isArray(data)) {
+      state.suggestions = data;
+      renderSuggestionList();
+      setSuggestionStatus('');
+    }
+  } catch (err) {
+    console.error('fetchSuggestionsFromBackend failed', err);
+    if (!state.suggestions.length) suggestionListEl.textContent = 'Unable to load suggestions right now.';
+    setSuggestionStatus('Unable to load suggestions.', true);
+  } finally {
+    state.loadingSuggestions = false;
+  }
+}
+
+async function submitSuggestionToBackend(payload) {
+  if (!payload || state.submittingSuggestion) return null;
+  state.submittingSuggestion = true;
+  try {
+    const res = await fetch(apiUrl('/suggestions'), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
+      body: JSON.stringify(payload)
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    return data;
+  } catch (err) {
+    console.error('submitSuggestionToBackend failed', err);
+    return null;
+  } finally {
+    state.submittingSuggestion = false;
+  }
 }
 
 function bindCommitToggle() {
@@ -1935,6 +2069,20 @@ function bindCommitToggle() {
   updateCommitChevron();
 }
 
+function bindScoreToggle() {
+  if (!scoreToggle) return;
+  scoreToggle.addEventListener('click', () => {
+    state.topScoresExpanded = !state.topScoresExpanded;
+    updateScoreChevron();
+    savePreferences();
+    renderTopScoresPanel();
+    if (state.topScoresExpanded && !state.backendTopScores.length) {
+      fetchTopScoresFromBackend().catch(() => {});
+    }
+  });
+  updateScoreChevron();
+}
+
 function bindScoreFilter() {
   if (!scoreFilterCheckbox) return;
   scoreFilterCheckbox.checked = state.filterCurrentBuild;
@@ -1943,6 +2091,70 @@ function bindScoreFilter() {
     savePreferences();
     renderTopScoresPanel();
   });
+}
+
+function handleSuggestionSubmit(event) {
+  event.preventDefault();
+  if (state.submittingSuggestion || state.loadingSuggestions) return;
+  const message = (suggestionTextarea?.value || '').trim();
+  const category = suggestionTypeSelect?.value === 'bug' ? 'bug' : 'feature';
+  if (!state.playerName) {
+    setSuggestionStatus('Pick a nickname before submitting.', true);
+    openNameModal();
+    return;
+  }
+  if (!message || message.length < 6) {
+    setSuggestionStatus('Add a few details (6 characters min).', true);
+    return;
+  }
+  const submitBtn = suggestionForm?.querySelector('button[type="submit"]');
+  if (submitBtn) submitBtn.disabled = true;
+  setSuggestionStatus('Sending...');
+  const payload = {
+    player: state.playerName,
+    message: message.slice(0, 1000),
+    category
+  };
+  submitSuggestionToBackend(payload)
+    .then((created) => {
+      if (created) {
+        state.suggestions = [created, ...state.suggestions].slice(0, 10);
+        renderSuggestionList();
+        if (suggestionTextarea) suggestionTextarea.value = '';
+        setSuggestionStatus('Thanks! Saved.');
+      } else {
+        setSuggestionStatus('Unable to send right now.', true);
+      }
+    })
+    .catch((err) => {
+      console.error('handleSuggestionSubmit failed', err);
+      setSuggestionStatus('Unable to send right now.', true);
+    })
+    .finally(() => {
+      if (submitBtn) submitBtn.disabled = false;
+    });
+}
+
+function bindSuggestionForm() {
+  if (!suggestionForm) return;
+  suggestionForm.addEventListener('submit', handleSuggestionSubmit);
+  suggestionTextarea?.addEventListener('input', () => setSuggestionStatus(''));
+}
+
+function bindSuggestionToggle() {
+  if (!suggestionToggle) return;
+  suggestionToggle.addEventListener('click', () => {
+    state.suggestionExpanded = !state.suggestionExpanded;
+    updateSuggestionChevron();
+    updateSuggestionVisibility();
+    renderSuggestionList();
+    savePreferences();
+    if (state.suggestionExpanded && !state.suggestions.length && !state.loadingSuggestions) {
+      fetchSuggestionsFromBackend().catch(() => {});
+    }
+  });
+  updateSuggestionChevron();
+  updateSuggestionVisibility();
 }
 
 function triggerGameOver() {
@@ -3034,7 +3246,10 @@ function init() {
     if (state.ballHeld) placeBallOnPaddle({ centerPaddle: true });
   });
   bindCommitToggle();
+  bindScoreToggle();
   bindScoreFilter();
+  bindSuggestionForm();
+  bindSuggestionToggle();
   const savedName = loadPlayerName();
   resetGame();
   loadPreferences();
@@ -3049,6 +3264,7 @@ function init() {
   }
   renderTopScoresPanel();
   fetchTopScoresFromBackend(TOP_LIMIT);
+  fetchSuggestionsFromBackend();
   fetchCommits();
   setInterval(() => {
     fetchTopScoresFromBackend().catch(() => {});

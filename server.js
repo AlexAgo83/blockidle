@@ -33,6 +33,7 @@ const pool = new Pool({
 
 const GITHUB_OWNER = process.env.GITHUB_OWNER || 'AlexAgo83';
 const GITHUB_REPO = process.env.GITHUB_REPO || 'blockidle';
+const ALLOWED_SUGGESTION_CATEGORIES = ['feature', 'bug'];
 
 async function initDb() {
   await pool.query(`
@@ -51,6 +52,17 @@ async function initDb() {
   await pool.query('ALTER TABLE scores ADD COLUMN IF NOT EXISTS level INTEGER DEFAULT 1');
   await pool.query('ALTER TABLE scores ADD COLUMN IF NOT EXISTS ended_at TIMESTAMPTZ DEFAULT now()');
   await pool.query('ALTER TABLE scores ADD COLUMN IF NOT EXISTS build TEXT');
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS suggestions (
+      id SERIAL PRIMARY KEY,
+      player TEXT NOT NULL,
+      category TEXT DEFAULT 'feature',
+      message TEXT NOT NULL,
+      created_at TIMESTAMPTZ DEFAULT now()
+    )
+  `);
+  await pool.query('CREATE INDEX IF NOT EXISTS suggestions_created_at_idx ON suggestions (created_at DESC)');
 }
 
 initDb().catch((err) => {
@@ -113,6 +125,56 @@ app.get('/scores', async (req, res) => {
     res.json(result.rows);
   } catch (err) {
     console.error('GET /scores error', err);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+app.post('/suggestions', async (req, res) => {
+  const { player, message, category } = req.body || {};
+  if (!player || typeof player !== 'string' || !player.trim()) {
+    return res.status(400).json({ error: 'player requis' });
+  }
+  if (!message || typeof message !== 'string' || !message.trim()) {
+    return res.status(400).json({ error: 'message requis' });
+  }
+
+  const name = player.trim().slice(0, 64);
+  const text = message.trim().slice(0, 1000);
+  const cat = ALLOWED_SUGGESTION_CATEGORIES.includes((category || '').trim())
+    ? category.trim()
+    : 'feature';
+
+  try {
+    const result = await pool.query(
+      `
+        INSERT INTO suggestions (player, category, message)
+        VALUES ($1, $2, $3)
+        RETURNING id, player, category, message, created_at
+      `,
+      [name, cat, text]
+    );
+    res.json(result.rows[0]);
+  } catch (err) {
+    console.error('POST /suggestions error', err);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+app.get('/suggestions', async (req, res) => {
+  const limit = Math.max(1, Math.min(50, Number(req.query.limit) || 10));
+  try {
+    const result = await pool.query(
+      `
+        SELECT id, player, category, message, created_at
+        FROM suggestions
+        ORDER BY created_at DESC
+        LIMIT $1
+      `,
+      [limit]
+    );
+    res.json(result.rows);
+  } catch (err) {
+    console.error('GET /suggestions error', err);
     res.status(500).json({ error: 'Erreur serveur' });
   }
 });
