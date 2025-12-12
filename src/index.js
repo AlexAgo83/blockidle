@@ -4,7 +4,7 @@ import.meta.env.VITE_API_KEY;
 
 import buildInfo from './build-info.json';
 import mediaList, { MEDIA_BY_NAME as MEDIA_MAP } from './assets/media-map.js';
-import { loadImage } from './assets.js';
+import { loadImage, preloadAssets } from './assets.js';
 
 const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
@@ -85,6 +85,24 @@ let paddleSprite = null;
 let paddleSpriteReady = false;
 let moduleSprite = null;
 let moduleSpriteReady = false;
+const FUSION_SPRITES = [
+  'fusion-sun.png',
+  'fusion-tundra.png',
+  'fusion-forge.png',
+  'fusion-leech.png',
+  'fusion-prism.png',
+  'fusion-spikes.png',
+  'fusion-aurora.png',
+  'fusion-frostbite.png',
+  'fusion-gravebound.png',
+  'fusion-storm.png',
+  'fusion-rust.png',
+  'fusion-echo.png',
+  'fusion-bramble.png',
+  'fusion-radiance.png',
+  'fusion-shard.png',
+  'fusion-plaguefire.png'
+];
 const TOP_LIMIT = 10;
 const BUILD_LABEL = buildInfo?.build ? `b${buildInfo.build}` : 'Old';
 const API_TOKEN = (
@@ -3705,6 +3723,7 @@ function bindControls() {
 
 function init() {
   warnMissingMediaMappings();
+  preloadAssets(['bl_paddle_cp.png', 'bl_module_cp.png', ...FUSION_SPRITES]).catch(() => {});
   loadImage('bl_paddle_cp.png')
     .then((img) => {
       paddleSprite = img;
