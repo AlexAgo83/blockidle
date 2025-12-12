@@ -6,6 +6,9 @@ import powerVampire from './power-vampire.png';
 import powerLight from './power-light.png';
 import powerThorns from './power-thorns.png';
 import powerCurse from './power-curse.png';
+import powerWind from './power-wind.png';
+import powerBeamline from './power-beamline.png';
+import powerPillar from './power-pillar.png';
 
 import talentBoots from './talent-boots.png';
 import talentFeather from './talent-feather.png';
@@ -34,6 +37,9 @@ import fusionBramble from './fusion-bramble.png';
 import fusionRadiance from './fusion-radiance.png';
 import fusionShard from './fusion-shard.png';
 import fusionPlaguefire from './fusion-plaguefire.png';
+import fusionJetstream from './fusion-jetstream.png';
+import fusionCyclone from './fusion-cyclone.png';
+import fusionCrossfire from './fusion-crossfire.png';
 
 const MEDIA_LIST = [
   { name: 'Fire', imageUrl: powerFire, color: '#f97316' },
@@ -44,6 +50,9 @@ const MEDIA_LIST = [
   { name: 'Light', imageUrl: powerLight, color: '#fef08a' },
   { name: 'Thorns', imageUrl: powerThorns, color: '#16a34a' },
   { name: 'Curse', imageUrl: powerCurse, color: '#a855f7' },
+  { name: 'Wind', imageUrl: powerWind, color: '#7dd3fc' },
+  { name: 'Beamline', imageUrl: powerBeamline, color: '#5eead4' },
+  { name: 'Pillar', imageUrl: powerPillar, color: '#c084fc' },
 
   { name: 'Boots', imageUrl: talentBoots, color: '#cbd5e1' },
   { name: 'Feather', imageUrl: talentFeather, color: '#7dd3fc' },
@@ -72,11 +81,9 @@ const MEDIA_LIST = [
   { name: 'Radiance', imageUrl: fusionRadiance, color: '#fde047' },
   { name: 'Shard', imageUrl: fusionShard, color: '#7dd3fc' },
   { name: 'Plaguefire', imageUrl: fusionPlaguefire, color: '#f97316' },
-  { name: 'Jetstream', imageUrl: null, color: '#5eead4' },
-  { name: 'Cyclone', imageUrl: null, color: '#34d399' },
-  { name: 'Beamline', imageUrl: null, color: '#5eead4' },
-  { name: 'Pillar', imageUrl: null, color: '#c084fc' },
-  { name: 'Crossfire', imageUrl: null, color: '#facc15' }
+  { name: 'Jetstream', imageUrl: fusionJetstream, color: '#5eead4' },
+  { name: 'Cyclone', imageUrl: fusionCyclone, color: '#34d399' },
+  { name: 'Crossfire', imageUrl: fusionCrossfire, color: '#facc15' }
 ];
 
 export const MEDIA_BY_NAME = MEDIA_LIST.reduce((acc, media) => {
