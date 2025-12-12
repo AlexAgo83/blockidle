@@ -9,6 +9,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
+app.set('trust proxy', 1);
 app.use(cors({
   origin: [
     'https://block-idle.onrender.com',
@@ -94,10 +95,15 @@ async function initDb() {
   await pool.query('CREATE INDEX IF NOT EXISTS suggestions_created_at_idx ON suggestions (created_at DESC)');
 }
 
-initDb().catch((err) => {
-  console.error('Erreur lors de l’init DB', err);
-  process.exit(1);
-});
+const SHOULD_INIT_DB = process.env.SKIP_DB_INIT === '1' ? false : true;
+if (SHOULD_INIT_DB) {
+  initDb().catch((err) => {
+    console.error('Erreur lors de l’init DB', err);
+    process.exit(1);
+  });
+} else {
+  console.warn('DB init skipped (SKIP_DB_INIT=1)');
+}
 
 app.post('/scores', mutateLimiter, requireApiKey, async (req, res) => {
   const { player, score, stage, level, endedAt, build } = req.body || {};
@@ -278,6 +284,11 @@ app.use((_req, res) => {
 });
 
 const port = process.env.PORT || 3000;
-app.listen(port, () => {
-  console.log(`Serveur en écoute sur port ${port}`);
-});
+if (process.env.NODE_ENV !== 'test') {
+  app.listen(port, () => {
+    console.log(`Serveur en écoute sur port ${port}`);
+  });
+}
+
+export { app, pool, requireApiKey };
+export default app;

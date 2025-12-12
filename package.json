@@ -9,7 +9,7 @@
     "build:app": "vite build",
     "preview": "vite preview",
     "start": "node server.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "node --test"
   },
   "keywords": [],
   "author": "",
@@ -21,5 +21,8 @@
     "express-rate-limit": "^7.5.1",
     "pg": "^8.16.3",
     "vite": "^7.2.7"
+  },
+  "devDependencies": {
+    "supertest": "^7.1.1"
   }
 }
