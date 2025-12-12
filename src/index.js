@@ -154,7 +154,8 @@ const POWER_DEFS = [
   { name: 'Vampire', maxLevel: 3 },
   { name: 'Light', maxLevel: 3 },
   { name: 'Thorns', maxLevel: 3 },
-  { name: 'Curse', maxLevel: 3 }
+  { name: 'Curse', maxLevel: 3 },
+  { name: 'Wind', maxLevel: 1 }
 ];
 const FUSION_DEFS = [
   {
@@ -994,6 +995,11 @@ function getPowerDescription(name) {
         plain: 'Deals 2 delayed damage after 3s and spreads to 1 nearby brick after 1s if the target survives',
         rich: 'Deals <span class=\"power-desc-accent\">+2</span> damage at <span class=\"power-desc-accent\">t+3s</span> and spreads to <span class=\"power-desc-accent\">1 nearby brick</span> after <span class=\"power-desc-accent\">1s</span> if the target lives'
       };
+    case 'Wind':
+      return {
+        plain: 'Ball pierces up to 3 bricks then returns to the paddle (1 hit per brick)',
+        rich: 'Ball pierces <span class="power-desc-accent">up to 3 bricks</span> then returns to the paddle <span class="power-desc-muted">(1 hit per brick)</span>'
+      };
     case 'Sun':
       return {
         plain: 'Fusion of Fire + Light: spreads to 2 nearby bricks and stuns the hit brick plus 3 nearby for 0.75s',
@@ -1224,6 +1230,8 @@ function getPowerColor(name) {
   const fusionDef = getFusionDef(name);
   if (fusionDef?.color) return fusionDef.color;
   switch (name) {
+    case 'Wind':
+      return 'rgba(125, 211, 252, 0.35)';
     case 'Fire':
       return 'rgba(255, 215, 0, 0.35)';
     case 'Ice':
@@ -1925,8 +1933,23 @@ function launchBall() {
     vx,
     vy,
     returning: false,
-    specialPower
+    specialPower,
+    windPierceLeft: specialPower === 'Wind' ? 3 : 0
   });
+}
+
+function redirectBallToPaddle(ball, speedScale = 0.5) {
+  const targetX = state.paddle.x + state.paddle.w / 2;
+  const targetY = state.paddle.y - state.paddle.h;
+  const dx = targetX - ball.x;
+  const dy = targetY - ball.y;
+  const dist = Math.hypot(dx, dy) || 1;
+  const speed = getBallSpeed(Boolean(ball.specialPower)) * speedScale;
+  ball.returnSpeed = speed;
+  ball.vx = (dx / dist) * speed;
+  ball.vy = (dy / dist) * speed;
+  ball.returning = true;
+  ball.reward = false;
 }
 
 function resetGame() {
@@ -3027,6 +3050,24 @@ function update(dt) {
         damageBrick(brick, damage, now, ball.specialPower || null);
         applyFireSplash(ball, brick, now, damage);
 
+        if (ball.specialPower === 'Wind' && ball.windPierceLeft !== undefined) {
+          if (ball.windPierceLeft > 0) ball.windPierceLeft -= 1;
+          // Push the ball just past the brick to avoid repeated hits.
+          if (minOverlap === overlapLeft) {
+            ball.x = brick.x - ball.r - 0.1;
+          } else if (minOverlap === overlapRight) {
+            ball.x = brick.x + brick.w + ball.r + 0.1;
+          } else if (minOverlap === overlapTop) {
+            ball.y = brick.y - ball.r - 0.1;
+          } else {
+            ball.y = brick.y + brick.h + ball.r + 0.1;
+          }
+          if (ball.windPierceLeft <= 0 && !ball.returning) {
+            redirectBallToPaddle(ball);
+          }
+          continue;
+        }
+
         if (minOverlap === overlapLeft || minOverlap === overlapRight) {
           ball.vx *= -1;
         } else {
@@ -3039,17 +3080,7 @@ function update(dt) {
     // Balle perdue -> revient dans la poche sans perdre de vie.
     if (ball.y - ball.r > CONFIG.height) {
       if (!ball.returning) {
-        const targetX = paddle.x + paddle.w / 2;
-        const targetY = paddle.y - paddle.h;
-        const dx = targetX - ball.x;
-        const dy = targetY - ball.y;
-        const dist = Math.hypot(dx, dy) || 1;
-        const speed = getBallSpeed(Boolean(ball.specialPower)) * 0.5;
-        ball.returnSpeed = speed;
-        ball.vx = (dx / dist) * speed;
-        ball.vy = (dy / dist) * speed;
-        ball.returning = true;
-        ball.reward = false;
+        redirectBallToPaddle(ball);
       }
     }
   }
