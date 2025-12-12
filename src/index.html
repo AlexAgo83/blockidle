@@ -673,11 +673,11 @@
     <canvas id="game" width="880" height="1728" class="narrow"></canvas>
     <div class="time-controls narrow">
       <div class="time-left">
-        <button id="abandon-btn" type="button">Quit</button>
-        <button id="pause-btn" type="button">Pause</button>
-        <button id="auto-toggle" type="button">Enable auto-aim</button>
-        <button id="settings-btn" type="button">Settings</button>
-        <button id="info-btn" type="button">Info</button>
+        <button id="abandon-btn" type="button" data-i18n="controls.quit">Quit</button>
+        <button id="pause-btn" type="button" data-i18n="controls.pause">Pause</button>
+        <button id="auto-toggle" type="button" data-i18n="controls.auto_enable">Enable auto-aim</button>
+        <button id="settings-btn" type="button" data-i18n="controls.settings">Settings</button>
+        <button id="info-btn" type="button" data-i18n="controls.info">Info</button>
       </div>
       <div class="time-right">
         <button class="time-btn" data-speed="1" type="button">x1</button>
@@ -722,16 +722,16 @@
     <div class="commits narrow">
       <div class="suggestion-header" id="suggestion-toggle">
         <span class="suggestion-chevron" id="suggestion-chevron">▼</span>
-        <h3 class="commit-title">Suggestions & bugs</h3>
-        <span class="suggestion-note">Linked to your nickname</span>
+        <h3 class="commit-title" data-i18n="suggestions.header">Suggestions & bugs</h3>
+        <span class="suggestion-note" data-i18n="suggestions.note">Linked to your nickname</span>
       </div>
       <form id="suggestion-form" class="suggestion-form">
         <select id="suggestion-type" aria-label="Suggestion type">
-          <option value="feature">Feature</option>
-          <option value="bug">Bug / fix</option>
+          <option value="feature" data-i18n="suggestions.type_feature">Feature</option>
+          <option value="bug" data-i18n="suggestions.type_bug">Bug / fix</option>
         </select>
-        <textarea id="suggestion-text" rows="3" maxlength="1000" placeholder="Describe a feature or bug to fix"></textarea>
-        <button id="suggestion-submit" type="submit">Submit</button>
+        <textarea id="suggestion-text" rows="3" maxlength="1000" placeholder="Describe a feature or bug to fix" data-i18n-placeholder="suggestions.placeholder"></textarea>
+        <button id="suggestion-submit" type="submit" data-i18n="suggestions.submit">Submit</button>
         <div id="suggestion-status" class="suggestion-status"></div>
       </form>
       <div id="suggestion-list" class="suggestion-list"></div>
@@ -739,55 +739,63 @@
   </div>
   <div id="score-error-modal-backdrop" class="modal-backdrop">
     <div class="modal">
-      <h2>Score not sent</h2>
-      <p class="subtitle">The backend did not accept your score. Retry?</p>
+      <h2 data-i18n="score.error_title">Score not sent</h2>
+      <p class="subtitle" data-i18n="score.error_body">The backend did not accept your score. Retry?</p>
       <div id="score-error-status" class="suggestion-status"></div>
       <div class="modal-actions">
-        <button id="score-error-cancel" type="button">Close</button>
-        <button id="score-error-retry" type="button">Retry</button>
+        <button id="score-error-cancel" type="button" data-i18n="score.error_close">Close</button>
+        <button id="score-error-retry" type="button" data-i18n="score.error_retry">Retry</button>
       </div>
     </div>
   </div>
   <div id="score-ok-modal-backdrop" class="modal-backdrop">
     <div class="modal">
-      <h2>Score sent</h2>
-      <p class="subtitle">Your score was submitted successfully.</p>
+      <h2 data-i18n="score.ok_title">Score sent</h2>
+      <p class="subtitle" data-i18n="score.ok_body">Your score was submitted successfully.</p>
       <div class="modal-actions">
-        <button id="score-ok-close" type="button">Close</button>
+        <button id="score-ok-close" type="button" data-i18n="score.ok_close">Close</button>
       </div>
     </div>
   </div>
   <div id="settings-modal-backdrop" class="modal-backdrop">
     <div class="modal settings-modal">
-      <h2>Settings</h2>
-      <p class="subtitle">Customize your keys for movement and launch.</p>
+      <h2 data-i18n="settings.title">Settings</h2>
+      <p class="subtitle" data-i18n="settings.subtitle">Customize your keys for movement and launch.</p>
       <div class="settings-grid">
-        <label for="key-left">Move left</label>
+        <label for="key-left" data-i18n="settings.move_left">Move left</label>
         <input id="key-left" type="text" maxlength="20" placeholder="e.g., ArrowLeft or A" />
-        <label for="key-right">Move right</label>
+        <label for="key-right" data-i18n="settings.move_right">Move right</label>
         <input id="key-right" type="text" maxlength="20" placeholder="e.g., ArrowRight or D" />
-        <label for="key-launch">Launch ball</label>
+        <label for="key-launch" data-i18n="settings.launch_ball">Launch ball</label>
         <input id="key-launch" type="text" maxlength="20" placeholder="e.g., Space" />
       </div>
       <label class="settings-option">
         <input id="toggle-damage-graph" type="checkbox" />
-        <span>Show damage by power</span>
+        <span data-i18n="settings.show_damage">Show damage by power</span>
       </label>
       <label class="settings-option">
         <input id="toggle-fps" type="checkbox" />
-        <span>Show FPS</span>
+        <span data-i18n="settings.show_fps">Show FPS</span>
+      </label>
+      <label class="settings-option">
+        <span data-i18n="settings.language">Language</span>
+        <select id="language-select">
+          <option value="en" data-i18n="settings.lang_en">English</option>
+          <option value="fr" data-i18n="settings.lang_fr">Français</option>
+          <option value="es" data-i18n="settings.lang_es">Español</option>
+        </select>
       </label>
       <div class="modal-actions">
-        <button id="settings-cancel" type="button">Cancel</button>
-        <button id="settings-save" type="button">Save</button>
+        <button id="settings-cancel" type="button" data-i18n="settings.cancel">Cancel</button>
+        <button id="settings-save" type="button" data-i18n="settings.save">Save</button>
       </div>
     </div>
   </div>
   <div id="info-modal-backdrop" class="modal-backdrop">
     <div class="modal">
-      <h2>Game rules</h2>
-      <p class="subtitle">Break bricks, level up, and choose your build… or let me handle it.</p>
-      <ul class="info-list">
+      <h2 data-i18n="info.title">Game rules</h2>
+      <p class="subtitle" data-i18n="info.subtitle">Break bricks, level up, and choose your build… or let me handle it.</p>
+      <ul class="info-list" data-i18n-list="info.list">
         <li>Objective: destroy bricks, level up, and push your score higher.</li>
         <li>Lives: you lose a life when a brick exits at the bottom.</li>
         <li>Fire: manual mode lets you aim and launch; auto-aim fires for you.</li>
@@ -797,38 +805,38 @@
         <li>Fusions: some pairs at level 3 unlock a Fusion (e.g., Fire + Light → Sun) and taking it consumes the ingredients.</li>
       </ul>
       <div class="modal-actions">
-        <button id="open-catalog" type="button">Powers & Talents</button>
-        <button id="info-close" type="button">Close</button>
+        <button id="open-catalog" type="button" data-i18n="info.catalog">Powers & Talents</button>
+        <button id="info-close" type="button" data-i18n="info.close">Close</button>
       </div>
     </div>
   </div>
   <div id="catalog-modal-backdrop" class="modal-backdrop">
     <div class="modal catalog-modal">
-      <h2>All powers, talents & fusions</h2>
-      <p class="subtitle">Browse every option and its description.</p>
-      <h3>Powers</h3>
+      <h2 data-i18n="catalog.title">All powers, talents & fusions</h2>
+      <p class="subtitle" data-i18n="catalog.subtitle">Browse every option and its description.</p>
+      <h3 data-i18n="catalog.powers">Powers</h3>
       <div id="catalog-powers" class="catalog-list"></div>
-      <h3>Talents</h3>
+      <h3 data-i18n="catalog.talents">Talents</h3>
       <div id="catalog-talents" class="catalog-list"></div>
-      <h3>Fusions</h3>
+      <h3 data-i18n="catalog.fusions">Fusions</h3>
       <div id="catalog-fusions" class="catalog-list"></div>
       <div class="modal-actions">
-        <button id="catalog-close" type="button">Close</button>
+        <button id="catalog-close" type="button" data-i18n="catalog.close">Close</button>
       </div>
     </div>
   </div>
   <div id="power-modal-backdrop" class="modal-backdrop">
     <div class="modal">
-      <h2>Choose a power</h2>
-      <p class="subtitle">Each level grants you an upgrade. Pick the option you prefer:</p>
-      <h3>Powers <span id="power-slots-label" class="slots-label"></span></h3>
+      <h2 data-i18n="power_modal.title">Choose a power</h2>
+      <p class="subtitle" data-i18n="power_modal.subtitle">Each level grants you an upgrade. Pick the option you prefer:</p>
+      <h3 data-i18n="power_modal.powers">Powers <span id="power-slots-label" class="slots-label"></span></h3>
       <div class="power-grid">
         <button class="power-btn" data-power="Fire">Fire</button>
         <button class="power-btn" data-power="Poison">Poison</button>
         <button class="power-btn" data-power="Metal">Metal</button>
         <button class="power-btn" data-power="Ice">Ice</button>
       </div>
-      <h3>Talents <span id="talent-slots-label" class="slots-label"></span></h3>
+      <h3 data-i18n="power_modal.talents">Talents <span id="talent-slots-label" class="slots-label"></span></h3>
       <div class="talent-grid">
         <button class="talent-btn" data-talent="Boots">Boots</button>
         <button class="talent-btn" data-talent="Feather">Feather</button>
@@ -843,10 +851,10 @@
       </div>
       <div class="modal-actions" style="justify-content: space-between;">
         <div style="display:flex; gap:8px;">
-          <button id="power-open-catalog" type="button" class="ghost-btn">Catalog</button>
-          <button id="power-pass-btn" type="button" class="danger-btn">Pass</button>
+          <button id="power-open-catalog" type="button" class="ghost-btn" data-i18n="power_modal.catalog">Catalog</button>
+          <button id="power-pass-btn" type="button" class="danger-btn" data-i18n="power_modal.pass">Pass</button>
         </div>
-        <button id="power-confirm-btn" type="button" disabled>Confirm</button>
+        <button id="power-confirm-btn" type="button" disabled data-i18n="power_modal.confirm">Confirm</button>
       </div>
     </div>
   </div>

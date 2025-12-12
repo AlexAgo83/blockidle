@@ -1,0 +1,75 @@
+{
+  "controls": {
+    "quit": "Quitter",
+    "pause": "Pause",
+    "resume": "Reprendre",
+    "auto_enable": "Activer auto-visée",
+    "auto_disable": "Désactiver auto-visée",
+    "settings": "Paramètres",
+    "info": "Info"
+  },
+  "settings": {
+    "title": "Paramètres",
+    "subtitle": "Personnalise tes touches pour bouger et tirer.",
+    "move_left": "Aller à gauche",
+    "move_right": "Aller à droite",
+    "launch_ball": "Lancer la balle",
+    "show_damage": "Afficher les dégâts par pouvoir",
+    "show_fps": "Afficher les FPS",
+    "language": "Langue",
+    "save": "Sauver",
+    "cancel": "Annuler",
+    "lang_en": "Anglais",
+    "lang_fr": "Français",
+    "lang_es": "Espagnol"
+  },
+  "score": {
+    "error_title": "Score non envoyé",
+    "error_body": "Le backend n'a pas accepté ton score. Réessayer ?",
+    "error_close": "Fermer",
+    "error_retry": "Réessayer",
+    "ok_title": "Score envoyé",
+    "ok_body": "Ton score a bien été soumis.",
+    "ok_close": "Fermer"
+  },
+  "info": {
+    "title": "Règles du jeu",
+    "subtitle": "Casse des briques, monte de niveau et choisis ton build… ou laisse-moi faire.",
+    "list": [
+      "Objectif : détruire les briques, monter de niveau et pousser ton score.",
+      "Vies : tu perds une vie quand une brique sort en bas.",
+      "Tir : en manuel, vise et lance; en auto, le tir est automatique.",
+      "Pouvoirs : chaque niveau offre un pouvoir ou une amélioration; les balles marquées l'appliquent.",
+      "Talents : bonus passifs (vitesse, largeur, précision, etc.).",
+      "Slots : max 4 pouvoirs et 4 talents; les fusions consomment leurs ingrédients.",
+      "Fusions : certaines paires au niveau 3 débloquent une Fusion (ex. Fire + Light → Sun) et la prendre consomme les ingrédients."
+    ],
+    "catalog": "Pouvoirs & Talents",
+    "close": "Fermer"
+  },
+  "catalog": {
+    "title": "Tous les pouvoirs, talents & fusions",
+    "subtitle": "Parcours chaque option et sa description.",
+    "powers": "Pouvoirs",
+    "talents": "Talents",
+    "fusions": "Fusions",
+    "close": "Fermer"
+  },
+  "power_modal": {
+    "title": "Choisis un pouvoir",
+    "subtitle": "Chaque niveau offre une amélioration. Prends celle que tu préfères :",
+    "powers": "Pouvoirs",
+    "talents": "Talents",
+    "catalog": "Catalogue",
+    "pass": "Passer",
+    "confirm": "Valider"
+  },
+  "suggestions": {
+    "header": "Suggestions & bugs",
+    "note": "Lié à ton pseudo",
+    "placeholder": "Décris une fonctionnalité ou un bug",
+    "submit": "Envoyer",
+    "type_feature": "Fonctionnalité",
+    "type_bug": "Bug / fix"
+  }
+}

@@ -4,6 +4,9 @@ import.meta.env.VITE_API_KEY;
 
 import buildInfo from './build-info.json';
 import mediaList, { MEDIA_BY_NAME as MEDIA_MAP } from './assets/media-map.js';
+import enLocale from './locales/en.json';
+import frLocale from './locales/fr.json';
+import esLocale from './locales/es.json';
 import { loadImage, preloadAssets } from './assets.js';
 
 const canvas = document.getElementById('game');
@@ -52,6 +55,7 @@ const settingsSaveBtn = document.getElementById('settings-save');
 const settingsCancelBtn = document.getElementById('settings-cancel');
 const settingsDamageToggle = document.getElementById('toggle-damage-graph');
 const settingsFpsToggle = document.getElementById('toggle-fps');
+const languageSelect = document.getElementById('language-select');
 const powerSlotsLabel = document.getElementById('power-slots-label');
 const talentSlotsLabel = document.getElementById('talent-slots-label');
 const timeButtons = Array.from(document.querySelectorAll('.time-btn'));
@@ -448,6 +452,7 @@ const state = {
   currentPowerOptions: [],
   currentTalentOptions: [],
   currentSelection: null, // { kind: 'power'|'talent', name }
+  language: 'en',
   passRemaining: PASS_LIMIT_PER_MODAL,
   lastHitSpecial: null,
   lastVampireHeal: 0,
@@ -459,6 +464,63 @@ const state = {
 
 const bonusState = {};
 const beamCooldownMs = 1000;
+const LOCALES = { en: enLocale, fr: frLocale, es: esLocale };
+
+function t(key) {
+  const lang = state?.language || 'en';
+  const locale = LOCALES[lang] || LOCALES.en || {};
+  const fallback = LOCALES.en || {};
+  const resolve = (dict, path) => path.reduce((acc, p) => (acc && acc[p] !== undefined ? acc[p] : null), dict);
+  const parts = key.split('.');
+  return resolve(locale, parts) ?? resolve(fallback, parts) ?? key;
+}
+
+function setAutoButtonLabel() {
+  if (!autoBtn) return;
+  autoBtn.textContent = state.autoPlay ? t('controls.auto_disable') : t('controls.auto_enable');
+}
+
+function applyTranslations() {
+  const lang = state.language || 'en';
+  const locale = LOCALES[lang] || LOCALES.en;
+  document.querySelectorAll('[data-i18n]').forEach((el) => {
+    const key = el.dataset.i18n;
+    const val = t(key);
+    if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') {
+      if (el.type === 'text' || el.tagName === 'TEXTAREA') el.placeholder = val;
+    } else {
+      el.textContent = val;
+    }
+  });
+  document.querySelectorAll('[data-i18n-placeholder]').forEach((el) => {
+    const key = el.dataset.i18nPlaceholder;
+    el.placeholder = t(key);
+  });
+  document.querySelectorAll('[data-i18n-list]').forEach((el) => {
+    const key = el.dataset.i18nList;
+    const list = t(key);
+    if (Array.isArray(list)) {
+      el.innerHTML = '';
+      list.forEach((line) => {
+        const li = document.createElement('li');
+        li.textContent = line;
+        el.appendChild(li);
+      });
+    }
+  });
+  if (languageSelect) {
+    ['en', 'fr', 'es'].forEach((code) => {
+      const opt = languageSelect.querySelector(`option[value="${code}"]`);
+      if (opt) opt.textContent = t(`settings.lang_${code}`);
+    });
+    languageSelect.value = lang;
+  }
+  setAutoButtonLabel();
+  updatePauseButton();
+  if (powerPassBtn) powerPassBtn.textContent = `${t('power_modal.pass')} (${state.passRemaining})`;
+  if (powerConfirmBtn) powerConfirmBtn.textContent = t('power_modal.confirm');
+  if (powerCatalogBtn) powerCatalogBtn.textContent = t('power_modal.catalog');
+}
 
 function degToRad(deg) {
   return (deg * Math.PI) / 180;
@@ -637,10 +699,10 @@ function loadPreferences() {
     if ([1, 2, 3, 5].includes(Number(data.timeScale))) {
       setTimeScale(Number(data.timeScale));
     }
-  if (typeof data.autoPlay === 'boolean') {
-    state.autoPlay = data.autoPlay;
-    autoBtn.textContent = state.autoPlay ? 'Disable auto' : 'Enable auto';
-  }
+    if (typeof data.autoPlay === 'boolean') {
+      state.autoPlay = data.autoPlay;
+      setAutoButtonLabel();
+    }
   if (typeof data.commitExpanded === 'boolean') {
     state.commitExpanded = data.commitExpanded;
     updateCommitChevron();
@@ -1566,14 +1628,14 @@ function closePowerModal() {
   if (powerConfirmBtn) powerConfirmBtn.disabled = true;
   if (powerPassBtn) {
     powerPassBtn.disabled = state.passRemaining <= 0;
-    powerPassBtn.textContent = `Pass (${state.passRemaining})`;
+    powerPassBtn.textContent = `${t('power_modal.pass')} (${state.passRemaining})`;
   }
 }
 
 function renderPowerModal(powerOptions, talentOptions) {
   if (powerPassBtn) {
     powerPassBtn.disabled = state.passRemaining <= 0;
-    powerPassBtn.textContent = `Pass (${state.passRemaining})`;
+    powerPassBtn.textContent = `${t('power_modal.pass')} (${state.passRemaining})`;
   }
   powerButtons.forEach((btn, idx) => {
     const power = powerOptions[idx];
@@ -2382,7 +2444,7 @@ function updateSuggestionChevron() {
 
 function updatePauseButton() {
   if (!pauseBtn) return;
-  pauseBtn.textContent = state.manualPause ? 'Resume' : 'Pause';
+  pauseBtn.textContent = state.manualPause ? t('controls.resume') : t('controls.pause');
 }
 
 function refreshPauseState() {
@@ -3798,7 +3860,7 @@ function bindControls() {
   });
   autoBtn.addEventListener('click', () => {
     state.autoPlay = !state.autoPlay;
-    autoBtn.textContent = state.autoPlay ? 'Disable auto' : 'Enable auto';
+    setAutoButtonLabel();
     savePreferences();
   });
   pauseBtn?.addEventListener('click', () => {
@@ -3858,6 +3920,14 @@ function bindControls() {
     if (event.key === 'Enter') {
       event.preventDefault();
       handleNameSubmit();
+    }
+  });
+  languageSelect?.addEventListener('change', (event) => {
+    const val = event.target.value;
+    if (['en', 'fr', 'es'].includes(val)) {
+      state.language = val;
+      savePreferences();
+      applyTranslations();
     }
   });
   powerPassBtn?.addEventListener('click', handlePowerPass);
@@ -3948,8 +4018,9 @@ function init() {
   const savedName = loadPlayerName();
   resetGame();
   loadPreferences();
+  applyTranslations();
   const restored = loadSession();
-  autoBtn.textContent = state.autoPlay ? 'Disable auto' : 'Enable auto';
+  setAutoButtonLabel();
   if (autoFireToggle) autoFireToggle.checked = state.autoFire;
   updatePauseButton();
   if (!savedName && !state.playerName) {

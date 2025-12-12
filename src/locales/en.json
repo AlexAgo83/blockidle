@@ -1,0 +1,75 @@
+{
+  "controls": {
+    "quit": "Quit",
+    "pause": "Pause",
+    "resume": "Resume",
+    "auto_enable": "Enable auto-aim",
+    "auto_disable": "Disable auto-aim",
+    "settings": "Settings",
+    "info": "Info"
+  },
+  "settings": {
+    "title": "Settings",
+    "subtitle": "Customize your keys for movement and launch.",
+    "move_left": "Move left",
+    "move_right": "Move right",
+    "launch_ball": "Launch ball",
+    "show_damage": "Show damage by power",
+    "show_fps": "Show FPS",
+    "language": "Language",
+    "save": "Save",
+    "cancel": "Cancel",
+    "lang_en": "English",
+    "lang_fr": "French",
+    "lang_es": "Spanish"
+  },
+  "score": {
+    "error_title": "Score not sent",
+    "error_body": "The backend did not accept your score. Retry?",
+    "error_close": "Close",
+    "error_retry": "Retry",
+    "ok_title": "Score sent",
+    "ok_body": "Your score was submitted successfully.",
+    "ok_close": "Close"
+  },
+  "info": {
+    "title": "Game rules",
+    "subtitle": "Break bricks, level up, and choose your build… or let me handle it.",
+    "list": [
+      "Objective: destroy bricks, level up, and push your score higher.",
+      "Lives: you lose a life when a brick exits at the bottom.",
+      "Fire: manual mode lets you aim and launch; auto-aim fires for you.",
+      "Powers: each level offers a power or upgrade; marked balls apply it on hit.",
+      "Talents: passive bonuses (speed, paddle width, precision, etc.).",
+      "Slots: max 4 powers and 4 talents; fusions can replace ingredients to fit.",
+      "Fusions: some pairs at level 3 unlock a Fusion (e.g., Fire + Light → Sun) and taking it consumes the ingredients."
+    ],
+    "catalog": "Powers & Talents",
+    "close": "Close"
+  },
+  "catalog": {
+    "title": "All powers, talents & fusions",
+    "subtitle": "Browse every option and its description.",
+    "powers": "Powers",
+    "talents": "Talents",
+    "fusions": "Fusions",
+    "close": "Close"
+  },
+  "power_modal": {
+    "title": "Choose a power",
+    "subtitle": "Each level grants you an upgrade. Pick the option you prefer:",
+    "powers": "Powers",
+    "talents": "Talents",
+    "catalog": "Catalog",
+    "pass": "Pass",
+    "confirm": "Confirm"
+  },
+  "suggestions": {
+    "header": "Suggestions & bugs",
+    "note": "Linked to your nickname",
+    "placeholder": "Describe a feature or bug to fix",
+    "submit": "Submit",
+    "type_feature": "Feature",
+    "type_bug": "Bug / fix"
+  }
+}

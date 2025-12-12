@@ -1,0 +1,75 @@
+{
+  "controls": {
+    "quit": "Salir",
+    "pause": "Pausa",
+    "resume": "Reanudar",
+    "auto_enable": "Activar auto-apuntado",
+    "auto_disable": "Desactivar auto-apuntado",
+    "settings": "Ajustes",
+    "info": "Info"
+  },
+  "settings": {
+    "title": "Ajustes",
+    "subtitle": "Personaliza tus teclas para moverte y lanzar.",
+    "move_left": "Mover a la izquierda",
+    "move_right": "Mover a la derecha",
+    "launch_ball": "Lanzar bola",
+    "show_damage": "Mostrar daño por poder",
+    "show_fps": "Mostrar FPS",
+    "language": "Idioma",
+    "save": "Guardar",
+    "cancel": "Cancelar",
+    "lang_en": "Inglés",
+    "lang_fr": "Francés",
+    "lang_es": "Español"
+  },
+  "score": {
+    "error_title": "Puntaje no enviado",
+    "error_body": "El backend no aceptó tu puntaje. ¿Reintentar?",
+    "error_close": "Cerrar",
+    "error_retry": "Reintentar",
+    "ok_title": "Puntaje enviado",
+    "ok_body": "Tu puntaje se envió correctamente.",
+    "ok_close": "Cerrar"
+  },
+  "info": {
+    "title": "Reglas del juego",
+    "subtitle": "Rompe ladrillos, sube de nivel y elige tu build… o deja que lo haga yo.",
+    "list": [
+      "Objetivo: destruir ladrillos, subir de nivel y aumentar tu puntaje.",
+      "Vidas: pierdes una vida cuando un ladrillo sale por abajo.",
+      "Disparo: en manual, apuntas y lanzas; en auto, dispara solo.",
+      "Poderes: cada nivel ofrece un poder o mejora; las bolas marcadas lo aplican al impactar.",
+      "Talentos: bonificaciones pasivas (velocidad, anchura, precisión, etc.).",
+      "Slots: máximo 4 poderes y 4 talentos; las fusiones consumen sus ingredientes.",
+      "Fusiones: algunos pares a nivel 3 desbloquean una Fusión (ej. Fire + Light → Sun) y al tomarla consumes los ingredientes."
+    ],
+    "catalog": "Poderes y Talentos",
+    "close": "Cerrar"
+  },
+  "catalog": {
+    "title": "Todos los poderes, talentos y fusiones",
+    "subtitle": "Consulta cada opción y su descripción.",
+    "powers": "Poderes",
+    "talents": "Talentos",
+    "fusions": "Fusiones",
+    "close": "Cerrar"
+  },
+  "power_modal": {
+    "title": "Elige un poder",
+    "subtitle": "Cada nivel otorga una mejora. Elige la opción que prefieras:",
+    "powers": "Poderes",
+    "talents": "Talentos",
+    "catalog": "Catálogo",
+    "pass": "Pasar",
+    "confirm": "Confirmar"
+  },
+  "suggestions": {
+    "header": "Sugerencias y bugs",
+    "note": "Vinculado a tu apodo",
+    "placeholder": "Describe una función o bug",
+    "submit": "Enviar",
+    "type_feature": "Funcionalidad",
+    "type_bug": "Bug / fix"
+  }
+}
