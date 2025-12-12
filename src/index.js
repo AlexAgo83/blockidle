@@ -1164,10 +1164,11 @@ function fusionKind(fusion) {
 
 function hasFusionIngredients(fusion) {
   if (!fusion || !Array.isArray(fusion.ingredients)) return false;
+  // Require owning each ingredient (any level >= 1).
   return fusion.ingredients.every((n) => {
     const powerLv = getPowerLevel(n);
     const talentLv = getTalentLevel(n);
-    return Math.max(powerLv, talentLv) >= 3;
+    return Math.max(powerLv, talentLv) >= 1;
   });
 }
 
