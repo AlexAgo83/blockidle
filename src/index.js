@@ -556,9 +556,9 @@ function loadPreferences() {
     const raw = localStorage.getItem(PREFS_KEY);
     if (!raw) return;
     const data = JSON.parse(raw);
-    if ([1, 2, 3].includes(Number(data.timeScale))) {
-    setTimeScale(Number(data.timeScale));
-  }
+    if ([1, 2, 3, 5].includes(Number(data.timeScale))) {
+      setTimeScale(Number(data.timeScale));
+    }
   if (typeof data.autoPlay === 'boolean') {
     state.autoPlay = data.autoPlay;
     autoBtn.textContent = state.autoPlay ? 'Disable auto' : 'Enable auto';
