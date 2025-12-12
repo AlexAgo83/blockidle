@@ -68,7 +68,11 @@ let paddleSprite = null;
 let paddleSpriteReady = false;
 const TOP_LIMIT = 10;
 const BUILD_LABEL = buildInfo?.build ? `b${buildInfo.build}` : 'Old';
-const API_TOKEN = (import.meta?.env?.VITE_API_TOKEN || '').trim() || null;
+const API_TOKEN = (
+  import.meta?.env?.VITE_API_TOKEN ||
+  import.meta?.env?.VITE_API_KEY ||
+  ''
+).trim() || null;
 const DEFAULT_KEYS = {
   left: 'ArrowLeft',
   right: 'ArrowRight',
