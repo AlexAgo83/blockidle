@@ -41,6 +41,10 @@ export function buildSettingsModal(root = document.body) {
     id: 'toggle-fps',
     labelKey: 'settings.show_fps'
   });
+  const paddleDebugToggle = createToggle({
+    id: 'toggle-paddle-rect',
+    labelKey: 'settings.show_paddle_rect'
+  });
   const autoPauseToggle = createToggle({
     id: 'toggle-auto-pause',
     labelKey: 'settings.auto_pause'
@@ -74,6 +78,7 @@ export function buildSettingsModal(root = document.body) {
       settingsGrid,
       damageToggle.wrapper,
       fpsToggle.wrapper,
+      paddleDebugToggle.wrapper,
       autoPauseToggle.wrapper,
       languageField.wrapper
     ],
@@ -89,6 +94,7 @@ export function buildSettingsModal(root = document.body) {
     launchInput: launchField.input,
     damageToggle: damageToggle.input,
     fpsToggle: fpsToggle.input,
+    paddleDebugToggle: paddleDebugToggle.input,
     autoPauseToggle: autoPauseToggle.input,
     languageSelect: languageField.select,
     cancelBtn,

@@ -58,6 +58,7 @@ const settingsSaveBtn = document.getElementById('settings-save');
 const settingsCancelBtn = document.getElementById('settings-cancel');
 const settingsDamageToggle = document.getElementById('toggle-damage-graph');
 const settingsFpsToggle = document.getElementById('toggle-fps');
+const settingsPaddleRectToggle = document.getElementById('toggle-paddle-rect');
 const settingsAutoPauseToggle = document.getElementById('toggle-auto-pause');
 const languageSelect = document.getElementById('language-select');
 const powerSlotsLabel = document.getElementById('power-slots-label');
@@ -103,6 +104,7 @@ let bossBrickSprite = null;
 let bossBrickSpriteReady = false;
 let bossFrameOverlays = [];
 let bossFrameReady = false;
+const talentIconCache = {};
 let brickVariants = [];
 let brickVariantsReady = false;
 let bossVariants = [];
@@ -378,6 +380,22 @@ const TALENT_DEFS = [
   { name: 'Twin Core', maxLevel: 2 }
 ];
 
+const TALENT_SHIP_SKINS = {
+  Boots: { tint: '#f97316', glow: 'rgba(249, 115, 22, 0.55)' },
+  Feather: { tint: '#38bdf8', glow: 'rgba(56, 189, 248, 0.5)' },
+  Gloves: { tint: '#fbbf24', glow: 'rgba(251, 191, 36, 0.5)' },
+  Paddle: { tint: '#fb7185', glow: 'rgba(251, 113, 133, 0.55)' },
+  Mirror: { tint: '#8b5cf6', glow: 'rgba(139, 92, 246, 0.55)' },
+  Endurance: { tint: '#22c55e', glow: 'rgba(34, 197, 94, 0.5)' },
+  Scope: { tint: '#f472b6', glow: 'rgba(244, 114, 182, 0.55)' },
+  Momentum: { tint: '#fb923c', glow: 'rgba(251, 146, 60, 0.5)' },
+  Resilience: { tint: '#0ea5e9', glow: 'rgba(14, 165, 233, 0.55)' },
+  Surge: { tint: '#a855f7', glow: 'rgba(168, 85, 247, 0.5)' },
+  'Anti Gravity': { tint: '#14b8a6', glow: 'rgba(20, 184, 166, 0.5)' },
+  Booster: { tint: '#ef4444', glow: 'rgba(239, 68, 68, 0.5)' },
+  'Twin Core': { tint: '#ec4899', glow: 'rgba(236, 72, 153, 0.55)' }
+};
+
 function warnMissingMediaMappings() {
   const expected = new Set([...POWER_DEFS, ...FUSION_DEFS, ...TALENT_DEFS].map((d) => d.name));
   const missing = [...expected].filter((name) => !MEDIA_BY_NAME[name]);
@@ -513,6 +531,7 @@ const state = {
   fps: 0,
   showDamageByPower: true,
   showFps: true,
+  showPaddleRects: false,
   autoPauseEnabled: true,
   pendingPowerChoices: 0,
   powerModalOpen: false,
@@ -530,7 +549,8 @@ const state = {
   starfield: [],
   damageFlashUntil: 0,
   damageShakeUntil: 0,
-  shotEffects: []
+  shotEffects: [],
+  activeShipSkins: []
 };
 globalThis.__brickidle_state = state;
 
@@ -773,6 +793,7 @@ function loadPreferences() {
     if (!raw) {
       if (settingsDamageToggle) settingsDamageToggle.checked = state.showDamageByPower;
       if (settingsFpsToggle) settingsFpsToggle.checked = state.showFps;
+      if (settingsPaddleRectToggle) settingsPaddleRectToggle.checked = state.showPaddleRects;
       if (settingsAutoPauseToggle) settingsAutoPauseToggle.checked = state.autoPauseEnabled;
       if (languageSelect) languageSelect.value = state.language;
       if (settingsLeftInput && settingsRightInput && settingsLaunchInput) {
@@ -835,6 +856,12 @@ function loadPreferences() {
     } else if (settingsFpsToggle) {
       settingsFpsToggle.checked = state.showFps;
     }
+    if (typeof data.showPaddleRects === 'boolean') {
+      state.showPaddleRects = data.showPaddleRects;
+      if (settingsPaddleRectToggle) settingsPaddleRectToggle.checked = state.showPaddleRects;
+    } else if (settingsPaddleRectToggle) {
+      settingsPaddleRectToggle.checked = state.showPaddleRects;
+    }
     if (typeof data.autoPauseEnabled === 'boolean') {
       state.autoPauseEnabled = data.autoPauseEnabled;
       if (settingsAutoPauseToggle) settingsAutoPauseToggle.checked = state.autoPauseEnabled;
@@ -870,6 +897,7 @@ function savePreferences() {
       scoreSort: state.scoreSort,
       showDamageByPower: state.showDamageByPower,
       showFps: state.showFps,
+      showPaddleRects: state.showPaddleRects,
       autoPauseEnabled: state.autoPauseEnabled,
       keyBindings: state.keyBindings
     };
@@ -1040,6 +1068,7 @@ function openSettingsModal() {
   settingsLaunchInput.value = state.keyBindings.launch;
   if (settingsDamageToggle) settingsDamageToggle.checked = !!state.showDamageByPower;
   if (settingsFpsToggle) settingsFpsToggle.checked = !!state.showFps;
+  if (settingsPaddleRectToggle) settingsPaddleRectToggle.checked = !!state.showPaddleRects;
   if (settingsAutoPauseToggle) settingsAutoPauseToggle.checked = !!state.autoPauseEnabled;
   settingsModalBackdrop.classList.add('open');
   setTimeout(() => settingsLeftInput?.focus(), 0);
@@ -1069,6 +1098,9 @@ function applySettingsBindings() {
   }
   if (settingsFpsToggle) {
     state.showFps = !!settingsFpsToggle.checked;
+  }
+  if (settingsPaddleRectToggle) {
+    state.showPaddleRects = !!settingsPaddleRectToggle.checked;
   }
   if (settingsAutoPauseToggle) {
     state.autoPauseEnabled = !!settingsAutoPauseToggle.checked;
@@ -1448,6 +1480,24 @@ function hasOwnedFusionPartner(name) {
   });
 }
 
+function getActiveTalentIcons() {
+  return (state.activeShipSkins || []).map((name) => ({
+    name,
+    img: getTalentIconImage(name)
+  })).filter((e) => e.img);
+}
+
+function getTalentIconImage(name) {
+  if (!name) return null;
+  if (talentIconCache[name]) return talentIconCache[name];
+  const media = MEDIA_BY_NAME[name];
+  if (!media?.imageUrl) return null;
+  const img = new Image();
+  img.src = media.imageUrl;
+  talentIconCache[name] = img;
+  return img;
+}
+
 function isTalentName(name) {
   return TALENT_DEFS.some((t) => t.name === name);
 }
@@ -1810,6 +1860,13 @@ function applyTalent(talentName) {
     state.talents = state.talents.filter((t) => !fusion.ingredients.includes(t.name));
     }
     state.pendingPowerChoices = Math.max(0, state.pendingPowerChoices - 1);
+  }
+  if (!state.activeShipSkins.includes(talentName)) {
+    state.activeShipSkins.push(talentName);
+  }
+  if (talentName === 'Endurance') {
+    const maxLife = getMaxLives();
+    state.lives = Math.min(maxLife, maxLife);
   }
   clampLivesToMax();
   closePowerModal();
@@ -2487,6 +2544,7 @@ function fireLaser(powerName, brick, now, modes = []) {
 
 function resetGame() {
   state.score = 0;
+  state.activeShipSkins = [];
   const maxLife = getMaxLives();
   state.lives = Math.min(maxLife, CONFIG.startLives + 5 * getTalentLevel('Endurance'));
   const now = performance.now ? performance.now() : Date.now();
@@ -3851,7 +3909,7 @@ function drawDamageOverlay(ctxTarget, title = 'Damage by power') {
   const maxVal = Math.max(...entries.map(([, v]) => v));
   const total = entries.reduce((sum, [, v]) => sum + v, 0);
   entries.forEach(([name, val], idx) => {
-    const yPos = y + 60 + idx * barGap;
+    const yPos = y + 60 + idx * (barGap * 2);
     const ratio = maxVal > 0 ? val / maxVal : 0;
     const owned = getPowerLevel(name) > 0 || getTalentLevel(name) > 0;
     const barColor = getPowerColor(name) || '#60a5fa';
@@ -4156,7 +4214,29 @@ function renderPaddle() {
     const isModule = img === moduleSprite;
     const dy = paddle.y + (h - drawH) / 2 + (isModule ? drawH * 0.25 : 0) + shakeY;
     drawHalo(dx, dy, drawW, drawH);
+    ctx.save();
+    ctx.shadowColor = 'transparent';
     ctx.drawImage(img, dx, dy, drawW, drawH);
+    ctx.restore();
+    if (!isModule) {
+      const icons = getActiveTalentIcons();
+      if (icons.length) {
+        const size = Math.min(drawW, drawH) * 0.28;
+        const totalW = icons.length * size + Math.max(0, icons.length - 1) * 6;
+        let ix = dx + drawW / 2 - totalW / 2;
+        const iy = dy + drawH - size - 3;
+        icons.forEach(({ img }) => {
+          if (img?.complete) {
+            ctx.save();
+            ctx.shadowColor = 'rgba(0,0,0,0.35)';
+            ctx.shadowBlur = 4;
+            ctx.drawImage(img, ix, iy, size, size);
+            ctx.restore();
+          }
+          ix += size + 6;
+        });
+      }
+    }
   };
 
   if (paddleSpriteReady && paddleSprite) {
@@ -4188,6 +4268,20 @@ function renderPaddle() {
       drawHalo(paddle.x + paddle.w + gap, paddle.y, halfWidth, paddle.h);
       ctx.fillRect(paddle.x + paddle.w + gap, paddle.y, halfWidth, paddle.h);
     }
+  }
+
+  if (state.showPaddleRects) {
+    ctx.save();
+    ctx.strokeStyle = 'rgba(255,255,255,0.25)';
+    ctx.lineWidth = 1.5;
+    ctx.strokeRect(paddle.x, paddle.y, paddle.w, paddle.h);
+    if (mirrorLevel >= 1) {
+      ctx.strokeRect(paddle.x - halfWidth - gap, paddle.y, halfWidth, paddle.h);
+    }
+    if (mirrorLevel >= 2) {
+      ctx.strokeRect(paddle.x + paddle.w + gap, paddle.y, halfWidth, paddle.h);
+    }
+    ctx.restore();
   }
 }
 
