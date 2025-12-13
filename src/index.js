@@ -104,7 +104,7 @@ let bossBrickSprite = null;
 let bossBrickSpriteReady = false;
 let bossFrameOverlays = [];
 let bossFrameReady = false;
-const talentIconCache = {};
+const iconCache = {};
 let brickVariants = [];
 let brickVariantsReady = false;
 let bossVariants = [];
@@ -1481,20 +1481,33 @@ function hasOwnedFusionPartner(name) {
 }
 
 function getActiveTalentIcons() {
-  return (state.activeShipSkins || []).map((name) => ({
-    name,
-    img: getTalentIconImage(name)
-  })).filter((e) => e.img);
+  return uniqueIconList(state.activeShipSkins || []);
 }
 
-function getTalentIconImage(name) {
+function getActivePowerIcons() {
+  return uniqueIconList((state.powers || []).map((p) => p.name));
+}
+
+function uniqueIconList(names = []) {
+  const seen = new Set();
+  const list = [];
+  names.forEach((name) => {
+    if (!name || seen.has(name)) return;
+    seen.add(name);
+    const img = getIconImage(name);
+    if (img) list.push({ name, img });
+  });
+  return list;
+}
+
+function getIconImage(name) {
   if (!name) return null;
-  if (talentIconCache[name]) return talentIconCache[name];
+  if (iconCache[name]) return iconCache[name];
   const media = MEDIA_BY_NAME[name];
   if (!media?.imageUrl) return null;
   const img = new Image();
   img.src = media.imageUrl;
-  talentIconCache[name] = img;
+  iconCache[name] = img;
   return img;
 }
 
@@ -1899,8 +1912,16 @@ function closePowerModal() {
   powerModalBackdrop.classList.remove('open');
   state.powerModalOpen = false;
   state.currentSelection = null;
-  powerButtons.forEach((btn) => btn.classList.remove('selected'));
-  talentButtons.forEach((btn) => btn.classList.remove('selected'));
+  powerButtons.forEach((btn) => {
+    btn.classList.remove('selected');
+    btn.disabled = true;
+    btn.tabIndex = -1;
+  });
+  talentButtons.forEach((btn) => {
+    btn.classList.remove('selected');
+    btn.disabled = true;
+    btn.tabIndex = -1;
+  });
   if (powerConfirmBtn) powerConfirmBtn.disabled = true;
   if (powerPassBtn) {
     powerPassBtn.disabled = state.passRemaining <= 0;
@@ -1913,6 +1934,8 @@ function renderPowerModal(powerOptions, talentOptions) {
     powerPassBtn.disabled = state.passRemaining <= 0;
     powerPassBtn.textContent = `${t('power_modal.pass')} (${state.passRemaining})`;
   }
+  powerButtons.forEach((btn) => { btn.disabled = false; btn.tabIndex = 0; });
+  talentButtons.forEach((btn) => { btn.disabled = false; btn.tabIndex = 0; });
   renderOwnedGrid(ownedPowersGrid, state.powers, 'power');
   renderOwnedGrid(ownedTalentsGrid, state.talents, 'talent');
   powerButtons.forEach((btn, idx) => {
@@ -2032,10 +2055,10 @@ function updatePowerPreview(name, labelOverride, kind = 'power', fusionDef = nul
   const tag = fusionDef ? 'Fusion · ' : '';
   if (powerPreviewName) {
     powerPreviewName.innerHTML = '';
-    const titleSpan = document.createElement('span');
+  const titleSpan = document.createElement('span');
     titleSpan.textContent = tag ? `${tag}${name}` : name;
-    powerPreviewName.appendChild(titleSpan);
-  }
+  powerPreviewName.appendChild(titleSpan);
+}
   if (powerPreviewDesc) {
     powerPreviewDesc.innerHTML = desc.rich || desc.plain || 'No details available.';
     const chipsRow = document.createElement('div');
@@ -3686,6 +3709,18 @@ function update(dt) {
       ball.y = paddle.y - ball.r;
       ball.vy *= -1;
 
+      // Rebond : bonus de vitesse et de dégâts cumulatif (max +50%)
+      const bounceSpeedMult = 1.1;
+      const damageMult = 1.1;
+      const currentBoost = Math.max(1, ball.damageScale || 1);
+      const nextBoost = Math.min(currentBoost * damageMult, 1.5);
+      const speedBoost = Math.min(Math.hypot(ball.vx, ball.vy) * bounceSpeedMult, getBallSpeed(Boolean(ball.specialPower)) * 1.5);
+      const speedRatio = speedBoost / (Math.hypot(ball.vx, ball.vy) || 1);
+      ball.vx *= speedRatio;
+      ball.vy *= speedRatio;
+      ball.damageScale = nextBoost;
+      ball.maxBoosted = nextBoost >= 1.5;
+
       const speed = Math.hypot(ball.vx, ball.vy);
       if (state.autoPlay) {
         const target = selectTargetBrick();
@@ -3883,14 +3918,18 @@ function getDamageEntries(maxCount = 8) {
 }
 
 function drawDamageOverlay(ctxTarget, title = 'Damage by power') {
-  const entries = getDamageEntries(8);
+  const maxRows = 10;
+  const entries = getDamageEntries(maxRows);
   if (!entries.length) return;
   const panelW = 540;
   const barH = 12;
-  const barGap = 26;
+  const barGap = 22;
   const panelH = 90 + entries.length * barGap;
   const x = (CONFIG.width - panelW) / 2;
-  const y = Math.max(40, CONFIG.height - panelH - 60);
+  const maxY = state.paused && state.manualPause ? CONFIG.height - CONFIG.height * 0.25 : CONFIG.height - 40;
+  const minY = state.paused && state.manualPause ? CONFIG.height / 2 + 60 : 20;
+  let y = maxY - panelH;
+  if (y < minY) y = minY;
   ctxTarget.save();
   ctxTarget.fillStyle = 'rgba(8,15,30,0.82)';
   ctxTarget.strokeStyle = 'rgba(148,163,184,0.45)';
@@ -4219,22 +4258,33 @@ function renderPaddle() {
     ctx.drawImage(img, dx, dy, drawW, drawH);
     ctx.restore();
     if (!isModule) {
-      const icons = getActiveTalentIcons();
-      if (icons.length) {
-        const size = Math.min(drawW, drawH) * 0.28;
-        const totalW = icons.length * size + Math.max(0, icons.length - 1) * 6;
+      const powerIcons = getActivePowerIcons();
+      const talentIcons = getActiveTalentIcons();
+      const drawRow = (icons, y) => {
+        const size = Math.min(drawW, drawH) * 0.24;
+        const spacing = 6;
+        const totalW = icons.length * size + Math.max(0, icons.length - 1) * spacing;
         let ix = dx + drawW / 2 - totalW / 2;
-        const iy = dy + drawH - size - 3;
         icons.forEach(({ img }) => {
           if (img?.complete) {
             ctx.save();
-            ctx.shadowColor = 'rgba(0,0,0,0.35)';
-            ctx.shadowBlur = 4;
-            ctx.drawImage(img, ix, iy, size, size);
+            ctx.shadowColor = 'rgba(0,0,0,0.25)';
+            ctx.shadowBlur = 3;
+            ctx.drawImage(img, ix, y, size, size);
             ctx.restore();
           }
-          ix += size + 6;
+          ix += size + spacing;
         });
+      };
+      if (powerIcons.length) {
+        const size = Math.min(drawW, drawH) * 0.24;
+        const y = dy + drawH - size * 2 - 8;
+        drawRow(powerIcons, y);
+      }
+      if (talentIcons.length) {
+        const size = Math.min(drawW, drawH) * 0.24;
+        const y = dy + drawH - size - 2;
+        drawRow(talentIcons, y);
       }
     }
   };
@@ -4355,7 +4405,8 @@ function renderBalls() {
     }
     return color;
   };
-  const drawBallSprite = (x, y, r, vx, vy, specialPower) => {
+  const blinkValue = (period) => (Math.sin(timeNow / period) + 1) / 2;
+  const drawBallSprite = (x, y, r, vx, vy, specialPower, ballObj = null) => {
     const speed = Math.hypot(vx, vy);
     const spin = (speed / 400) * (timeNow / 16);
     const baseScale = 1;
@@ -4383,6 +4434,17 @@ function renderBalls() {
       ctx.stroke();
     }
     ctx.restore();
+    if (ballObj?.maxBoosted) {
+      ctx.save();
+      ctx.lineWidth = 2.5;
+      ctx.strokeStyle = `rgba(255,255,255,${(0.65 + 0.35 * blinkValue(80)).toFixed(2)})`;
+      ctx.shadowColor = `rgba(255,255,255,${(0.4 + 0.4 * blinkValue(60)).toFixed(2)})`;
+      ctx.shadowBlur = 10;
+      ctx.beginPath();
+      ctx.arc(x, y, r + 3, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
+    }
   };
 
   for (const ball of state.balls) {
@@ -4436,7 +4498,7 @@ function renderBalls() {
     }
     ctx.restore();
     ctx.fillStyle = fill;
-    drawBallSprite(ball.x, ball.y, ball.r, ball.vx, ball.vy, ball.specialPower);
+    drawBallSprite(ball.x, ball.y, ball.r, ball.vx, ball.vy, ball.specialPower, ball);
   }
 
   if (state.ballHeld) {
