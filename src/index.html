@@ -284,12 +284,19 @@
       border: none;
       border-radius: 10px;
       padding: 12px 10px;
+      padding-right: 48px;
       text-align: left;
+      display: flex;
+      align-items: center;
+      justify-content: flex-start;
+      gap: 10px;
+      width: 100%;
       cursor: pointer;
       box-shadow: 0 10px 20px rgba(0, 0, 0, 0.25);
       transition: transform 120ms ease, box-shadow 120ms ease;
       font-weight: 700;
       letter-spacing: 0.01em;
+      position: relative;
     }
     .power-btn strong {
       letter-spacing: 0.02em;
@@ -307,6 +314,53 @@
     .power-btn strong {
       letter-spacing: 0.02em;
     }
+    .btn-title {
+      color: #0b1223;
+      font-weight: 800;
+      letter-spacing: 0.02em;
+      font-size: 1rem;
+      white-space: nowrap;
+      display: block;
+      flex: 1 1 auto;
+    }
+    .btn-right {
+      position: absolute;
+      right: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      display: inline-flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 6px;
+      min-width: fit-content;
+    }
+    .btn-state {
+      padding: 4px 9px;
+      border-radius: 999px;
+      background: rgba(11, 18, 35, 0.16);
+      color: #0b1223;
+      font-weight: 900;
+      font-size: 0.85rem;
+      letter-spacing: 0.04em;
+      white-space: nowrap;
+    }
+    .btn-state.fusion {
+      background: rgba(16, 185, 129, 0.18);
+      color: #0b172a;
+    }
+    .fusion-badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: radial-gradient(circle at 30% 30%, #34d399, #0ea5e9);
+      color: #0b1223;
+      font-size: 0.65rem;
+      font-weight: 800;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+    }
     .talent-grid {
       display: grid;
       grid-template-columns: repeat(2, 1fr);
@@ -319,7 +373,13 @@
       border: none;
       border-radius: 10px;
       padding: 10px;
+      padding-right: 48px;
       text-align: left;
+      display: flex;
+      align-items: center;
+      justify-content: flex-start;
+      gap: 10px;
+      width: 100%;
       cursor: pointer;
       box-shadow: 0 8px 18px rgba(0, 0, 0, 0.25);
       transition: transform 120ms ease, box-shadow 120ms ease;
@@ -865,13 +925,6 @@
           <label class="score-filter">
             <input type="checkbox" id="score-filter-mine" />
             <span>My scores only</span>
-          </label>
-          <label>
-            <span>Sort by</span>
-            <select id="score-sort" class="score-sort">
-              <option value="score">Score</option>
-              <option value="date">Date</option>
-            </select>
           </label>
         </div>
       </div>

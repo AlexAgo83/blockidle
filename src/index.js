@@ -101,6 +101,8 @@ let brickSprite = null;
 let brickSpriteReady = false;
 let bossBrickSprite = null;
 let bossBrickSpriteReady = false;
+let bossFrameOverlays = [];
+let bossFrameReady = false;
 let brickVariants = [];
 let brickVariantsReady = false;
 let bossVariants = [];
@@ -136,6 +138,11 @@ const BOSS_VARIANT_FILES = [
   'boss-variant-devil4.svg',
   'boss-variant-devil5.svg',
   'boss-variant-devil6.svg'
+];
+const BOSS_FRAME_FILES = [
+  'boss-frame-epic1.svg',
+  'boss-frame-epic2.svg',
+  'boss-frame-epic3.svg'
 ];
 const API_TOKEN = (
   import.meta?.env?.VITE_API_TOKEN ||
@@ -842,6 +849,8 @@ function loadPreferences() {
       settingsRightInput.value = state.keyBindings.right;
       settingsLaunchInput.value = state.keyBindings.launch;
     }
+    state.scoreSort = 'score';
+    if (scoreSortSelect) scoreSortSelect.value = 'score';
   } catch (_) {
     // ignore parsing/storage errors
   }
@@ -1430,6 +1439,13 @@ function getFusionsForName(name) {
   return FUSION_DEFS.filter((f) => Array.isArray(f.ingredients) && f.ingredients.includes(name));
 }
 
+function hasOwnedFusionPartner(name) {
+  return getFusionsForName(name).some((fusion) => {
+    const others = (fusion.ingredients || []).filter((ing) => ing !== name);
+    return others.some((ing) => getPowerLevel(ing) > 0 || getTalentLevel(ing) > 0);
+  });
+}
+
 function isTalentName(name) {
   return TALENT_DEFS.some((t) => t.name === name);
 }
@@ -1843,6 +1859,7 @@ function renderPowerModal(powerOptions, talentOptions) {
   powerButtons.forEach((btn, idx) => {
     const power = powerOptions[idx];
     if (power) {
+      btn.classList.remove('has-fusion-partner');
       btn.style.display = 'block';
       const currentLv = getPowerLevel(power);
       const nextLv = nextPowerLevel(power);
@@ -1856,13 +1873,16 @@ function renderPowerModal(powerOptions, talentOptions) {
         btn.style.border = '';
         btn.style.color = '';
       }
-      const label = currentLv === 0
-        ? fusion ? `${power} (Fusion)` : `${power} ` + 'NEW'
-        : `${power} (Lv. ${currentLv} → ${nextLv})`;
-      btn.textContent = label;
+      const status = currentLv === 0
+        ? fusion ? 'FUSION' : 'NEW'
+        : `Lv. ${currentLv} → ${nextLv}`;
+      const hasFusionPartner = currentLv === 0 && hasOwnedFusionPartner(power);
+      const label = `${power} ${status}${hasFusionPartner ? ' F' : ''}`;
+      const badgeHtml = hasFusionPartner ? '<span class="fusion-badge" title="Fusion ready">F</span>' : '';
+      btn.innerHTML = `<span class="btn-title">${power}</span><span class="btn-right"><span class="btn-state ${fusion ? 'fusion' : ''}">${status}</span>${badgeHtml}</span>`;
       btn.dataset.power = power;
       btn.title = getPowerDescription(power).plain;
-      const showPreview = () => updatePowerPreview(power, label, 'power', fusion);
+      const showPreview = () => updatePowerPreview(power, { label, statusText: status, fusionBadge: hasFusionPartner }, 'power', fusion);
       btn.onmouseenter = showPreview;
       btn.onpointerenter = showPreview;
       btn.ontouchstart = showPreview;
@@ -1876,16 +1896,18 @@ function renderPowerModal(powerOptions, talentOptions) {
   talentButtons.forEach((btn, idx) => {
       const talent = talentOptions[idx];
       if (talent) {
+        btn.classList.remove('has-fusion-partner');
         btn.style.display = 'block';
         const currentLv = getTalentLevel(talent);
         const nextLv = nextTalentLevel(talent);
-        const label = currentLv === 0
-          ? `${talent} ` + 'NEW'
-          : `${talent} (Lv. ${currentLv} → ${nextLv})`;
-        btn.textContent = label;
+        const status = currentLv === 0 ? 'NEW' : `Lv. ${currentLv} → ${nextLv}`;
+        const hasFusionPartner = currentLv === 0 && hasOwnedFusionPartner(talent);
+        const label = `${talent} ${status}${hasFusionPartner ? ' F' : ''}`;
+        const badgeHtml = hasFusionPartner ? '<span class="fusion-badge" title="Fusion ready">F</span>' : '';
+        btn.innerHTML = `<span class="btn-title">${talent}</span><span class="btn-right"><span class="btn-state">${status}</span>${badgeHtml}</span>`;
         btn.dataset.talent = talent;
         btn.title = getTalentDescription(talent).plain;
-      const showPreview = () => updatePowerPreview(talent, label, 'talent');
+      const showPreview = () => updatePowerPreview(talent, { label, statusText: status, fusionBadge: hasFusionPartner }, 'talent');
       btn.onmouseenter = showPreview;
       btn.onpointerenter = showPreview;
       btn.ontouchstart = showPreview;
@@ -1903,11 +1925,19 @@ function renderPowerModal(powerOptions, talentOptions) {
   if (powerSlotsLabel) powerSlotsLabel.textContent = powerSlots;
   if (talentSlotsLabel) talentSlotsLabel.textContent = talentSlots;
   if (firstPower) {
-    const label = powerButtons.find((b) => b.dataset.power === firstPower)?.textContent || firstPower;
-    updatePowerPreview(firstPower, label, 'power', getFusionDef(firstPower));
+    const currentLv = getPowerLevel(firstPower);
+    const nextLv = nextPowerLevel(firstPower);
+    const status = currentLv === 0 ? 'NEW' : `Lv. ${currentLv} → ${nextLv}`;
+    const label = `${firstPower} ${status}`;
+    const hasFusionPartner = currentLv === 0 && hasOwnedFusionPartner(firstPower);
+    updatePowerPreview(firstPower, { label, statusText: status, fusionBadge: hasFusionPartner }, 'power', getFusionDef(firstPower));
   } else if (firstTalent) {
-    const label = talentButtons.find((b) => b.dataset.talent === firstTalent)?.textContent || firstTalent;
-    updatePowerPreview(firstTalent, label, 'talent');
+    const currentLv = getTalentLevel(firstTalent);
+    const nextLv = nextTalentLevel(firstTalent);
+    const status = currentLv === 0 ? 'NEW' : `Lv. ${currentLv} → ${nextLv}`;
+    const label = `${firstTalent} ${status}`;
+    const hasFusionPartner = currentLv === 0 && hasOwnedFusionPartner(firstTalent);
+    updatePowerPreview(firstTalent, { label, statusText: status, fusionBadge: hasFusionPartner }, 'talent');
   }
 }
 
@@ -1921,12 +1951,22 @@ function sampleOptions(list, count) {
 }
 
 function updatePowerPreview(name, labelOverride, kind = 'power', fusionDef = null) {
+  let options = {};
+  if (labelOverride && typeof labelOverride === 'object') {
+    options = labelOverride;
+    labelOverride = options.label || null;
+  }
   if (!name) return;
   const isPower = kind === 'power';
   const desc = isPower ? getPowerDescription(name) : getTalentDescription(name);
   const color = isPower ? getPowerColor(name) : 'rgba(148, 163, 184, 0.4)';
   const tag = fusionDef ? 'Fusion · ' : '';
-  if (powerPreviewName) powerPreviewName.textContent = labelOverride || `${tag}${name}`;
+  if (powerPreviewName) {
+    powerPreviewName.innerHTML = '';
+    const titleSpan = document.createElement('span');
+    titleSpan.textContent = tag ? `${tag}${name}` : name;
+    powerPreviewName.appendChild(titleSpan);
+  }
   if (powerPreviewDesc) {
     powerPreviewDesc.innerHTML = desc.rich || desc.plain || 'No details available.';
     const chipsRow = document.createElement('div');
@@ -2395,23 +2435,40 @@ function purgeFusionIngredients(fusion) {
 
 function fireLaser(powerName, brick, now, modes = []) {
   if (!Array.isArray(modes) || modes.length === 0) return;
+  const cooldown = powerName === 'Crossfire' ? beamCooldownMs * 0.6 : beamCooldownMs;
   const last = state.beamCooldown[powerName] || 0;
-  if (now - last < beamCooldownMs) return;
+  if (now - last < cooldown) return;
   state.beamCooldown[powerName] = now;
   const dmg = getBallBaseDamage({ specialPower: powerName }) + Math.max(0, getPowerLevel(powerName) - 1);
   const cx = brick.x + brick.w / 2;
   const cy = brick.y + brick.h / 2;
   const color = getPowerColor(powerName);
-  const duration = 200;
+  const duration = powerName === 'Crossfire' ? 260 : 200;
   for (const mode of modes) {
     if (mode === 'h') {
       const targets = state.bricks.filter((b) => b.alive && b !== brick && cy >= b.y && cy <= b.y + b.h);
       targets.forEach((b) => damageBrick(b, dmg, now, powerName));
-      state.beamEffects.push({ mode: 'h', y: cy, color, until: now + duration });
+      state.beamEffects.push({
+        mode: 'h',
+        y: cy,
+        color,
+        until: now + duration,
+        glow: powerName === 'Crossfire',
+        glowWidth: powerName === 'Crossfire' ? 12 : undefined,
+        lineWidth: powerName === 'Crossfire' ? 6 : undefined
+      });
     } else if (mode === 'v') {
       const targets = state.bricks.filter((b) => b.alive && b !== brick && cx >= b.x && cx <= b.x + b.w);
       targets.forEach((b) => damageBrick(b, dmg, now, powerName));
-      state.beamEffects.push({ mode: 'v', x: cx, color, until: now + duration });
+      state.beamEffects.push({
+        mode: 'v',
+        x: cx,
+        color,
+        until: now + duration,
+        glow: powerName === 'Crossfire',
+        glowWidth: powerName === 'Crossfire' ? 12 : undefined,
+        lineWidth: powerName === 'Crossfire' ? 6 : undefined
+      });
     }
   }
 }
@@ -2637,7 +2694,19 @@ function renderCatalogLists() {
       if (Array.isArray(item.ingredients) && item.ingredients.length) {
         const ing = document.createElement('div');
         ing.className = 'slots-label';
-        ing.textContent = item.ingredients.join(' + ');
+        item.ingredients.forEach((ingr, idx) => {
+          const span = document.createElement('span');
+          const owned = getPowerLevel(ingr) > 0 || getTalentLevel(ingr) > 0;
+          span.textContent = ingr;
+          span.style.color = owned ? '#34d399' : 'rgba(226,232,240,0.75)';
+          ing.appendChild(span);
+          if (idx < item.ingredients.length - 1) {
+            const plus = document.createElement('span');
+            plus.textContent = ' + ';
+            plus.style.color = 'rgba(226,232,240,0.6)';
+            ing.appendChild(plus);
+          }
+        });
         titleWrap.appendChild(ing);
       }
       const chipsRow = document.createElement('div');
@@ -2686,10 +2755,10 @@ function renderCatalogLists() {
         chipsRow.appendChild(chip);
       });
       header.appendChild(titleWrap);
-      if (relatedFusions.length) header.appendChild(chipsRow);
+      el.appendChild(header);
+      if (relatedFusions.length) el.appendChild(chipsRow);
       const p = document.createElement('p');
       p.textContent = formatDesc(desc);
-      el.appendChild(header);
       el.appendChild(p);
       container.appendChild(el);
     });
@@ -2721,7 +2790,7 @@ function renderTopScoresPanel() {
     return;
   }
   const filtered = [...filteredPlayer];
-  const sortBy = state.scoreSort;
+  const sortBy = 'score';
   filtered.sort((a, b) => {
     if (sortBy === 'date') {
       const da = Date.parse(a.endedAt || a.updatedAt || 0) || 0;
@@ -3033,7 +3102,7 @@ function bindScoreFilter() {
       renderTopScoresPanel();
     });
   }
-  if (scoreSortSelect) {
+  if (scoreSortSelect && document.body.contains(scoreSortSelect)) {
     scoreSortSelect.value = state.scoreSort;
     scoreSortSelect.addEventListener('change', (event) => {
       const val = event.target.value === 'date' ? 'date' : 'score';
@@ -3701,10 +3770,29 @@ function renderBeams(timeNow) {
   if (!state.beamEffects.length) return;
   ctx.save();
   ctx.globalAlpha = 0.8;
-  ctx.lineWidth = 4;
   ctx.lineCap = 'round';
   state.beamEffects.forEach((beam) => {
-    ctx.strokeStyle = beam.color || 'rgba(94,234,212,0.7)';
+    const color = beam.color || 'rgba(94,234,212,0.7)';
+    if (beam.glow) {
+      ctx.save();
+      ctx.globalAlpha = 0.55;
+      ctx.lineWidth = beam.glowWidth || 10;
+      ctx.shadowColor = color;
+      ctx.shadowBlur = 18;
+      ctx.strokeStyle = color;
+      ctx.beginPath();
+      if (beam.mode === 'h') {
+        ctx.moveTo(0, beam.y);
+        ctx.lineTo(CONFIG.width, beam.y);
+      } else if (beam.mode === 'v') {
+        ctx.moveTo(beam.x, 0);
+        ctx.lineTo(beam.x, CONFIG.height);
+      }
+      ctx.stroke();
+      ctx.restore();
+    }
+    ctx.lineWidth = beam.lineWidth || 4;
+    ctx.strokeStyle = color;
     ctx.beginPath();
     if (beam.mode === 'h') {
       ctx.moveTo(0, beam.y);
@@ -3716,6 +3804,56 @@ function renderBeams(timeNow) {
     ctx.stroke();
   });
   ctx.restore();
+}
+
+function getDamageEntries(maxCount = 8) {
+  return Object.entries(state.damageByPower || {})
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, maxCount);
+}
+
+function drawDamageOverlay(ctxTarget, title = 'Damage by power') {
+  const entries = getDamageEntries(8);
+  if (!entries.length) return;
+  const panelW = 540;
+  const barH = 12;
+  const barGap = 26;
+  const panelH = 90 + entries.length * barGap;
+  const x = (CONFIG.width - panelW) / 2;
+  const y = Math.max(40, CONFIG.height - panelH - 60);
+  ctxTarget.save();
+  ctxTarget.fillStyle = 'rgba(8,15,30,0.82)';
+  ctxTarget.strokeStyle = 'rgba(148,163,184,0.45)';
+  ctxTarget.lineWidth = 2;
+  ctxTarget.beginPath();
+  if (typeof ctxTarget.roundRect === 'function') {
+    ctxTarget.roundRect(x, y, panelW, panelH, 16);
+  } else {
+    ctxTarget.rect(x, y, panelW, panelH);
+  }
+  ctxTarget.fill();
+  ctxTarget.stroke();
+  ctxTarget.fillStyle = '#e2e8f0';
+  ctxTarget.font = '22px "Segoe UI", sans-serif';
+  ctxTarget.fillText(title, x + 18, y + 32);
+  const maxVal = Math.max(...entries.map(([, v]) => v));
+  const total = entries.reduce((sum, [, v]) => sum + v, 0);
+  entries.forEach(([name, val], idx) => {
+    const yPos = y + 60 + idx * barGap;
+    const ratio = maxVal > 0 ? val / maxVal : 0;
+    const owned = getPowerLevel(name) > 0 || getTalentLevel(name) > 0;
+    const barColor = getPowerColor(name) || '#60a5fa';
+    const width = (panelW - 80) * ratio;
+    ctxTarget.fillStyle = 'rgba(255,255,255,0.12)';
+    ctxTarget.fillRect(x + 18, yPos, panelW - 80, barH);
+    ctxTarget.fillStyle = owned ? barColor : 'rgba(148,163,184,0.45)';
+    ctxTarget.fillRect(x + 18, yPos, width, barH);
+    ctxTarget.fillStyle = owned ? '#e2e8f0' : 'rgba(226,232,240,0.5)';
+    ctxTarget.font = '15px "Segoe UI", sans-serif';
+    const pct = total > 0 ? Math.round((val / total) * 100) : 0;
+    ctxTarget.fillText(`${name} · ${pct}%`, x + 18, yPos - 6);
+  });
+  ctxTarget.restore();
 }
 
 function drawRoundedRectPath(c, x, y, w, h, r) {
@@ -3833,6 +3971,27 @@ function renderBricks() {
       ctx.fill();
     }
     ctx.restore();
+
+    if (isBoss && bossFrameReady && bossFrameOverlays.length) {
+      const normW = Math.max(1, brick.w || 1);
+      const normH = Math.max(1, brick.h || 1);
+      const basis =
+        (Number.isFinite(brick.row) ? brick.row : 0) * 11 +
+        Math.floor((brick.x || 0) / normW) * 5 +
+        Math.floor((brick.y || 0) / normH) * 3;
+      const idx = Math.abs(basis) % bossFrameOverlays.length;
+      const frame = bossFrameOverlays[idx];
+      const cx = drawX + drawW / 2;
+      const cy = drawY + drawH / 2;
+      const frameW = drawW * 1.35;
+      const frameH = frameW * (140 / 220);
+      const fx = cx - frameW / 2;
+      const fy = cy - frameH / 2;
+      ctx.save();
+      ctx.globalAlpha = Math.min(1, alpha * 0.95);
+      ctx.drawImage(frame, fx, fy, frameW, frameH);
+      ctx.restore();
+    }
 
     ctx.save();
     ctx.globalAlpha = drewSprite ? Math.min(1, alpha * 0.85) : Math.min(1, alpha * 0.45);
@@ -4348,6 +4507,7 @@ function renderHUD() {
       h.fillText('Paused', 120, CONFIG.height / 2);
       h.font = '20px "Segoe UI", sans-serif';
       h.fillText('Press Resume to continue', 120, CONFIG.height / 2 + 32);
+      drawDamageOverlay(h, 'Damage by power');
     }
 
     if (!state.running) {
@@ -4357,6 +4517,7 @@ function renderHUD() {
       h.font = '32px "Segoe UI", sans-serif';
       h.fillText('Game over - Press Enter to replay', 120, CONFIG.height / 2);
       h.fillText(`Score: ${formatScore(state.score)}`, 120, CONFIG.height / 2 + 36);
+      drawDamageOverlay(h, 'Damage by power');
     }
   }
 
@@ -4645,6 +4806,15 @@ function init() {
     .catch(() => {
       bossVariants = [];
       bossVariantsReady = false;
+    });
+  Promise.all(BOSS_FRAME_FILES.map((file) => loadImage(file).catch(() => null)))
+    .then((imgs) => {
+      bossFrameOverlays = imgs.filter(Boolean);
+      bossFrameReady = bossFrameOverlays.length > 0;
+    })
+    .catch(() => {
+      bossFrameOverlays = [];
+      bossFrameReady = false;
     });
   resizeCanvas();
   initStarfield();
