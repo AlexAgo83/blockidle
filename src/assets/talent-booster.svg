@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="96" height="96" viewBox="0 0 96 96">
+  <defs>
+    <linearGradient id="booster-core" x1="0" x2="0" y1="0" y2="1">
+      <stop offset="0%" stop-color="#fbbf24"/>
+      <stop offset="100%" stop-color="#f97316"/>
+    </linearGradient>
+  </defs>
+  <rect x="8" y="8" width="80" height="80" rx="18" fill="#0b1223" stroke="#f97316" stroke-width="4"/>
+  <path d="M48 18 l14 22 h-28 z" fill="url(#booster-core)" stroke="rgba(255,255,255,0.4)" stroke-width="2" stroke-linejoin="round"/>
+  <rect x="30" y="44" width="36" height="18" rx="8" fill="rgba(249,115,22,0.35)" stroke="rgba(255,255,255,0.3)" stroke-width="2"/>
+  <path d="M34 66 q14 10 28 0" stroke="rgba(249,115,22,0.5)" stroke-width="4" fill="none" stroke-linecap="round"/>
+</svg>

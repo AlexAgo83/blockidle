@@ -61,6 +61,8 @@ const settingsFpsToggle = document.getElementById('toggle-fps');
 const languageSelect = document.getElementById('language-select');
 const powerSlotsLabel = document.getElementById('power-slots-label');
 const talentSlotsLabel = document.getElementById('talent-slots-label');
+const ownedPowersGrid = document.getElementById('owned-powers-grid');
+const ownedTalentsGrid = document.getElementById('owned-talents-grid');
 const timeButtons = Array.from(document.querySelectorAll('.time-btn'));
 const suggestionToggle = document.getElementById('suggestion-toggle');
 const suggestionChevron = document.getElementById('suggestion-chevron');
@@ -348,7 +350,8 @@ const TALENT_DEFS = [
   { name: 'Momentum', maxLevel: 3 },
   { name: 'Resilience', maxLevel: 3 },
   { name: 'Surge', maxLevel: 3 },
-  { name: 'Anti Gravity', maxLevel: 3 }
+  { name: 'Anti Gravity', maxLevel: 3 },
+  { name: 'Booster', maxLevel: 3 }
 ];
 
 function warnMissingMediaMappings() {
@@ -1043,7 +1046,9 @@ function getBallSpeed(isSpecial) {
 }
 
 function getBallBaseDamage(ball) {
-  return ball?.specialPower === 'Metal' ? 3 : 1;
+  const base = ball?.specialPower === 'Metal' ? 3 : 1;
+  const boost = 1 + 0.1 * getTalentLevel('Booster');
+  return base * boost;
 }
 
 function baseBallRadius(isSpecial, antiGravityLevel = 0) {
@@ -1318,6 +1323,11 @@ function getTalentDescription(name) {
         plain: 'Increases ball size by 15% per level (max 45%)',
         rich: 'Ball size <span class=\"power-desc-accent\">+15%</span> per level <span class=\"power-desc-muted\">(max 45%)</span>'
       };
+    case 'Booster':
+      return {
+        plain: 'Boosts all damage by 10% per level (max 30%)',
+        rich: 'All damage <span class=\"power-desc-accent\">+10%</span> per level <span class=\"power-desc-muted\">(max 30%)</span>'
+      };
     default:
       return { plain: '', rich: '' };
   }
@@ -1540,7 +1550,7 @@ function tryOpenPowerModal() {
   }
 
   const powerOptions = sampleOptions(availablePowers, 4);
-  const talentOptions = sampleOptions(availableTalents, 3);
+  const talentOptions = sampleOptions(availableTalents, 4);
   state.currentPowerOptions = powerOptions;
   state.currentTalentOptions = talentOptions;
   renderPowerModal(powerOptions, talentOptions);
@@ -1725,6 +1735,8 @@ function renderPowerModal(powerOptions, talentOptions) {
     powerPassBtn.disabled = state.passRemaining <= 0;
     powerPassBtn.textContent = `${t('power_modal.pass')} (${state.passRemaining})`;
   }
+  renderOwnedGrid(ownedPowersGrid, state.powers, 'power');
+  renderOwnedGrid(ownedTalentsGrid, state.talents, 'talent');
   powerButtons.forEach((btn, idx) => {
     const power = powerOptions[idx];
     if (power) {
@@ -1824,6 +1836,50 @@ function updatePowerPreview(name, labelOverride, kind = 'power', fusionDef = nul
     }
     powerPreviewIcon.style.boxShadow = `0 0 12px ${color}`;
   }
+}
+
+function renderOwnedGrid(container, items, kind = 'power') {
+  if (!container) return;
+  const cells = [...items];
+  const minCells = 4;
+  const target = Math.max(minCells, Math.ceil(cells.length / 4) * 4);
+  while (cells.length < target) cells.push(null);
+  container.innerHTML = '';
+  cells.forEach((entry) => {
+    const cell = document.createElement('div');
+    cell.className = 'owned-cell';
+    if (!entry) {
+      cell.classList.add('empty');
+      container.appendChild(cell);
+      return;
+    }
+    const isPower = kind === 'power';
+    const fusionDef = isPower ? getFusionDef(entry.name) : null;
+    const desc = isPower ? getPowerDescription(entry.name) : getTalentDescription(entry.name);
+    const label = `${entry.name} (Lv. ${entry.level || 1})`;
+    const showPreview = () => updatePowerPreview(entry.name, label, isPower ? 'power' : 'talent', fusionDef);
+    cell.title = desc?.plain || entry.name;
+    cell.tabIndex = 0;
+    cell.onmouseenter = showPreview;
+    cell.onpointerenter = showPreview;
+    cell.onfocus = showPreview;
+    const media = MEDIA_BY_NAME[entry.name];
+    const badge = document.createElement('span');
+    badge.className = 'badge';
+    badge.textContent = `Lv.${entry.level || 1}`;
+    if (isPower) badge.style.background = '#38bdf8';
+    else badge.style.background = '#c084fc';
+    if (media?.imageUrl) {
+      const img = document.createElement('img');
+      img.src = media.imageUrl;
+      img.alt = entry.name;
+      cell.appendChild(img);
+    } else {
+      cell.textContent = entry.name.slice(0, 2).toUpperCase();
+    }
+    cell.appendChild(badge);
+    container.appendChild(cell);
+  });
 }
 
 function applyLightStun(target, ball, now) {
