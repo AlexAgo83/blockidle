@@ -1,4 +1,5 @@
 import express from 'express';
+import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { Pool } from 'pg';
@@ -11,9 +12,14 @@ const __dirname = path.dirname(__filename);
 const app = express();
 app.set('trust proxy', 1);
 
+const ENV_ALLOWED_ORIGINS = (process.env.CORS_ORIGINS || process.env.ALLOWED_ORIGINS || '')
+  .split(',')
+  .map((o) => o.trim())
+  .filter(Boolean);
 const ALLOWED_ORIGINS = new Set([
   'https://block-idle.onrender.com',
-  'https://blockidle-backend.onrender.com'
+  'https://blockidle-backend.onrender.com',
+  ...ENV_ALLOWED_ORIGINS
 ]);
 
 function isLocalOrigin(origin) {
@@ -333,10 +339,14 @@ app.get('/commits', async (_req, res) => {
 });
 
 const distPath = path.join(__dirname, 'dist');
-app.use(express.static(distPath));
-app.use((_req, res) => {
-  res.sendFile(path.join(distPath, 'index.html'));
-});
+if (fs.existsSync(distPath)) {
+  app.use(express.static(distPath));
+  app.use((_req, res) => {
+    res.sendFile(path.join(distPath, 'index.html'));
+  });
+} else {
+  console.warn(`Static assets not found at ${distPath}, skipping frontend hosting.`);
+}
 
 const port = process.env.PORT || 3000;
 if (process.env.NODE_ENV !== 'test') {
