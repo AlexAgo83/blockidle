@@ -1545,7 +1545,10 @@ function applyPower(powerName) {
     }
   }
   if (newLevel <= 2) {
-    state.specialPocket.push(powerName);
+    const bonusBalls = fusion ? 2 : 1;
+    for (let i = 0; i < bonusBalls; i += 1) {
+      state.specialPocket.push(powerName);
+    }
   }
   clampLivesToMax();
   state.pendingPowerChoices = Math.max(0, state.pendingPowerChoices - 1);
