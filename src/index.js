@@ -1911,7 +1911,7 @@ function spawnBossBrick(level) {
   const { brickPadding, brickHeight, brickTopOffset } = CONFIG;
   const { brickWidth, startX } = computeBrickLayout();
   const BOSS_HITBOX_SCALE = 1;
-  const BOSS_RENDER_SCALE = 1;
+  const BOSS_RENDER_SCALE = 0.85;
   const totalWidth = CONFIG.brickCols * brickWidth + brickPadding * (CONFIG.brickCols - 1);
   const hitW = brickWidth * 2 * BOSS_HITBOX_SCALE;
   const hitH = brickHeight * 2 * BOSS_HITBOX_SCALE;
@@ -3371,10 +3371,33 @@ function renderBeams(timeNow) {
   ctx.restore();
 }
 
+function drawRoundedRectPath(c, x, y, w, h, r) {
+  const radius = Math.max(0, Math.min(r, Math.min(w, h) / 2));
+  c.beginPath();
+  c.moveTo(x + radius, y);
+  c.lineTo(x + w - radius, y);
+  c.quadraticCurveTo(x + w, y, x + w, y + radius);
+  c.lineTo(x + w, y + h - radius);
+  c.quadraticCurveTo(x + w, y + h, x + w - radius, y + h);
+  c.lineTo(x + radius, y + h);
+  c.quadraticCurveTo(x, y + h, x, y + h - radius);
+  c.lineTo(x, y + radius);
+  c.quadraticCurveTo(x, y, x + radius, y);
+  c.closePath();
+}
+
 function renderBricks() {
   const timeNow = performance.now ? performance.now() : Date.now();
   const hueShift = (timeNow / 50) % 360; // variation progressive des teintes
-  for (const brick of state.bricks) {
+  const sortedBricks = [...state.bricks].sort((a, b) => {
+    const ay = (a?.y || 0) + (a?.h || 0) / 2;
+    const by = (b?.y || 0) + (b?.h || 0) / 2;
+    if (ay !== by) return ay - by; // plus haut d'abord, plus bas en dernier (au-dessus)
+    if (a?.type === 'boss' && b?.type !== 'boss') return 1;
+    if (b?.type === 'boss' && a?.type !== 'boss') return -1;
+    return 0;
+  });
+  for (const brick of sortedBricks) {
     const baseHue = ((brick.hue ?? (200 + brick.row * 12)) + hueShift) % 360;
     const now = timeNow;
     if (!brick.alive && !brick.deathTime) continue;
@@ -3423,7 +3446,7 @@ function renderBricks() {
 
     const tint = `hsla(${baseHue}, 70%, 60%, ${0.55 * alpha})`;
     const isBoss = brick.type === 'boss';
-    const spritePad = isBoss ? Math.max(6, Math.min(drawW, drawH) * 0.1) : 0;
+    const spritePad = isBoss ? Math.max(6, Math.min(drawW, drawH) * 0.1) : Math.max(2, Math.min(drawW, drawH) * 0.04);
     const spriteX = drawX - spritePad;
     const spriteY = drawY - spritePad;
     const spriteW = drawW + spritePad * 2;
@@ -3437,18 +3460,24 @@ function renderBricks() {
       ctx.drawImage(spriteImg, spriteX, spriteY, spriteW, spriteH);
     } else {
       ctx.fillStyle = tint;
-      ctx.fillRect(spriteX, spriteY, spriteW, spriteH);
+      const radius = Math.max(4, Math.min(spriteW, spriteH) * 0.12);
+      drawRoundedRectPath(ctx, spriteX, spriteY, spriteW, spriteH, radius);
+      ctx.fill();
     }
     ctx.restore();
 
     ctx.save();
     ctx.globalAlpha = drewSprite ? Math.min(1, alpha * 0.85) : Math.min(1, alpha * 0.45);
     ctx.fillStyle = tint;
-    ctx.fillRect(spriteX, spriteY, spriteW, spriteH);
+    const radius = Math.max(4, Math.min(spriteW, spriteH) * 0.12);
+    drawRoundedRectPath(ctx, spriteX, spriteY, spriteW, spriteH, radius);
+    ctx.fill();
     ctx.restore();
     ctx.strokeStyle = `rgba(15, 23, 42, ${0.45 * alpha})`;
     ctx.lineWidth = 1.5;
-    ctx.strokeRect(drawX, drawY, drawW, drawH);
+    const radiusStroke = Math.max(4, Math.min(drawW, drawH) * 0.12);
+    drawRoundedRectPath(ctx, drawX, drawY, drawW, drawH, radiusStroke);
+    ctx.stroke();
     if (flashAlpha > 0) {
       ctx.strokeStyle = `rgba(255, 255, 255, ${flashAlpha})`;
       ctx.lineWidth = 2;
@@ -3537,10 +3566,12 @@ function renderBricks() {
     // Halo d'effet (pouvoirs)
     const haloActive = brick.effectColor && brick.effectUntil > now;
     if (haloActive) {
-      const pad = 4;
+      const pad = brick.type === 'boss' ? 1 : 4;
+      const radius = Math.max(3, Math.min(drawW, drawH) * 0.12);
       ctx.save();
       ctx.fillStyle = brick.effectColor;
-      ctx.fillRect(drawX - pad, drawY - pad, drawW + pad * 2, drawH + pad * 2);
+      drawRoundedRectPath(ctx, drawX - pad, drawY - pad, drawW + pad * 2, drawH + pad * 2, radius);
+      ctx.fill();
       ctx.restore();
     }
   }
