@@ -139,7 +139,13 @@ const BOSS_VARIANT_FILES = [
   'boss-variant2.svg',
   'boss-variant3.svg',
   'boss-variant4.svg',
-  'boss-variant5.svg'
+  'boss-variant5.svg',
+  'boss-variant6.svg',
+  'boss-variant7.svg',
+  'boss-variant8.svg',
+  'boss-variant9.svg',
+  'boss-variant10.svg',
+  'boss-variant-devil.svg'
 ];
 const API_TOKEN = (
   import.meta?.env?.VITE_API_TOKEN ||
@@ -3503,9 +3509,9 @@ function renderBricks() {
       const normW = Math.max(1, brick.w || 1);
       const normH = Math.max(1, brick.h || 1);
       const basis =
-        (Number.isFinite(brick.row) ? brick.row : 0) * 11 +
-        Math.floor((brick.x || 0) / normW) * 5 +
-        Math.floor((brick.y || 0) / normH);
+        (Number.isFinite(brick.row) ? brick.row : 0) * 68 +
+        Math.floor((brick.x || 0) / normW) * 36 +
+        Math.floor((brick.y || 0) / normH) * 20;
       const idx = Math.abs(basis) % bossVariants.length;
       spriteImg = bossVariants[idx] || spriteImg;
     } else if (!isBoss && brickVariantsReady && brickVariants.length) {

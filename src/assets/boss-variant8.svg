@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="220" height="120" viewBox="0 0 220 120">
+  <defs>
+    <linearGradient id="boss8Glow" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0%" stop-color="#22c55e"/><stop offset="100%" stop-color="#16a34a"/>
+    </linearGradient>
+    <linearGradient id="boss8Face" x1="0" x2="0" y1="0" y2="1">
+      <stop offset="0%" stop-color="#0b141f"/><stop offset="100%" stop-color="#0b1223"/>
+    </linearGradient>
+  </defs>
+  <rect x="4" y="4" width="212" height="112" rx="18" fill="url(#boss8Face)" stroke="url(#boss8Glow)" stroke-width="6"/>
+  <rect x="16" y="18" width="188" height="84" rx="14" fill="rgba(255,255,255,0.02)"/>
+  <g stroke="rgba(34,197,94,0.4)" stroke-width="3">
+    <path d="M28 34 h120"/><path d="M28 62 h96"/>
+  </g>
+  <rect x="30" y="40" width="110" height="14" rx="7" fill="rgba(34,197,94,0.45)"/>
+  <rect x="30" y="64" width="86" height="12" rx="6" fill="rgba(16,185,129,0.38)"/>
+</svg>

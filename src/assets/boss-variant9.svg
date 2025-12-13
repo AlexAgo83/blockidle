@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="220" height="120" viewBox="0 0 220 120">
+  <defs>
+    <linearGradient id="boss9Glow" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0%" stop-color="#a855f7"/><stop offset="100%" stop-color="#7c3aed"/>
+    </linearGradient>
+    <linearGradient id="boss9Face" x1="0" x2="0" y1="0" y2="1">
+      <stop offset="0%" stop-color="#0c0d1a"/><stop offset="100%" stop-color="#0b1223"/>
+    </linearGradient>
+  </defs>
+  <rect x="4" y="4" width="212" height="112" rx="18" fill="url(#boss9Face)" stroke="url(#boss9Glow)" stroke-width="6"/>
+  <rect x="14" y="14" width="192" height="92" rx="15" fill="rgba(124,58,237,0.08)"/>
+  <path d="M24 32 h172" stroke="rgba(168,85,247,0.35)" stroke-width="3" stroke-dasharray="14 8"/>
+  <rect x="30" y="38" width="126" height="14" rx="7" fill="rgba(168,85,247,0.45)"/>
+  <rect x="30" y="62" width="94" height="12" rx="6" fill="rgba(124,58,237,0.4)"/>
+</svg>
