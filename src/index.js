@@ -3417,6 +3417,36 @@ function update(dt) {
     }
   }
 
+  // Collision brique/paddle : considéré comme une sortie (perte de vie) et la brique est détruite.
+  const paddleRects = (() => {
+    const rects = [{ x: paddle.x, y: paddle.y, w: paddle.w, h: paddle.h }];
+    const mirrorLevel = getTalentLevel('Mirror');
+    const halfWidth = paddle.w * 0.5;
+    const gap = 8;
+    if (mirrorLevel >= 1) rects.push({ x: paddle.x - halfWidth - gap, y: paddle.y, w: halfWidth, h: paddle.h });
+    if (mirrorLevel >= 2) rects.push({ x: paddle.x + paddle.w + gap, y: paddle.y, w: halfWidth, h: paddle.h });
+    return rects;
+  })();
+  for (const brick of state.bricks) {
+    if (!brick.alive) continue;
+    const hitPaddleRect = paddleRects.some((rect) => (
+      brick.x < rect.x + rect.w &&
+      brick.x + brick.w > rect.x &&
+      brick.y < rect.y + rect.h &&
+      brick.y + brick.h > rect.y
+    ));
+    if (hitPaddleRect) {
+      brick.alive = false;
+      brick.deathTime = now;
+      state.lives -= 1;
+      state.damageFlashUntil = now + 700;
+      state.damageShakeUntil = now + 500;
+      if (state.lives <= 0) {
+        triggerGameOver();
+      }
+    }
+  }
+
   // Si une brique atteint le bas, perte de vie.
   for (const brick of state.bricks) {
     if (!brick.alive) continue;
