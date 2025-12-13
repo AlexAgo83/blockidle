@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="220" height="120" viewBox="0 0 220 120">
+  <defs>
+    <linearGradient id="boss2Glow" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0%" stop-color="#a5b4fc"/>
+      <stop offset="100%" stop-color="#6366f1"/>
+    </linearGradient>
+    <linearGradient id="boss2Face" x1="0" x2="0" y1="0" y2="1">
+      <stop offset="0%" stop-color="#111827"/>
+      <stop offset="100%" stop-color="#0b1223"/>
+    </linearGradient>
+  </defs>
+  <rect x="4" y="4" width="212" height="112" rx="18" fill="url(#boss2Face)" stroke="url(#boss2Glow)" stroke-width="6"/>
+  <rect x="12" y="12" width="196" height="96" rx="16" fill="rgba(255,255,255,0.04)"/>
+  <rect x="26" y="30" width="120" height="14" rx="7" fill="rgba(99,102,241,0.35)"/>
+  <rect x="26" y="54" width="90" height="12" rx="6" fill="rgba(165,180,252,0.35)"/>
+</svg>

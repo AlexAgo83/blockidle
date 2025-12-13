@@ -98,6 +98,10 @@ let brickSprite = null;
 let brickSpriteReady = false;
 let bossBrickSprite = null;
 let bossBrickSpriteReady = false;
+let brickVariants = [];
+let brickVariantsReady = false;
+let bossVariants = [];
+let bossVariantsReady = false;
 const FUSION_SPRITES = [
   'fusion-sun.png',
   'fusion-tundra.png',
@@ -122,6 +126,20 @@ const BUILD_LABEL = 'b20';
 const STARFIELD_LAYERS = [
   { count: 110, speed: 14, size: [0.4, 1.1], alpha: [0.25, 0.55] },
   { count: 65, speed: 28, size: [0.6, 1.6], alpha: [0.35, 0.8] }
+];
+const BRICK_VARIANT_FILES = [
+  'brick-variant1.svg',
+  'brick-variant2.svg',
+  'brick-variant3.svg',
+  'brick-variant4.svg',
+  'brick-variant5.svg'
+];
+const BOSS_VARIANT_FILES = [
+  'boss-variant1.svg',
+  'boss-variant2.svg',
+  'boss-variant3.svg',
+  'boss-variant4.svg',
+  'boss-variant5.svg'
 ];
 const API_TOKEN = (
   import.meta?.env?.VITE_API_TOKEN ||
@@ -3480,7 +3498,26 @@ function renderBricks() {
     const spriteW = drawW + spritePad * 2;
     const spriteH = drawH + spritePad * 2;
 
-    const spriteImg = isBoss && bossBrickSpriteReady ? bossBrickSprite : brickSprite;
+    let spriteImg = isBoss && bossBrickSpriteReady ? bossBrickSprite : brickSprite;
+    if (isBoss && bossVariantsReady && bossVariants.length) {
+      const normW = Math.max(1, brick.w || 1);
+      const normH = Math.max(1, brick.h || 1);
+      const basis =
+        (Number.isFinite(brick.row) ? brick.row : 0) * 11 +
+        Math.floor((brick.x || 0) / normW) * 5 +
+        Math.floor((brick.y || 0) / normH);
+      const idx = Math.abs(basis) % bossVariants.length;
+      spriteImg = bossVariants[idx] || spriteImg;
+    } else if (!isBoss && brickVariantsReady && brickVariants.length) {
+      const normW = Math.max(1, brick.w || 1);
+      const normH = Math.max(1, brick.h || 1);
+      const basis =
+        (Number.isFinite(brick.row) ? brick.row : 0) * 7 +
+        Math.floor((brick.x || 0) / normW) * 3 +
+        Math.floor((brick.y || 0) / normH);
+      const idx = Math.abs(basis) % brickVariants.length;
+      spriteImg = brickVariants[idx] || spriteImg;
+    }
     const drewSprite = Boolean(spriteImg);
     ctx.save();
     ctx.globalAlpha = alpha;
@@ -4182,7 +4219,7 @@ function bindControls() {
 
 function init() {
   warnMissingMediaMappings();
-  preloadAssets(['ship.svg', 'ship-flat.svg', 'brick.svg', 'brick-boss.svg', 'ball.svg', ...FUSION_SPRITES]).catch(() => {});
+  preloadAssets(['ship.svg', 'ship-flat.svg', 'brick.svg', 'brick-boss.svg', 'ball.svg', ...BRICK_VARIANT_FILES, ...BOSS_VARIANT_FILES, ...FUSION_SPRITES]).catch(() => {});
   loadImage('ship.svg')
     .then((img) => {
       paddleSprite = img;
@@ -4227,6 +4264,27 @@ function init() {
     .catch(() => {
       console.warn('Boss brick sprite failed to load, using default brick sprite.');
       bossBrickSpriteReady = false;
+    });
+  Promise.all(BRICK_VARIANT_FILES.map((file) => loadImage(file).catch(() => null)))
+    .then((imgs) => {
+      brickVariants = imgs.filter(Boolean);
+      brickVariantsReady = brickVariants.length > 0;
+      if (!brickVariantsReady) {
+        console.warn('Brick variants failed to load, falling back to default brick sprite.');
+      }
+    })
+    .catch(() => {
+      brickVariants = [];
+      brickVariantsReady = false;
+    });
+  Promise.all(BOSS_VARIANT_FILES.map((file) => loadImage(file).catch(() => null)))
+    .then((imgs) => {
+      bossVariants = imgs.filter(Boolean);
+      bossVariantsReady = bossVariants.length > 0;
+    })
+    .catch(() => {
+      bossVariants = [];
+      bossVariantsReady = false;
     });
   resizeCanvas();
   initStarfield();
