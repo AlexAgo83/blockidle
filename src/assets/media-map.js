@@ -49,7 +49,7 @@ function makeIcon(name, primary, secondary = null, type = 'power', extraInner = 
   <rect x="6" y="6" width="84" height="84" rx="18" fill="#0b1223" stroke="url(#${strokeId})" stroke-width="4"/>
   ${typeOverlay}
   <circle cx="48" cy="48" r="22" fill="url(#${coreId})" />
-  <circle cx="48" cy="48" r="30" fill="none" stroke="${p}" stroke-width="3" stroke-opacity="0.6" stroke-dasharray="6 6"/>
+  <circle cx="48" cy="48" r="30" fill="none" stroke="${p}" stroke-width="3" stroke-opacity="0.6" stroke-dasharray="${type === 'power' ? '0 999' : '6 6'}"/>
   ${extraInner}
 </svg>`;
   return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
@@ -191,43 +191,428 @@ const MEDIA_LIST = [
   },
 
   // Talents
-  { name: 'Boots', imageUrl: makeIcon('Bo', '#cbd5e1', '#94a3b8', 'talent'), color: '#cbd5e1' },
-  { name: 'Feather', imageUrl: makeIcon('Fe', '#7dd3fc', '#38bdf8', 'talent'), color: '#7dd3fc' },
-  { name: 'Gloves', imageUrl: makeIcon('Gl', '#fbbf24', '#f59e0b', 'talent'), color: '#fbbf24' },
-  { name: 'Paddle', imageUrl: makeIcon('Pa', '#f59e0b', '#fb923c', 'talent'), color: '#f59e0b' },
-  { name: 'Mirror', imageUrl: makeIcon('Mi', '#cbd5e1', '#e2e8f0', 'talent'), color: '#cbd5e1' },
-  { name: 'Endurance', imageUrl: makeIcon('En', '#7c3aed', '#a855f7', 'talent'), color: '#7c3aed' },
-  { name: 'Scope', imageUrl: makeIcon('Sc', '#38bdf8', '#0ea5e9', 'talent'), color: '#38bdf8' },
-  { name: 'Momentum', imageUrl: makeIcon('Mo', '#fb923c', '#f97316', 'talent'), color: '#fb923c' },
-  { name: 'Resilience', imageUrl: makeIcon('Re', '#10b981', '#22c55e', 'talent'), color: '#10b981' },
-  { name: 'Surge', imageUrl: makeIcon('Su', '#c084fc', '#a855f7', 'talent'), color: '#c084fc' },
-  { name: 'Anti Gravity', imageUrl: makeIcon('AG', '#38bdf8', '#7dd3fc', 'talent'), color: '#38bdf8' },
-  { name: 'Booster', imageUrl: makeIcon('Bo', '#f97316', '#f59e0b', 'talent'), color: '#f97316' },
+  {
+    name: 'Boots',
+    imageUrl: makeIcon(
+      'Bo',
+      '#cbd5e1',
+      '#94a3b8',
+      'talent',
+      '<g fill="url(#boot-Bo-talent)" stroke="rgba(0,0,0,0.3)" stroke-width="1.4"><path d="M36 36 H56 V50 C56 56 52 60 46 60 H36 Z" /><rect x="34" y="50" width="26" height="6" rx="2" fill="#0b1223"/></g>',
+      '<linearGradient id="boot-Bo-talent" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#e2e8f0"/><stop offset="100%" stop-color="#94a3b8"/></linearGradient>'
+    ),
+    color: '#cbd5e1'
+  },
+  {
+    name: 'Feather',
+    imageUrl: makeIcon(
+      'Fe',
+      '#7dd3fc',
+      '#38bdf8',
+      'talent',
+      '<g transform="translate(0,-2)"><path d="M36 50 C44 32 60 30 60 42 C60 52 48 60 40 60 Z" fill="url(#feather-Fe-talent)" stroke="rgba(0,0,0,0.25)" stroke-width="1.4"/><path d="M44 50 L54 40" stroke="rgba(255,255,255,0.6)" stroke-width="2" stroke-linecap="round"/></g>',
+      '<linearGradient id="feather-Fe-talent" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#e0f2fe"/><stop offset="100%" stop-color="#38bdf8"/></linearGradient>'
+    ),
+    color: '#7dd3fc'
+  },
+  {
+    name: 'Gloves',
+    imageUrl: makeIcon(
+      'Gl',
+      '#fbbf24',
+      '#f59e0b',
+      'talent',
+      '<g><path d="M40 34 L44 32 L46 38 L48 32 L52 34 L50 44 L54 42 L56 48 L46 54 L40 48 Z" fill="url(#glove-Gl-talent)" stroke="rgba(0,0,0,0.3)" stroke-width="1.4"/><circle cx="44" cy="46" r="2" fill="#0b1223"/><circle cx="50" cy="48" r="2" fill="#0b1223"/></g>',
+      '<linearGradient id="glove-Gl-talent" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#fef9c3"/><stop offset="100%" stop-color="#f59e0b"/></linearGradient>'
+    ),
+    color: '#fbbf24'
+  },
+  {
+    name: 'Paddle',
+    imageUrl: makeIcon(
+      'Pa',
+      '#f59e0b',
+      '#fb923c',
+      'talent',
+      '<g><rect x="30" y="40" width="36" height="8" rx="4" fill="url(#paddle-Pa-talent)" stroke="rgba(0,0,0,0.3)" stroke-width="1.2"/><rect x="42" y="32" width="12" height="6" rx="3" fill="#fef3c7"/></g>',
+      '<linearGradient id="paddle-Pa-talent" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#fb923c"/><stop offset="100%" stop-color="#f59e0b"/></linearGradient>'
+    ),
+    color: '#f59e0b'
+  },
+  {
+    name: 'Mirror',
+    imageUrl: makeIcon(
+      'Mi',
+      '#cbd5e1',
+      '#e2e8f0',
+      'talent',
+      '<g><rect x="32" y="32" width="14" height="24" rx="4" fill="url(#mirror-Mi-talent)" stroke="rgba(0,0,0,0.25)" stroke-width="1.2"/><rect x="50" y="32" width="14" height="24" rx="4" fill="url(#mirror-Mi-talent)" stroke="rgba(0,0,0,0.25)" stroke-width="1.2"/></g>',
+      '<linearGradient id="mirror-Mi-talent" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#e2e8f0"/><stop offset="100%" stop-color="#94a3b8"/></linearGradient>'
+    ),
+    color: '#cbd5e1'
+  },
+  {
+    name: 'Endurance',
+    imageUrl: makeIcon(
+      'En',
+      '#7c3aed',
+      '#a855f7',
+      'talent',
+      '<g><path d="M38 40 C38 34 44 32 48 36 C52 32 58 34 58 40 C58 46 52 52 48 58 C44 52 38 46 38 40 Z" fill="url(#heart-En-talent)" stroke="rgba(0,0,0,0.25)" stroke-width="1.4"/></g>',
+      '<radialGradient id="heart-En-talent" cx="50%" cy="40%" r="60%"><stop offset="0%" stop-color="#ede9fe"/><stop offset="55%" stop-color="#c084fc"/><stop offset="100%" stop-color="#6b21a8"/></radialGradient>'
+    ),
+    color: '#7c3aed'
+  },
+  {
+    name: 'Scope',
+    imageUrl: makeIcon(
+      'Sc',
+      '#38bdf8',
+      '#0ea5e9',
+      'talent',
+      '<g stroke="#e0f2fe" stroke-width="2" stroke-linecap="round" fill="none"><circle cx="48" cy="44" r="10" fill="rgba(14,165,233,0.25)"/><line x1="48" y1="30" x2="48" y2="26"/><line x1="48" y1="62" x2="48" y2="66"/><line x1="34" y1="44" x2="30" y2="44"/><line x1="62" y1="44" x2="66" y2="44"/><circle cx="48" cy="44" r="4" fill="#0b1223"/></g>',
+      ''
+    ),
+    color: '#38bdf8'
+  },
+  {
+    name: 'Momentum',
+    imageUrl: makeIcon(
+      'Mo',
+      '#fb923c',
+      '#f97316',
+      'talent',
+      '<g stroke="rgba(0,0,0,0.25)" stroke-width="1.2" fill="url(#momentum-Mo-talent)"><path d="M34 46 L52 38 L48 46 L62 38 L46 56 L50 48 Z"/></g>',
+      '<linearGradient id="momentum-Mo-talent" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#fed7aa"/><stop offset="100%" stop-color="#fb923c"/></linearGradient>'
+    ),
+    color: '#fb923c'
+  },
+  {
+    name: 'Resilience',
+    imageUrl: makeIcon(
+      'Re',
+      '#10b981',
+      '#22c55e',
+      'talent',
+      '<g><path d="M36 34 L60 34 L60 46 C60 54 54 62 48 66 C42 62 36 54 36 46 Z" fill="url(#shield-Re-talent)" stroke="rgba(0,0,0,0.25)" stroke-width="1.4"/><path d="M44 40 H52 V52 H44 Z" fill="#ecfdf3"/></g>',
+      '<linearGradient id="shield-Re-talent" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#34d399"/><stop offset="100%" stop-color="#0f766e"/></linearGradient>'
+    ),
+    color: '#10b981'
+  },
+  {
+    name: 'Surge',
+    imageUrl: makeIcon(
+      'Su',
+      '#c084fc',
+      '#a855f7',
+      'talent',
+      '<g><path d="M44 32 L56 42 L50 42 L54 56 L42 46 L48 46 Z" fill="url(#surge-Su-talent)" stroke="rgba(0,0,0,0.25)" stroke-width="1.4"/></g>',
+      '<linearGradient id="surge-Su-talent" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#f5d0fe"/><stop offset="100%" stop-color="#a855f7"/></linearGradient>'
+    ),
+    color: '#c084fc'
+  },
+  {
+    name: 'Anti Gravity',
+    imageUrl: makeIcon(
+      'AG',
+      '#38bdf8',
+      '#7dd3fc',
+      'talent',
+      '<g><circle cx="48" cy="48" r="12" fill="url(#ag-AG-talent)" stroke="rgba(0,0,0,0.25)" stroke-width="1.2"/><path d="M48 34 L54 42 H50 V58 H46 V42 H42 Z" fill="#ecfeff"/></g>',
+      '<radialGradient id="ag-AG-talent" cx="50%" cy="50%" r="65%"><stop offset="0%" stop-color="#e0f2fe"/><stop offset="60%" stop-color="#38bdf8"/><stop offset="100%" stop-color="#0ea5e9"/></radialGradient>'
+    ),
+    color: '#38bdf8'
+  },
+  {
+    name: 'Booster',
+    imageUrl: makeIcon(
+      'Bo',
+      '#f97316',
+      '#f59e0b',
+      'talent',
+      '<g><circle cx="48" cy="44" r="14" fill="url(#booster-Bo-talent)" stroke="rgba(0,0,0,0.25)" stroke-width="1.4"/><path d="M48 32 L52 44 L48 56 L44 44 Z" fill="#0b1223" opacity="0.45"/><circle cx="48" cy="44" r="4" fill="#fff7ed"/></g>',
+      '<radialGradient id="booster-Bo-talent" cx="50%" cy="45%" r="65%"><stop offset="0%" stop-color="#fed7aa"/><stop offset="60%" stop-color="#fb923c"/><stop offset="100%" stop-color="#ea580c"/></radialGradient>'
+    ),
+    color: '#f97316'
+  },
 
   // Fusions
-  { name: 'Sun', imageUrl: makeIcon('Su', '#fbbf24', '#f97316', 'fusion'), color: '#fbbf24' },
-  { name: 'Tundra', imageUrl: makeIcon('Tu', '#60a5fa', '#38bdf8', 'fusion'), color: '#60a5fa' },
-  { name: 'Forge', imageUrl: makeIcon('Fo', '#ea580c', '#fb923c', 'fusion'), color: '#ea580c' },
-  { name: 'Leech', imageUrl: makeIcon('Le', '#a855f7', '#7c3aed', 'fusion'), color: '#a855f7' },
-  { name: 'Prism', imageUrl: makeIcon('Pr', '#a5b4fc', '#6366f1', 'fusion'), color: '#a5b4fc' },
-  { name: 'Spikes', imageUrl: makeIcon('Sp', '#22d3ee', '#06b6d4', 'fusion'), color: '#22d3ee' },
-  { name: 'Aurora', imageUrl: makeIcon('Au', '#6366f1', '#a855f7', 'fusion'), color: '#6366f1' },
-  { name: 'Frostbite', imageUrl: makeIcon('Fr', '#38bdf8', '#0ea5e9', 'fusion'), color: '#38bdf8' },
-  { name: 'Gravebound', imageUrl: makeIcon('Gr', '#c084fc', '#a855f7', 'fusion'), color: '#c084fc' },
-  { name: 'Storm', imageUrl: makeIcon('St', '#0ea5e9', '#38bdf8', 'fusion'), color: '#0ea5e9' },
-  { name: 'Rust', imageUrl: makeIcon('Ru', '#94a3b8', '#cbd5e1', 'fusion'), color: '#94a3b8' },
-  { name: 'Echo', imageUrl: makeIcon('Ec', '#93c5fd', '#60a5fa', 'fusion'), color: '#93c5fd' },
-  { name: 'Bramble', imageUrl: makeIcon('Br', '#16a34a', '#22c55e', 'fusion'), color: '#16a34a' },
-  { name: 'Radiance', imageUrl: makeIcon('Ra', '#fde047', '#facc15', 'fusion'), color: '#fde047' },
-  { name: 'Shard', imageUrl: makeIcon('Sh', '#7dd3fc', '#38bdf8', 'fusion'), color: '#7dd3fc' },
-  { name: 'Plaguefire', imageUrl: makeIcon('Pl', '#f97316', '#f87171', 'fusion'), color: '#f97316' },
-  { name: 'Jetstream', imageUrl: makeIcon('Je', '#5eead4', '#22d3ee', 'fusion'), color: '#5eead4' },
-  { name: 'Cyclone', imageUrl: makeIcon('Cy', '#34d399', '#22c55e', 'fusion'), color: '#34d399' },
-  { name: 'Crossfire', imageUrl: makeIcon('Cr', '#facc15', '#f59e0b', 'fusion'), color: '#facc15' },
-  { name: 'Mirrorwind', imageUrl: makeIcon('MW', '#38bdf8', '#60a5fa', 'fusion'), color: '#38bdf8' },
-  { name: 'Radiant Shield', imageUrl: makeIcon('RS', '#fde68a', '#c084fc', 'fusion'), color: '#fde68a' },
-  { name: 'Thornstep', imageUrl: makeIcon('TS', '#22c55e', '#f59e0b', 'fusion'), color: '#22c55e' },
-  { name: 'Scopebeam', imageUrl: makeIcon('SB', '#22d3ee', '#c084fc', 'fusion'), color: '#22d3ee' }
+  {
+    name: 'Sun',
+    imageUrl: makeIcon(
+      'Su',
+      '#fbbf24',
+      '#f97316',
+      'fusion',
+      '<g><circle cx="48" cy="44" r="14" fill="url(#sun-Su-fusion)" stroke="rgba(0,0,0,0.3)" stroke-width="1.4"/><g stroke="#fef9c3" stroke-width="2.4" stroke-linecap="round"><line x1="48" y1="24" x2="48" y2="18"/><line x1="48" y1="64" x2="48" y2="70"/><line x1="28" y1="44" x2="22" y2="44"/><line x1="68" y1="44" x2="74" y2="44"/><line x1="32" y1="30" x2="26" y2="24"/><line x1="64" y1="58" x2="70" y2="64"/><line x1="32" y1="58" x2="26" y2="64"/><line x1="64" y1="30" x2="70" y2="24"/></g></g>',
+      '<radialGradient id="sun-Su-fusion" cx="50%" cy="45%" r="65%"><stop offset="0%" stop-color="#fff3c4"/><stop offset="60%" stop-color="#fbbf24"/><stop offset="100%" stop-color="#d97706"/></radialGradient>'
+    ),
+    color: '#fbbf24'
+  },
+  {
+    name: 'Tundra',
+    imageUrl: makeIcon(
+      'Tu',
+      '#60a5fa',
+      '#38bdf8',
+      'fusion',
+      '<g><path d="M36 44 C38 34 44 32 48 36 C52 32 58 34 60 44 C60 52 54 60 48 64 C42 60 36 52 36 44 Z" fill="url(#tundra-Tu-fusion)" stroke="rgba(0,0,0,0.3)" stroke-width="1.4"/><path d="M44 44 L52 44" stroke="#0b1223" stroke-width="2.2" stroke-linecap="round"/><path d="M48 40 L48 48" stroke="#0b1223" stroke-width="2.2" stroke-linecap="round"/></g>',
+      '<linearGradient id="tundra-Tu-fusion" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#e0f2fe"/><stop offset="50%" stop-color="#7dd3fc"/><stop offset="100%" stop-color="#38bdf8"/></linearGradient>'
+    ),
+    color: '#60a5fa'
+  },
+  {
+    name: 'Forge',
+    imageUrl: makeIcon(
+      'Fo',
+      '#ea580c',
+      '#fb923c',
+      'fusion',
+      '<g><rect x="38" y="32" width="12" height="18" rx="2" fill="url(#forge-Fo-fusion)" stroke="rgba(0,0,0,0.3)" stroke-width="1.4"/><rect x="30" y="42" width="36" height="8" rx="2" fill="#0b1223" opacity="0.4"/><rect x="42" y="52" width="12" height="10" rx="2" fill="#fcd34d" stroke="rgba(0,0,0,0.25)" stroke-width="1"/></g>',
+      '<linearGradient id="forge-Fo-fusion" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#fb923c"/><stop offset="100%" stop-color="#c2410c"/></linearGradient>'
+    ),
+    color: '#ea580c'
+  },
+  {
+    name: 'Leech',
+    imageUrl: makeIcon(
+      'Le',
+      '#a855f7',
+      '#7c3aed',
+      'fusion',
+      '<g><path d="M40 36 C40 30 44 28 48 28 C52 28 56 30 56 36 C56 42 52 50 48 58 C44 50 40 42 40 36 Z" fill="url(#leech-Le-fusion)" stroke="rgba(0,0,0,0.3)" stroke-width="1.4"/><path d="M44 44 L46 52 L42 52 Z" fill="#0b1223"/><path d="M52 44 L54 52 L50 52 Z" fill="#0b1223"/></g>',
+      '<radialGradient id="leech-Le-fusion" cx="50%" cy="35%" r="65%"><stop offset="0%" stop-color="#ede9fe"/><stop offset="55%" stop-color="#a855f7"/><stop offset="100%" stop-color="#5b21b6"/></radialGradient>'
+    ),
+    color: '#a855f7'
+  },
+  {
+    name: 'Prism',
+    imageUrl: makeIcon(
+      'Pr',
+      '#a5b4fc',
+      '#6366f1',
+      'fusion',
+      '<g><path d="M32 56 L48 30 L64 56 Z" fill="url(#prism-Pr-fusion)" stroke="rgba(0,0,0,0.25)" stroke-width="1.4"/><path d="M48 42 L48 52" stroke="#0b1223" stroke-width="2" stroke-linecap="round"/><path d="M40 50 L56 50" stroke="#0b1223" stroke-width="2" stroke-linecap="round"/></g>',
+      '<linearGradient id="prism-Pr-fusion" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#c7d2fe"/><stop offset="100%" stop-color="#6366f1"/></linearGradient>'
+    ),
+    color: '#a5b4fc'
+  },
+  {
+    name: 'Spikes',
+    imageUrl: makeIcon(
+      'Sp',
+      '#22d3ee',
+      '#06b6d4',
+      'fusion',
+      '<g><circle cx="48" cy="44" r="16" fill="url(#spikes-Sp-fusion)" stroke="rgba(0,0,0,0.3)" stroke-width="1.4"/><g stroke="#0b1223" stroke-width="2" stroke-linecap="round"><path d="M48 26 L52 34 L44 34 Z"/><path d="M48 62 L52 54 L44 54 Z"/><path d="M30 44 L38 48 L38 40 Z"/><path d="M66 44 L58 48 L58 40 Z"/></g></g>',
+      '<radialGradient id="spikes-Sp-fusion" cx="50%" cy="45%" r="60%"><stop offset="0%" stop-color="#ccfbf1"/><stop offset="55%" stop-color="#22d3ee"/><stop offset="100%" stop-color="#0e7490"/></radialGradient>'
+    ),
+    color: '#22d3ee'
+  },
+  {
+    name: 'Aurora',
+    imageUrl: makeIcon(
+      'Au',
+      '#6366f1',
+      '#a855f7',
+      'fusion',
+      '<g><path d="M32 50 C40 42 56 42 64 50" stroke="url(#aurora-Au-fusion)" stroke-width="4" fill="none"/><path d="M32 44 C40 36 56 36 64 44" stroke="url(#aurora-Au-fusion)" stroke-width="3" fill="none" opacity="0.7"/></g>',
+      '<linearGradient id="aurora-Au-fusion" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#a855f7"/><stop offset="100%" stop-color="#6366f1"/></linearGradient>'
+    ),
+    color: '#6366f1'
+  },
+  {
+    name: 'Frostbite',
+    imageUrl: makeIcon(
+      'Fr',
+      '#38bdf8',
+      '#0ea5e9',
+      'fusion',
+      '<g stroke="rgba(255,255,255,0.7)" stroke-width="2" stroke-linecap="round"><path d="M48 26 L48 62"/><path d="M34 34 L62 54"/><path d="M62 34 L34 54"/><circle cx="48" cy="44" r="10" fill="url(#frost-Fr-fusion)" stroke="rgba(0,0,0,0.25)" stroke-width="1.2"/></g>',
+      '<radialGradient id="frost-Fr-fusion" cx="50%" cy="45%" r="60%"><stop offset="0%" stop-color="#e0f2fe"/><stop offset="55%" stop-color="#38bdf8"/><stop offset="100%" stop-color="#0ea5e9"/></radialGradient>'
+    ),
+    color: '#38bdf8'
+  },
+  {
+    name: 'Gravebound',
+    imageUrl: makeIcon(
+      'Gr',
+      '#c084fc',
+      '#a855f7',
+      'fusion',
+      '<g><rect x="36" y="32" width="24" height="28" rx="4" fill="url(#grave-Gr-fusion)" stroke="rgba(0,0,0,0.3)" stroke-width="1.4"/><rect x="42" y="38" width="12" height="10" rx="2" fill="#0b1223" opacity="0.6"/><rect x="44" y="50" width="8" height="6" rx="1.5" fill="#e0e7ff"/></g>',
+      '<linearGradient id="grave-Gr-fusion" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#e9d5ff"/><stop offset="100%" stop-color="#a855f7"/></linearGradient>'
+    ),
+    color: '#c084fc'
+  },
+  {
+    name: 'Storm',
+    imageUrl: makeIcon(
+      'St',
+      '#0ea5e9',
+      '#38bdf8',
+      'fusion',
+      '<g><path d="M44 30 L56 40 L50 40 L54 56 L42 46 L48 46 Z" fill="url(#storm-St-fusion)" stroke="rgba(0,0,0,0.25)" stroke-width="1.4"/><path d="M34 44 C40 40 56 40 62 44" stroke="#e0f2fe" stroke-width="2.4" stroke-linecap="round"/></g>',
+      '<linearGradient id="storm-St-fusion" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#67e8f9"/><stop offset="100%" stop-color="#0284c7"/></linearGradient>'
+    ),
+    color: '#0ea5e9'
+  },
+  {
+    name: 'Rust',
+    imageUrl: makeIcon(
+      'Ru',
+      '#94a3b8',
+      '#cbd5e1',
+      'fusion',
+      '<g><circle cx="48" cy="44" r="14" fill="url(#rust-Ru-fusion)" stroke="rgba(0,0,0,0.35)" stroke-width="1.4"/><circle cx="48" cy="44" r="6" fill="#0b1223"/><path d="M40 36 L44 40" stroke="#f8fafc" stroke-width="1.6"/><path d="M52 50 L56 54" stroke="#f8fafc" stroke-width="1.6"/></g>',
+      '<linearGradient id="rust-Ru-fusion" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#e2e8f0"/><stop offset="60%" stop-color="#94a3b8"/><stop offset="100%" stop-color="#475569"/></linearGradient>'
+    ),
+    color: '#94a3b8'
+  },
+  {
+    name: 'Echo',
+    imageUrl: makeIcon(
+      'Ec',
+      '#93c5fd',
+      '#60a5fa',
+      'fusion',
+      '<g stroke="#e0e7ff" stroke-width="2" fill="none"><circle cx="48" cy="44" r="6" fill="#0b1223"/><circle cx="48" cy="44" r="12"/><circle cx="48" cy="44" r="18" opacity="0.6"/></g>',
+      ''
+    ),
+    color: '#93c5fd'
+  },
+  {
+    name: 'Bramble',
+    imageUrl: makeIcon(
+      'Br',
+      '#16a34a',
+      '#22c55e',
+      'fusion',
+      '<g><circle cx="48" cy="44" r="16" fill="url(#bramble-Br-fusion)" stroke="rgba(0,0,0,0.35)" stroke-width="1.4"/><path d="M36 46 C44 38 52 50 60 42" stroke="#0b1223" stroke-width="2.4" stroke-linecap="round"/><path d="M38 40 L42 44 L38 48 Z" fill="#0b1223"/><path d="M56 36 L60 40 L56 44 Z" fill="#0b1223"/></g>',
+      '<radialGradient id="bramble-Br-fusion" cx="50%" cy="45%" r="60%"><stop offset="0%" stop-color="#bbf7d0"/><stop offset="55%" stop-color="#22c55e"/><stop offset="100%" stop-color="#166534"/></radialGradient>'
+    ),
+    color: '#16a34a'
+  },
+  {
+    name: 'Radiance',
+    imageUrl: makeIcon(
+      'Ra',
+      '#fde047',
+      '#facc15',
+      'fusion',
+      '<g><circle cx="48" cy="44" r="12" fill="url(#radiance-Ra-fusion)" stroke="rgba(0,0,0,0.25)" stroke-width="1.4"/><path d="M44 40 L52 48 M52 40 L44 48" stroke="#0b1223" stroke-width="2.2" stroke-linecap="round"/><g stroke="#fef3c7" stroke-width="2" stroke-linecap="round"><line x1="48" y1="26" x2="48" y2="18"/><line x1="48" y1="62" x2="48" y2="70"/></g></g>',
+      '<radialGradient id="radiance-Ra-fusion" cx="50%" cy="45%" r="60%"><stop offset="0%" stop-color="#fff9c2"/><stop offset="60%" stop-color="#fde047"/><stop offset="100%" stop-color="#d97706"/></radialGradient>'
+    ),
+    color: '#fde047'
+  },
+  {
+    name: 'Shard',
+    imageUrl: makeIcon(
+      'Sh',
+      '#7dd3fc',
+      '#38bdf8',
+      'fusion',
+      '<g fill="url(#shard-Sh-fusion)" stroke="rgba(0,0,0,0.3)" stroke-width="1.2"><path d="M40 56 L46 34 L52 42 L48 56 Z"/><path d="M54 56 L60 36 L64 46 L60 56 Z"/></g>',
+      '<linearGradient id="shard-Sh-fusion" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#e0f2fe"/><stop offset="100%" stop-color="#38bdf8"/></linearGradient>'
+    ),
+    color: '#7dd3fc'
+  },
+  {
+    name: 'Plaguefire',
+    imageUrl: makeIcon(
+      'Pl',
+      '#f97316',
+      '#f87171',
+      'fusion',
+      '<g><path d="M44 30 C50 36 54 42 52 48 C50 52 46 54 44 58 C42 62 44 66 48 68 C54 64 60 58 60 50 C60 42 54 34 50 30 Z" fill="url(#plague-Pl-fusion)" stroke="rgba(0,0,0,0.35)" stroke-width="1.6"/><path d="M48 38 C50 42 51 46 50 48 C49 50 47 51 46 54 C45 56 46 58 48 59 C50 58 52 56 53 54 C54 50 52 46 50 42 C49 40 49 38 48 38 Z" fill="rgba(0,0,0,0.25)"/></g>',
+      '<radialGradient id="plague-Pl-fusion" cx="50%" cy="40%" r="60%"><stop offset="0%" stop-color="#fff4e6"/><stop offset="50%" stop-color="#fb923c"/><stop offset="100%" stop-color="#dc2626"/></radialGradient>'
+    ),
+    color: '#f97316'
+  },
+  {
+    name: 'Jetstream',
+    imageUrl: makeIcon(
+      'Je',
+      '#5eead4',
+      '#22d3ee',
+      'fusion',
+      '<g stroke="#ecfeff" stroke-width="2.4" stroke-linecap="round" fill="none"><path d="M30 46 C42 42 54 44 66 40"/><path d="M32 52 C44 48 52 50 62 46"/><path d="M36 58 C48 54 56 56 64 52"/><path d="M50 34 L62 32 L56 40 Z" fill="#0b1223" stroke="none"/></g>',
+      ''
+    ),
+    color: '#5eead4'
+  },
+  {
+    name: 'Cyclone',
+    imageUrl: makeIcon(
+      'Cy',
+      '#34d399',
+      '#22c55e',
+      'fusion',
+      '<g stroke="rgba(255,255,255,0.7)" stroke-width="2.4" fill="none"><path d="M32 40 C44 36 58 38 64 46" /><path d="M34 48 C46 44 56 46 62 54" /></g><circle cx="48" cy="44" r="8" fill="rgba(255,255,255,0.25)" />',
+      ''
+    ),
+    color: '#34d399'
+  },
+  {
+    name: 'Crossfire',
+    imageUrl: makeIcon(
+      'Cr',
+      '#facc15',
+      '#f59e0b',
+      'fusion',
+      '<g><rect x="28" y="40" width="40" height="8" rx="3" fill="url(#cross-Cr-fusion)" /><rect x="44" y="28" width="8" height="40" rx="3" fill="url(#cross-Cr-fusion)"/><circle cx="48" cy="44" r="6" fill="#0b1223" opacity="0.6"/></g>',
+      '<linearGradient id="cross-Cr-fusion" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#fef08a"/><stop offset="100%" stop-color="#f59e0b"/></linearGradient>'
+    ),
+    color: '#facc15'
+  },
+  {
+    name: 'Mirrorwind',
+    imageUrl: makeIcon(
+      'MW',
+      '#38bdf8',
+      '#60a5fa',
+      'fusion',
+      '<g stroke="#e0f2fe" stroke-width="2.4" stroke-linecap="round" fill="none"><path d="M30 40 C42 36 54 38 66 34"/><path d="M32 48 C44 44 52 46 62 42"/></g><rect x="34" y="46" width="12" height="10" rx="3" fill="url(#mirror-MW-fusion)" stroke="rgba(0,0,0,0.25)" stroke-width="1.2"/><rect x="50" y="46" width="12" height="10" rx="3" fill="url(#mirror-MW-fusion)" stroke="rgba(0,0,0,0.25)" stroke-width="1.2"/>',
+      '<linearGradient id="mirror-MW-fusion" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#e0f2fe"/><stop offset="100%" stop-color="#60a5fa"/></linearGradient>'
+    ),
+    color: '#38bdf8'
+  },
+  {
+    name: 'Radiant Shield',
+    imageUrl: makeIcon(
+      'RS',
+      '#fde68a',
+      '#c084fc',
+      'fusion',
+      '<g><path d="M36 34 L60 34 L60 48 C60 54 54 62 48 66 C42 62 36 54 36 48 Z" fill="url(#rs-RS-fusion)" stroke="rgba(0,0,0,0.25)" stroke-width="1.4"/><circle cx="48" cy="46" r="6" fill="#fef9c3" stroke="rgba(0,0,0,0.2)" stroke-width="1.2"/></g>',
+      '<linearGradient id="rs-RS-fusion" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#fef3c7"/><stop offset="100%" stop-color="#c084fc"/></linearGradient>'
+    ),
+    color: '#fde68a'
+  },
+  {
+    name: 'Thornstep',
+    imageUrl: makeIcon(
+      'TS',
+      '#22c55e',
+      '#f59e0b',
+      'fusion',
+      '<g><rect x="32" y="46" width="32" height="8" rx="3" fill="url(#ts-TS-fusion)" stroke="rgba(0,0,0,0.25)" stroke-width="1.2"/><g stroke="#0b1223" stroke-width="2" stroke-linecap="round"><path d="M36 44 L38 40 L40 44"/><path d="M46 44 L48 40 L50 44"/><path d="M56 44 L58 40 L60 44"/></g></g>',
+      '<linearGradient id="ts-TS-fusion" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#22c55e"/><stop offset="100%" stop-color="#f59e0b"/></linearGradient>'
+    ),
+    color: '#22c55e'
+  },
+  {
+    name: 'Scopebeam',
+    imageUrl: makeIcon(
+      'SB',
+      '#22d3ee',
+      '#c084fc',
+      'fusion',
+      '<g><rect x="28" y="40" width="40" height="8" rx="3" fill="url(#sb-SB-fusion)" stroke="rgba(0,0,0,0.25)" stroke-width="1.2"/><rect x="44" y="28" width="8" height="32" rx="3" fill="url(#sb-SB-fusion)" stroke="rgba(0,0,0,0.25)" stroke-width="1.2"/><circle cx="48" cy="44" r="5" fill="#0b1223"/></g>',
+      '<linearGradient id="sb-SB-fusion" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#22d3ee"/><stop offset="100%" stop-color="#c084fc"/></linearGradient>'
+    ),
+    color: '#22d3ee'
+  }
 ];
 
 export const MEDIA_BY_NAME = MEDIA_LIST.reduce((acc, media) => {
