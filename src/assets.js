@@ -3,6 +3,7 @@
 //   preloadAssets(['paddle.png', 'brick.png']);
 //   const img = await loadImage('brick.png');
 
+// Allow SVG sprites for lightweight, tintable shapes.
 const cache = new Map();
 
 function buildUrl(name) {

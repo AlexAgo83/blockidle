@@ -92,6 +92,10 @@ let paddleSprite = null;
 let paddleSpriteReady = false;
 let moduleSprite = null;
 let moduleSpriteReady = false;
+let brickSprite = null;
+let brickSpriteReady = false;
+let bossBrickSprite = null;
+let bossBrickSpriteReady = false;
 const FUSION_SPRITES = [
   'fusion-sun.png',
   'fusion-tundra.png',
@@ -663,7 +667,8 @@ function normalizeBrick(brick) {
     curseTick: safeNumber(brick.curseTick, null),
     curseSpreadAt: safeNumber(brick.curseSpreadAt, null),
     effectColor: brick.effectColor || null,
-    effectUntil: safeNumber(brick.effectUntil, 0)
+    effectUntil: safeNumber(brick.effectUntil, 0),
+    renderScale: safeNumber(brick.renderScale, 1)
   };
 }
 
@@ -1905,19 +1910,21 @@ function spawnBrickRow() {
 function spawnBossBrick(level) {
   const { brickPadding, brickHeight, brickTopOffset } = CONFIG;
   const { brickWidth, startX } = computeBrickLayout();
+  const BOSS_HITBOX_SCALE = 1;
+  const BOSS_RENDER_SCALE = 1;
   const totalWidth = CONFIG.brickCols * brickWidth + brickPadding * (CONFIG.brickCols - 1);
-  const w = brickWidth * 2;
-  const h = brickHeight * 2;
-  const x = startX + (totalWidth - w) / 2;
-  const y = -h - brickTopOffset;
+  const hitW = brickWidth * 2 * BOSS_HITBOX_SCALE;
+  const hitH = brickHeight * 2 * BOSS_HITBOX_SCALE;
+  const x = startX + (totalWidth - hitW) / 2;
+  const y = -hitH - brickTopOffset;
   // Libère l'espace pour le boss en supprimant les briques qui chevauchent sa zone
   const margin = brickPadding * 2;
   state.bricks = state.bricks.filter((b) => {
     if (!b.alive || b.type === 'boss') return true;
     const overlap = (
-      b.x < x + w + margin &&
+      b.x < x + hitW + margin &&
       b.x + b.w + margin > x &&
-      b.y < y + h + margin &&
+      b.y < y + hitH + margin &&
       b.y + b.h + margin > y
     );
     return !overlap;
@@ -1925,8 +1932,8 @@ function spawnBossBrick(level) {
   state.bricks.push({
     x,
     y,
-    w,
-    h,
+    w: hitW,
+    h: hitH,
     hue: 0,
     alive: true,
     row: level,
@@ -1944,7 +1951,8 @@ function spawnBossBrick(level) {
     curseTick: null,
     curseSpreadAt: null,
     effectColor: 'rgba(248, 113, 113, 0.35)',
-    effectUntil: Number.POSITIVE_INFINITY
+    effectUntil: Number.POSITIVE_INFINITY,
+    renderScale: BOSS_RENDER_SCALE
   });
 }
 
@@ -2980,7 +2988,8 @@ function update(dt) {
     const dx = targetX - drop.x;
     const dy = targetY - drop.y;
     const dist = Math.hypot(dx, dy);
-    if (dist < drop.size + 16) {
+    const step = CONFIG.xpSpeed * dt;
+    if (dist <= drop.size + 16 || step >= dist) {
       state.xpDrops.splice(i, 1);
       gainXp(1);
       continue;
@@ -3397,11 +3406,13 @@ function renderBricks() {
 
     const bw = Math.max(1, Math.abs(Number.isFinite(brick.w) ? brick.w : CONFIG.brickHeight));
     const bh = Math.max(1, Math.abs(Number.isFinite(brick.h) ? brick.h : CONFIG.brickHeight));
+    const renderScale = Number.isFinite(brick.renderScale) ? brick.renderScale : 1;
+    const totalScale = scale * renderScale;
 
-    const drawX = (brick.x + shakeX) - (scale - 1) * bw / 2;
-    const drawY = (brick.y + shakeY) - (scale - 1) * bh / 2;
-    const drawW = bw * scale;
-    const drawH = bh * scale;
+    const drawX = (brick.x + shakeX) - (totalScale - 1) * bw / 2;
+    const drawY = (brick.y + shakeY) - (totalScale - 1) * bh / 2;
+    const drawW = bw * totalScale;
+    const drawH = bh * totalScale;
 
     let flashAlpha = 0;
     if (brick.flashTime) {
@@ -3410,9 +3421,32 @@ function renderBricks() {
       else brick.flashTime = null;
     }
 
-    ctx.fillStyle = `hsla(${baseHue}, 70%, 60%, ${alpha})`;
-    ctx.fillRect(drawX, drawY, drawW, drawH);
-    ctx.strokeStyle = `rgba(15, 23, 42, ${0.4 * alpha})`;
+    const tint = `hsla(${baseHue}, 70%, 60%, ${0.55 * alpha})`;
+    const isBoss = brick.type === 'boss';
+    const spritePad = isBoss ? Math.max(6, Math.min(drawW, drawH) * 0.1) : 0;
+    const spriteX = drawX - spritePad;
+    const spriteY = drawY - spritePad;
+    const spriteW = drawW + spritePad * 2;
+    const spriteH = drawH + spritePad * 2;
+
+    const spriteImg = isBoss && bossBrickSpriteReady ? bossBrickSprite : brickSprite;
+    const drewSprite = Boolean(spriteImg);
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    if (drewSprite) {
+      ctx.drawImage(spriteImg, spriteX, spriteY, spriteW, spriteH);
+    } else {
+      ctx.fillStyle = tint;
+      ctx.fillRect(spriteX, spriteY, spriteW, spriteH);
+    }
+    ctx.restore();
+
+    ctx.save();
+    ctx.globalAlpha = drewSprite ? Math.min(1, alpha * 0.85) : Math.min(1, alpha * 0.45);
+    ctx.fillStyle = tint;
+    ctx.fillRect(spriteX, spriteY, spriteW, spriteH);
+    ctx.restore();
+    ctx.strokeStyle = `rgba(15, 23, 42, ${0.45 * alpha})`;
     ctx.lineWidth = 1.5;
     ctx.strokeRect(drawX, drawY, drawW, drawH);
     if (flashAlpha > 0) {
@@ -4041,7 +4075,7 @@ function bindControls() {
 
 function init() {
   warnMissingMediaMappings();
-  preloadAssets(['bl_paddle_cp.png', 'bl_module_cp.png', ...FUSION_SPRITES]).catch(() => {});
+  preloadAssets(['bl_paddle_cp.png', 'bl_module_cp.png', 'brick.svg', 'brick-boss.svg', ...FUSION_SPRITES]).catch(() => {});
   loadImage('bl_paddle_cp.png')
     .then((img) => {
       paddleSprite = img;
@@ -4059,6 +4093,24 @@ function init() {
     .catch(() => {
       console.warn('Module sprite failed to load, using default shapes.');
       moduleSpriteReady = false;
+    });
+  loadImage('brick.svg')
+    .then((img) => {
+      brickSprite = img;
+      brickSpriteReady = true;
+    })
+    .catch(() => {
+      console.warn('Brick sprite failed to load, using fallback rectangles.');
+      brickSpriteReady = false;
+    });
+  loadImage('brick-boss.svg')
+    .then((img) => {
+      bossBrickSprite = img;
+      bossBrickSpriteReady = true;
+    })
+    .catch(() => {
+      console.warn('Boss brick sprite failed to load, using default brick sprite.');
+      bossBrickSpriteReady = false;
     });
   resizeCanvas();
   initStarfield();
