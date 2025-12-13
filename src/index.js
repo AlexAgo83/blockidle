@@ -88,6 +88,8 @@ const hudCtx = hudBuffer.getContext('2d');
 let hudSignature = null;
 let fpsCounter = 0;
 let fpsLastTime = 0;
+let ballSprite = null;
+let ballSpriteReady = false;
 let paddleSprite = null;
 let paddleSpriteReady = false;
 let moduleSprite = null;
@@ -472,7 +474,10 @@ const state = {
   damageByPower: {},
   beamCooldown: {},
   beamEffects: [],
-  starfield: []
+  starfield: [],
+  damageFlashUntil: 0,
+  damageShakeUntil: 0,
+  shotEffects: []
 };
 
 const bonusState = {};
@@ -657,6 +662,7 @@ function normalizeBrick(brick) {
     hp: safeNumber(brick.hp, 1),
     deathTime: safeNumber(brick.deathTime, null),
     flashTime: safeNumber(brick.flashTime, null),
+    shakeTime: safeNumber(brick.shakeTime, null),
     slowUntil: safeNumber(brick.slowUntil, 0),
     freezeUntil: safeNumber(brick.freezeUntil, 0),
     poisonNextTick: safeNumber(brick.poisonNextTick, 0),
@@ -2104,6 +2110,14 @@ function launchBall() {
     specialPower,
     windPierceLeft: specialPower === 'Wind' || specialPower === 'Jetstream' || specialPower === 'Cyclone' ? 3 : 0
   });
+  state.shotEffects.push({
+    x: originX,
+    y: originY,
+    length: CONFIG.paddleHeight * 2.4,
+    baseWidth: Math.max(12, CONFIG.paddleWidth * 0.45),
+    duration: 220,
+    until: now + 220
+  });
 }
 
 function redirectBallToPaddle(ball, speedScale = 0.5) {
@@ -2924,12 +2938,24 @@ function update(dt) {
     }
   }
 
+  // Vibrations des briques proches du bas de l'écran (warning).
+  const dangerY = CONFIG.height - CONFIG.brickHeight * 1.1;
+  for (const brick of state.bricks) {
+    if (!brick.alive) continue;
+    const bottom = brick.y + brick.h;
+    if (bottom >= dangerY && bottom < CONFIG.height) {
+      brick.shakeTime = now;
+    }
+  }
+
   // Si une brique atteint le bas, perte de vie.
   for (const brick of state.bricks) {
     if (!brick.alive) continue;
     if (brick.y + brick.h >= CONFIG.height) {
       brick.alive = false;
       state.lives -= 1;
+      state.damageFlashUntil = now + 700;
+      state.damageShakeUntil = now + 500;
       if (state.lives <= 0) {
         triggerGameOver();
       }
@@ -3417,11 +3443,13 @@ function renderBricks() {
 
     if (brick.shakeTime) {
       const elapsed = now - brick.shakeTime;
-      if (elapsed <= 220) {
-        const intensity = 1 - elapsed / 220;
-        const magnitude = 3 * intensity;
-        shakeX = Math.sin(now * 0.2 + brick.x) * magnitude;
-        shakeY = Math.cos(now * 0.25 + brick.y) * magnitude;
+      const duration = 360;
+      if (elapsed <= duration) {
+        const intensity = 1 - elapsed / duration;
+        const magnitudeX = 6 * intensity;
+        const magnitudeY = 3 * intensity;
+        shakeX = Math.sin(now * 0.14 + brick.x) * magnitudeX;
+        shakeY = Math.cos(now * 0.16 + brick.y) * magnitudeY;
       } else {
         brick.shakeTime = null;
       }
@@ -3585,9 +3613,27 @@ function renderXpDrops() {
 }
 
 function renderPaddle() {
+  const now = performance.now ? performance.now() : Date.now();
   const { paddle } = state;
   const raquetteLv = getTalentLevel('Paddle');
   const baseColor = raquetteLv > 0 ? '#22d3ee' : '#38bdf8';
+  const damageActive = state.damageFlashUntil && state.damageFlashUntil > now;
+  const shakeActive = state.damageShakeUntil && state.damageShakeUntil > now;
+  const shakeT = shakeActive ? (state.damageShakeUntil - now) / 500 : 0;
+  const shakeAmp = shakeActive ? 6 * shakeT : 0;
+  const shakeX = shakeActive ? Math.sin(now / 55) * shakeAmp : 0;
+  const shakeY = shakeActive ? Math.cos(now / 65) * shakeAmp : 0;
+  const haloPulse = damageActive ? 0.35 + 0.25 * Math.sin(now / 80) : 0;
+  const haloPad = 8;
+  const drawHalo = (x, y, w, h) => {
+    if (!damageActive) return;
+    ctx.save();
+    ctx.fillStyle = `rgba(248, 113, 113, ${haloPulse.toFixed(2)})`;
+    const radius = Math.max(6, Math.min(w, h) * 0.4);
+    drawRoundedRectPath(ctx, x - haloPad, y - haloPad, w + haloPad * 2, h + haloPad * 2, radius);
+    ctx.fill();
+    ctx.restore();
+  };
   const drawSprite = (img, x, w, h) => {
     if (!img) return;
     const targetW = w;
@@ -3595,9 +3641,10 @@ function renderPaddle() {
     const scale = Math.min(targetW / img.width, targetH / img.height);
     const drawW = targetW;
     const drawH = img.height * (drawW / img.width);
-    const dx = x;
+    const dx = x + shakeX;
     const isModule = img === moduleSprite;
-    const dy = paddle.y + (h - drawH) / 2 + (isModule ? drawH * 0.25 : 0);
+    const dy = paddle.y + (h - drawH) / 2 + (isModule ? drawH * 0.25 : 0) + shakeY;
+    drawHalo(dx, dy, drawW, drawH);
     ctx.drawImage(img, dx, dy, drawW, drawH);
   };
 
@@ -3606,6 +3653,7 @@ function renderPaddle() {
     drawSprite(paddleSprite, paddle.x, paddle.w, paddle.h);
   } else {
     ctx.fillStyle = baseColor;
+    drawHalo(paddle.x, paddle.y, paddle.w, paddle.h);
     ctx.fillRect(paddle.x, paddle.y, paddle.w, paddle.h);
   }
 
@@ -3617,6 +3665,7 @@ function renderPaddle() {
       drawSprite(moduleSprite, paddle.x - halfWidth - gap, halfWidth, paddle.h);
     } else {
       ctx.fillStyle = baseColor;
+      drawHalo(paddle.x - halfWidth - gap, paddle.y, halfWidth, paddle.h);
       ctx.fillRect(paddle.x - halfWidth - gap, paddle.y, halfWidth, paddle.h);
     }
   }
@@ -3625,6 +3674,7 @@ function renderPaddle() {
       drawSprite(moduleSprite, paddle.x + paddle.w + gap, halfWidth, paddle.h);
     } else {
       ctx.fillStyle = baseColor;
+      drawHalo(paddle.x + paddle.w + gap, paddle.y, halfWidth, paddle.h);
       ctx.fillRect(paddle.x + paddle.w + gap, paddle.y, halfWidth, paddle.h);
     }
   }
@@ -3656,69 +3706,94 @@ function renderAimCone() {
 }
 
 
-function renderBalls() {
-  for (const ball of state.balls) {
-    if (ball.returning) {
-      const trailLength = 4;
-      const trailAlpha = 0.2;
-      for (let i = 1; i <= trailLength; i += 1) {
-        const t = i / (trailLength + 1);
-        const tx = ball.x - ball.vx * 0.01 * i;
-        const ty = ball.y - ball.vy * 0.01 * i;
-        ctx.fillStyle = `rgba(255, 255, 255, ${trailAlpha * (1 - t)})`;
-        ctx.beginPath();
-        ctx.arc(tx, ty, ball.r * 0.9, 0, Math.PI * 2);
-        ctx.fill();
-      }
-    }
-    if (ball.returning) {
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.35)';
-    } else {
-      if (ball.specialPower === 'Fire') {
-        const blink = (Math.sin(performance.now() / 80) + 1) / 2; // plus rapide
-        const alpha = 0.35 + 0.65 * blink;
-        ctx.fillStyle = `rgba(255, 215, 0, ${alpha.toFixed(2)})`; // jaune doré
-      } else if (ball.specialPower === 'Ice') {
-        const blink = (Math.sin(performance.now() / 90) + 1) / 2;
-        const alpha = 0.35 + 0.65 * blink;
-        ctx.fillStyle = `rgba(96, 165, 250, ${alpha.toFixed(2)})`; // bleu lumineux animé
-      } else if (ball.specialPower === 'Poison') {
-        const blink = (Math.sin(performance.now() / 85) + 1) / 2;
-        const alpha = 0.35 + 0.65 * blink;
-        ctx.fillStyle = `rgba(52, 211, 153, ${alpha.toFixed(2)})`; // vert poison animé
-      } else if (ball.specialPower === 'Metal') {
-        const blink = (Math.sin(performance.now() / 95) + 1) / 2;
-        const alpha = 0.35 + 0.65 * blink;
-        ctx.fillStyle = `rgba(226, 232, 240, ${alpha.toFixed(2)})`; // gris clair animé
-      } else if (ball.specialPower === 'Vampire') {
-        const blink = (Math.sin(performance.now() / 85) + 1) / 2;
-        const alpha = 0.35 + 0.65 * blink;
-        ctx.fillStyle = `rgba(239, 68, 68, ${alpha.toFixed(2)})`; // rouge vif animé
-      } else if (ball.specialPower === 'Light') {
-        const blink = (Math.sin(performance.now() / 80) + 1) / 2;
-        const alpha = 0.3 + 0.7 * blink;
-        ctx.fillStyle = `rgba(255, 255, 255, ${alpha.toFixed(2)})`; // blanc pulsé
-      } else if (ball.specialPower === 'Thorns') {
-        const blink = (Math.sin(performance.now() / 100) + 1) / 2;
-        const alpha = 0.35 + 0.65 * blink;
-        ctx.fillStyle = `rgba(120, 72, 48, ${alpha.toFixed(2)})`; // marron pulsé
-      } else if (ball.specialPower === 'Curse') {
-        const blink = (Math.sin(performance.now() / 90) + 1) / 2;
-        const alpha = 0.35 + 0.65 * blink;
-        ctx.fillStyle = `rgba(139, 92, 246, ${alpha.toFixed(2)})`; // violet pulsé
-      } else {
-        ctx.fillStyle = '#f472b6';
-      }
-    }
-    ctx.beginPath();
-    ctx.arc(ball.x, ball.y, ball.r, 0, Math.PI * 2);
+function renderShots() {
+  const now = performance.now ? performance.now() : Date.now();
+  state.shotEffects = state.shotEffects.filter((s) => s.until > now);
+  if (!state.shotEffects.length) return;
+  ctx.save();
+  state.shotEffects.forEach((shot) => {
+    const t = 1 - (shot.until - now) / shot.duration;
+    const alpha = 0.6 * (1 - t);
+    const width = shot.baseWidth * (1 + 0.2 * Math.sin(now / 40));
+    const height = shot.length * (1 + 0.05 * Math.sin(now / 60));
+    const x = shot.x - width / 2;
+    const y = shot.y - height;
+    const gradient = ctx.createLinearGradient(shot.x, y, shot.x, shot.y);
+    gradient.addColorStop(0, 'rgba(56, 189, 248, 0)');
+    gradient.addColorStop(0.2, 'rgba(56, 189, 248, 0.6)');
+    gradient.addColorStop(0.6, 'rgba(14, 165, 233, 0.8)');
+    gradient.addColorStop(1, 'rgba(56, 189, 248, 0)');
+    ctx.globalAlpha = alpha;
+    drawRoundedRectPath(ctx, x, y, width, height, Math.max(6, width * 0.4));
+    ctx.fillStyle = gradient;
     ctx.fill();
+  });
+  ctx.restore();
+}
+
+function renderBalls() {
+  const timeNow = performance.now ? performance.now() : Date.now();
+  const drawBallSprite = (x, y, r, vx, vy, specialPower) => {
+    const speed = Math.hypot(vx, vy);
+    const spin = (speed / 400) * (timeNow / 16);
+    const baseScale = 1;
+    const scale = baseScale * Math.min(1.2, 0.6 + speed / 800);
+    const angle = spin % (Math.PI * 2);
+
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(angle);
+    ctx.scale(scale, scale);
+    const size = r * 2;
+    if (ballSpriteReady && ballSprite) {
+      ctx.drawImage(ballSprite, -size, -size, size * 2, size * 2);
+    } else {
+      ctx.fillStyle = 'rgba(255,255,255,0.8)';
+      ctx.beginPath();
+      ctx.arc(0, 0, r, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    if (specialPower) {
+      ctx.strokeStyle = getPowerColor(specialPower).replace('0.35', '0.9');
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(0, 0, r * 1.1, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+    ctx.restore();
+  };
+
+  const trailLength = 4;
+  const trailAlpha = 0.2;
+  for (const ball of state.balls) {
+    for (let i = 1; i <= trailLength; i += 1) {
+      const t = i / (trailLength + 1);
+      const tx = ball.x - ball.vx * 0.01 * i;
+      const ty = ball.y - ball.vy * 0.01 * i;
+      ctx.fillStyle = `rgba(255, 255, 255, ${trailAlpha * (1 - t)})`;
+      ctx.beginPath();
+      ctx.arc(tx, ty, ball.r * 0.9, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    const fill = (() => {
+      const blink = (period) => (Math.sin(timeNow / period) + 1) / 2;
+      if (ball.specialPower === 'Fire') return `rgba(255, 215, 0, ${(0.35 + 0.65 * blink(80)).toFixed(2)})`;
+      if (ball.specialPower === 'Ice') return `rgba(96, 165, 250, ${(0.35 + 0.65 * blink(90)).toFixed(2)})`;
+      if (ball.specialPower === 'Poison') return `rgba(52, 211, 153, ${(0.35 + 0.65 * blink(85)).toFixed(2)})`;
+      if (ball.specialPower === 'Metal') return `rgba(226, 232, 240, ${(0.35 + 0.65 * blink(95)).toFixed(2)})`;
+      if (ball.specialPower === 'Vampire') return `rgba(239, 68, 68, ${(0.35 + 0.65 * blink(85)).toFixed(2)})`;
+      if (ball.specialPower === 'Light') return `rgba(255, 255, 255, ${(0.3 + 0.7 * blink(80)).toFixed(2)})`;
+      if (ball.specialPower === 'Thorns') return `rgba(120, 72, 48, ${(0.35 + 0.65 * blink(100)).toFixed(2)})`;
+      if (ball.specialPower === 'Curse') return `rgba(139, 92, 246, ${(0.35 + 0.65 * blink(90)).toFixed(2)})`;
+      return '#f472b6';
+    })();
+    ctx.fillStyle = fill;
+    drawBallSprite(ball.x, ball.y, ball.r, ball.vx, ball.vy, ball.specialPower);
   }
+
   if (state.ballHeld) {
     ctx.fillStyle = '#fb7185';
-    ctx.beginPath();
-    ctx.arc(state.heldBall.x, state.heldBall.y, state.heldBall.r, 0, Math.PI * 2);
-    ctx.fill();
+    drawBallSprite(state.heldBall.x, state.heldBall.y, state.heldBall.r, 0, 0, null);
   }
 }
 
@@ -3914,6 +3989,7 @@ function render() {
   renderXpDrops();
   renderAimCone();
   renderBalls();
+  renderShots();
   renderHUD();
 }
 
@@ -4106,7 +4182,7 @@ function bindControls() {
 
 function init() {
   warnMissingMediaMappings();
-  preloadAssets(['ship.svg', 'ship-flat.svg', 'brick.svg', 'brick-boss.svg', ...FUSION_SPRITES]).catch(() => {});
+  preloadAssets(['ship.svg', 'ship-flat.svg', 'brick.svg', 'brick-boss.svg', 'ball.svg', ...FUSION_SPRITES]).catch(() => {});
   loadImage('ship.svg')
     .then((img) => {
       paddleSprite = img;
@@ -4124,6 +4200,15 @@ function init() {
     .catch(() => {
       console.warn('Module sprite failed to load, using default shapes.');
       moduleSpriteReady = false;
+    });
+  loadImage('ball.svg')
+    .then((img) => {
+      ballSprite = img;
+      ballSpriteReady = true;
+    })
+    .catch(() => {
+      console.warn('Ball sprite failed to load, using default circles.');
+      ballSpriteReady = false;
     });
   loadImage('brick.svg')
     .then((img) => {
