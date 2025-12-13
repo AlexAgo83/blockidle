@@ -129,7 +129,12 @@ const BOSS_VARIANT_FILES = [
   'boss-variant8.svg',
   'boss-variant9.svg',
   'boss-variant10.svg',
-  'boss-variant-devil.svg'
+  'boss-variant-devil.svg',
+  'boss-variant-devil2.svg',
+  'boss-variant-devil3.svg',
+  'boss-variant-devil4.svg',
+  'boss-variant-devil5.svg',
+  'boss-variant-devil6.svg'
 ];
 const API_TOKEN = (
   import.meta?.env?.VITE_API_TOKEN ||

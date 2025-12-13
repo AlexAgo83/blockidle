@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="220" height="120" viewBox="0 0 220 120">
+  <defs>
+    <linearGradient id="bossDevil4Glow" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0%" stop-color="#22d3ee"/><stop offset="100%" stop-color="#3b82f6"/>
+    </linearGradient>
+    <linearGradient id="bossDevil4Face" x1="0" x2="0" y1="0" y2="1">
+      <stop offset="0%" stop-color="#0a0f1a"/><stop offset="100%" stop-color="#0b1223"/>
+    </linearGradient>
+  </defs>
+  <rect x="4" y="4" width="212" height="112" rx="18" fill="url(#bossDevil4Face)" stroke="url(#bossDevil4Glow)" stroke-width="6"/>
+  <rect x="16" y="18" width="188" height="84" rx="14" fill="rgba(255,255,255,0.03)"/>
+  <path d="M62 24 l-9 -14 h16 z" fill="#22d3ee"/>
+  <path d="M158 24 l9 -14 h-16 z" fill="#22d3ee"/>
+  <circle cx="110" cy="70" r="30" fill="rgba(34,211,238,0.15)" stroke="rgba(34,211,238,0.35)" stroke-width="2"/>
+  <circle cx="96" cy="64" r="6" fill="#e0f2fe"/>
+  <circle cx="124" cy="64" r="6" fill="#e0f2fe"/>
+  <circle cx="96" cy="64" r="3" fill="#0a0f1a"/>
+  <circle cx="124" cy="64" r="3" fill="#0a0f1a"/>
+  <path d="M94 82 q16 6 32 0" stroke="#22d3ee" stroke-width="3" fill="none" stroke-linecap="round"/>
+</svg>
