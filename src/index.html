@@ -8,7 +8,10 @@
     :root {
       color-scheme: dark;
       font-family: 'Segoe UI', sans-serif;
-      background: #0f172a;
+      background:
+        radial-gradient(circle at 20% 20%, rgba(56, 189, 248, 0.08), transparent 38%),
+        radial-gradient(circle at 80% 10%, rgba(192, 132, 252, 0.08), transparent 32%),
+        #050915;
       color: #e2e8f0;
     }
     body {
@@ -16,6 +19,44 @@
       min-height: 100vh;
       display: grid;
       place-items: center;
+      position: relative;
+      overflow: hidden;
+    }
+    body::before,
+    body::after {
+      content: '';
+      position: fixed;
+      inset: -200px 0 0 0;
+      pointer-events: none;
+      background-repeat: repeat;
+      transform: translateZ(0);
+      z-index: 0;
+    }
+    body::before {
+      background-image:
+        radial-gradient(1px 1px at 10px 20px, rgba(255, 255, 255, 0.7), transparent 45%),
+        radial-gradient(1.5px 1.5px at 60px 40px, rgba(148, 163, 184, 0.8), transparent 45%),
+        radial-gradient(1px 1px at 90px 80px, rgba(226, 232, 240, 0.65), transparent 45%);
+      background-size: 140px 140px;
+      animation: starfall 55s linear infinite;
+      opacity: 0.8;
+    }
+    body::after {
+      background-image:
+        radial-gradient(1px 1px at 20px 60px, rgba(255, 255, 255, 0.45), transparent 45%),
+        radial-gradient(1.2px 1.2px at 100px 20px, rgba(148, 163, 184, 0.5), transparent 45%),
+        radial-gradient(1px 1px at 160px 120px, rgba(226, 232, 240, 0.5), transparent 45%);
+      background-size: 220px 220px;
+      animation: starfall 95s linear infinite;
+      opacity: 0.6;
+    }
+    @keyframes starfall {
+      from {
+        background-position: 0 0;
+      }
+      to {
+        background-position: 0 900px;
+      }
     }
     #app {
       width: 100%;
@@ -24,6 +65,8 @@
       align-items: center;
       gap: 12px;
       padding-top: 2.5vh;
+      position: relative;
+      z-index: 1;
     }
     .narrow {
       width: 90vw;
