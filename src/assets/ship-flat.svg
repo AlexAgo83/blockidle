@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="200" height="100" viewBox="0 0 200 100">
+  <defs>
+    <linearGradient id="hullFlat" x1="0" x2="0" y1="0" y2="1">
+      <stop offset="0%" stop-color="#8be9fd"/>
+      <stop offset="100%" stop-color="#2563eb"/>
+    </linearGradient>
+    <linearGradient id="glowFlat" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0%" stop-color="rgba(94,234,212,0.8)"/>
+      <stop offset="100%" stop-color="rgba(99,102,241,0.8)"/>
+    </linearGradient>
+  </defs>
+  <path d="M100 8 L146 24 Q166 32 174 50 Q166 68 146 76 L100 92 L54 76 Q34 68 26 50 Q34 32 54 24 Z"
+        fill="url(#hullFlat)" stroke="rgba(15,23,42,0.6)" stroke-width="3" />
+  <path d="M92 26 Q100 20 108 26 L128 44 Q132 50 128 56 L108 68 Q100 74 92 68 L72 56 Q68 50 72 44 Z"
+        fill="rgba(255,255,255,0.15)" stroke="rgba(255,255,255,0.3)" stroke-width="2"/>
+  <path d="M100 12 L140 28 Q158 34 164 50 Q158 66 140 72 L100 88 L60 72 Q42 66 36 50 Q42 34 60 28 Z"
+        fill="none" stroke="url(#glowFlat)" stroke-width="4" opacity="0.9"/>
+  <rect x="50" y="70" width="12" height="16" rx="4" fill="rgba(59,130,246,0.5)"/>
+  <rect x="138" y="70" width="12" height="16" rx="4" fill="rgba(59,130,246,0.5)"/>
+</svg>

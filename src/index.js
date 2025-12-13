@@ -4106,17 +4106,17 @@ function bindControls() {
 
 function init() {
   warnMissingMediaMappings();
-  preloadAssets(['bl_paddle_cp.png', 'bl_module_cp.png', 'brick.svg', 'brick-boss.svg', ...FUSION_SPRITES]).catch(() => {});
-  loadImage('bl_paddle_cp.png')
+  preloadAssets(['ship.svg', 'ship-flat.svg', 'brick.svg', 'brick-boss.svg', ...FUSION_SPRITES]).catch(() => {});
+  loadImage('ship.svg')
     .then((img) => {
       paddleSprite = img;
       paddleSpriteReady = true;
     })
     .catch(() => {
-      console.warn('Paddle sprite failed to load, using default shape.');
+      console.warn('Ship sprite failed to load, using default shape.');
       paddleSpriteReady = false;
     });
-  loadImage('bl_module_cp.png')
+  loadImage('ship-flat.svg')
     .then((img) => {
       moduleSprite = img;
       moduleSpriteReady = true;
