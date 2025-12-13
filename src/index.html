@@ -227,6 +227,45 @@
       margin-top: 12px;
       margin-bottom: 10px;
     }
+    .owned-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 7px;
+      margin: 10px auto 14px;
+      max-width: 224px;
+    }
+    .owned-cell {
+      min-height: 34px;
+      border: 1px solid rgba(148, 163, 184, 0.25);
+      border-radius: 8px;
+      background: rgba(15, 23, 42, 0.6);
+      display: grid;
+      place-items: center;
+      position: relative;
+      overflow: hidden;
+      aspect-ratio: 1 / 1;
+    }
+    .owned-cell img {
+      width: 28px;
+      height: 28px;
+      object-fit: contain;
+      filter: drop-shadow(0 6px 10px rgba(0,0,0,0.35));
+    }
+    .owned-cell .badge {
+      position: absolute;
+      top: 6px;
+      right: 6px;
+      background: rgba(56, 189, 248, 0.85);
+      color: #0b1223;
+      border-radius: 8px;
+      padding: 2px 6px;
+      font-size: 0.75rem;
+      font-weight: 700;
+    }
+    .owned-cell.empty {
+      border-style: dashed;
+      opacity: 0.35;
+    }
     .power-btn {
       background: linear-gradient(135deg, #38bdf8, #6366f1);
       color: #0b1223;
@@ -250,8 +289,8 @@
     }
     .talent-grid {
       display: grid;
-      grid-template-columns: 1fr;
-      gap: 8px;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 10px;
       margin-top: 8px;
     }
     .talent-btn {
@@ -860,6 +899,7 @@
       <h2 data-i18n="power_modal.title">Choose a power</h2>
       <p class="subtitle" data-i18n="power_modal.subtitle">Each level grants you an upgrade. Pick the option you prefer:</p>
       <h3 data-i18n="power_modal.powers">Powers <span id="power-slots-label" class="slots-label"></span></h3>
+      <div id="owned-powers-grid" class="owned-grid"></div>
       <div class="power-grid">
         <button class="power-btn" data-power="Fire">Fire</button>
         <button class="power-btn" data-power="Poison">Poison</button>
@@ -867,10 +907,12 @@
         <button class="power-btn" data-power="Ice">Ice</button>
       </div>
       <h3 data-i18n="power_modal.talents">Talents <span id="talent-slots-label" class="slots-label"></span></h3>
+      <div id="owned-talents-grid" class="owned-grid"></div>
       <div class="talent-grid">
         <button class="talent-btn" data-talent="Boots">Boots</button>
         <button class="talent-btn" data-talent="Feather">Feather</button>
         <button class="talent-btn" data-talent="Gloves">Gloves</button>
+        <button class="talent-btn" data-talent="Scope">Scope</button>
       </div>
       <div class="power-preview" id="power-preview">
         <div class="power-preview-icon" id="power-preview-icon">?</div>
