@@ -1916,11 +1916,15 @@ function closePowerModal() {
     btn.classList.remove('selected');
     btn.disabled = true;
     btn.tabIndex = -1;
+    btn.style.pointerEvents = 'none';
+    btn.style.visibility = 'hidden';
   });
   talentButtons.forEach((btn) => {
     btn.classList.remove('selected');
     btn.disabled = true;
     btn.tabIndex = -1;
+    btn.style.pointerEvents = 'none';
+    btn.style.visibility = 'hidden';
   });
   if (powerConfirmBtn) powerConfirmBtn.disabled = true;
   if (powerPassBtn) {
@@ -1934,8 +1938,8 @@ function renderPowerModal(powerOptions, talentOptions) {
     powerPassBtn.disabled = state.passRemaining <= 0;
     powerPassBtn.textContent = `${t('power_modal.pass')} (${state.passRemaining})`;
   }
-  powerButtons.forEach((btn) => { btn.disabled = false; btn.tabIndex = 0; });
-  talentButtons.forEach((btn) => { btn.disabled = false; btn.tabIndex = 0; });
+  powerButtons.forEach((btn) => { btn.disabled = false; btn.tabIndex = 0; btn.style.pointerEvents = 'auto'; btn.style.visibility = 'visible'; });
+  talentButtons.forEach((btn) => { btn.disabled = false; btn.tabIndex = 0; btn.style.pointerEvents = 'auto'; btn.style.visibility = 'visible'; });
   renderOwnedGrid(ownedPowersGrid, state.powers, 'power');
   renderOwnedGrid(ownedTalentsGrid, state.talents, 'talent');
   powerButtons.forEach((btn, idx) => {
@@ -3713,13 +3717,13 @@ function update(dt) {
       const bounceSpeedMult = 1.1;
       const damageMult = 1.1;
       const currentBoost = Math.max(1, ball.damageScale || 1);
-      const nextBoost = Math.min(currentBoost * damageMult, 1.5);
-      const speedBoost = Math.min(Math.hypot(ball.vx, ball.vy) * bounceSpeedMult, getBallSpeed(Boolean(ball.specialPower)) * 1.5);
+      const nextBoost = Math.min(currentBoost * damageMult, 1.1 ** 3); // max ~1.331
+      const speedBoost = Math.min(Math.hypot(ball.vx, ball.vy) * bounceSpeedMult, getBallSpeed(Boolean(ball.specialPower)) * 1.3);
       const speedRatio = speedBoost / (Math.hypot(ball.vx, ball.vy) || 1);
       ball.vx *= speedRatio;
       ball.vy *= speedRatio;
       ball.damageScale = nextBoost;
-      ball.maxBoosted = nextBoost >= 1.5;
+      ball.maxBoosted = nextBoost >= 1.1 ** 3;
 
       const speed = Math.hypot(ball.vx, ball.vy);
       if (state.autoPlay) {
@@ -3922,7 +3926,7 @@ function drawDamageOverlay(ctxTarget, title = 'Damage by power') {
   const entries = getDamageEntries(maxRows);
   if (!entries.length) return;
   const panelW = 540;
-  const barH = 12;
+  const barH = 14;
   const barGap = 22;
   const panelH = 90 + entries.length * barGap;
   const x = (CONFIG.width - panelW) / 2;
@@ -3931,36 +3935,25 @@ function drawDamageOverlay(ctxTarget, title = 'Damage by power') {
   let y = maxY - panelH;
   if (y < minY) y = minY;
   ctxTarget.save();
-  ctxTarget.fillStyle = 'rgba(8,15,30,0.82)';
-  ctxTarget.strokeStyle = 'rgba(148,163,184,0.45)';
-  ctxTarget.lineWidth = 2;
-  ctxTarget.beginPath();
-  if (typeof ctxTarget.roundRect === 'function') {
-    ctxTarget.roundRect(x, y, panelW, panelH, 16);
-  } else {
-    ctxTarget.rect(x, y, panelW, panelH);
-  }
-  ctxTarget.fill();
-  ctxTarget.stroke();
   ctxTarget.fillStyle = '#e2e8f0';
-  ctxTarget.font = '22px "Segoe UI", sans-serif';
-  ctxTarget.fillText(title, x + 18, y + 32);
+  ctxTarget.font = '26px "Segoe UI", sans-serif';
+  ctxTarget.fillText(title, x + 12, y + 28);
   const maxVal = Math.max(...entries.map(([, v]) => v));
   const total = entries.reduce((sum, [, v]) => sum + v, 0);
   entries.forEach(([name, val], idx) => {
-    const yPos = y + 60 + idx * (barGap * 2);
+    const yPos = y + 52 + idx * (barGap * 2);
     const ratio = maxVal > 0 ? val / maxVal : 0;
     const owned = getPowerLevel(name) > 0 || getTalentLevel(name) > 0;
     const barColor = getPowerColor(name) || '#60a5fa';
     const width = (panelW - 80) * ratio;
-    ctxTarget.fillStyle = 'rgba(255,255,255,0.12)';
-    ctxTarget.fillRect(x + 18, yPos, panelW - 80, barH);
+    ctxTarget.fillStyle = 'rgba(15,23,42,0.3)';
+    ctxTarget.fillRect(x + 12, yPos, panelW - 80, barH);
     ctxTarget.fillStyle = owned ? barColor : 'rgba(148,163,184,0.45)';
-    ctxTarget.fillRect(x + 18, yPos, width, barH);
-    ctxTarget.fillStyle = owned ? '#e2e8f0' : 'rgba(226,232,240,0.5)';
-    ctxTarget.font = '15px "Segoe UI", sans-serif';
+    ctxTarget.fillRect(x + 12, yPos, width, barH);
+    ctxTarget.fillStyle = owned ? '#e2e8f0' : 'rgba(226,232,240,0.6)';
+    ctxTarget.font = '18px "Segoe UI", sans-serif';
     const pct = total > 0 ? Math.round((val / total) * 100) : 0;
-    ctxTarget.fillText(`${name} · ${pct}%`, x + 18, yPos - 6);
+    ctxTarget.fillText(`${name} · ${pct}%`, x + 12, yPos - 6);
   });
   ctxTarget.restore();
 }
@@ -4436,12 +4429,20 @@ function renderBalls() {
     ctx.restore();
     if (ballObj?.maxBoosted) {
       ctx.save();
-      ctx.lineWidth = 2.5;
-      ctx.strokeStyle = `rgba(255,255,255,${(0.65 + 0.35 * blinkValue(80)).toFixed(2)})`;
-      ctx.shadowColor = `rgba(255,255,255,${(0.4 + 0.4 * blinkValue(60)).toFixed(2)})`;
-      ctx.shadowBlur = 10;
+      const pulse = blinkValue(70);
+      const hue = Math.floor((timeNow / 20) % 360);
+      ctx.lineWidth = 3.5;
+      ctx.strokeStyle = `hsla(${hue}, 90%, 65%, ${0.55 + 0.35 * pulse})`;
+      ctx.shadowColor = `hsla(${hue}, 90%, 70%, ${0.4 + 0.4 * pulse})`;
+      ctx.shadowBlur = 16;
       ctx.beginPath();
-      ctx.arc(x, y, r + 3, 0, Math.PI * 2);
+      ctx.arc(x, y, r + 5, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.setLineDash([4, 4]);
+      ctx.lineWidth = 2;
+      ctx.strokeStyle = `hsla(${(hue + 60) % 360}, 90%, 70%, ${0.35 + 0.4 * blinkValue(40)})`;
+      ctx.arc(x, y, r + 9, 0, Math.PI * 2);
       ctx.stroke();
       ctx.restore();
     }
