@@ -317,6 +317,34 @@ const FUSION_DEFS = [
     fusion: true,
     ingredients: ['Beamline', 'Pillar'],
     color: 'rgba(250, 204, 21, 0.5)'
+  },
+  {
+    name: 'Mirrorwind',
+    maxLevel: 1,
+    fusion: true,
+    ingredients: ['Wind', 'Mirror'],
+    color: 'rgba(125, 211, 252, 0.55)'
+  },
+  {
+    name: 'Radiant Shield',
+    maxLevel: 1,
+    fusion: true,
+    ingredients: ['Light', 'Resilience'],
+    color: 'rgba(253, 230, 138, 0.55)'
+  },
+  {
+    name: 'Thornstep',
+    maxLevel: 1,
+    fusion: true,
+    ingredients: ['Thorns', 'Boots'],
+    color: 'rgba(34, 197, 94, 0.55)'
+  },
+  {
+    name: 'Scopebeam',
+    maxLevel: 1,
+    fusion: true,
+    ingredients: ['Beamline', 'Scope'],
+    color: 'rgba(34, 211, 238, 0.55)'
   }
 ];
 const ALL_POWER_DEFS = [...POWER_DEFS, ...FUSION_DEFS];
@@ -1243,6 +1271,26 @@ function getPowerDescription(name) {
         plain: 'Fusion of Beamline + Pillar: fires both horizontal and vertical lasers on hit (1 dmg, 1s cooldown)',
         rich: '<strong>Fusion</strong> of <span class="power-desc-accent">Beamline + Pillar</span>: fires <span class="power-desc-accent">horizontal + vertical</span> lasers on hit <span class="power-desc-muted">(1 dmg, 1s cd)</span>'
       };
+    case 'Mirrorwind':
+      return {
+        plain: 'Fusion of Wind + Mirror: pierces more and spawns a mirrored ghost ball (50% dmg)',
+        rich: '<strong>Fusion</strong> of <span class="power-desc-accent">Wind + Mirror</span>: extra pierce and a mirrored ghost ball <span class="power-desc-accent">(50% dmg)</span>'
+      };
+    case 'Radiant Shield':
+      return {
+        plain: 'Fusion of Light + Resilience: stuns on hit and grants a brief shield (+2 temp HP, 5s)',
+        rich: '<strong>Fusion</strong> of <span class="power-desc-accent">Light + Resilience</span>: stun on hit + <span class="power-desc-accent">+2 temp HP</span> shield for <span class="power-desc-accent">5s</span>'
+      };
+    case 'Thornstep':
+      return {
+        plain: 'Fusion of Thorns + Boots: faster thorn ticks and a brief slow on hit',
+        rich: '<strong>Fusion</strong> of <span class="power-desc-accent">Thorns + Boots</span>: faster thorn ticks + short slow on hit'
+      };
+    case 'Scopebeam':
+      return {
+        plain: 'Fusion of Beamline + Scope: fires both horizontal and vertical beams with better focus',
+        rich: '<strong>Fusion</strong> of <span class="power-desc-accent">Beamline + Scope</span>: fires <span class="power-desc-accent">horizontal + vertical</span> beams with focused aim'
+      };
     default:
       return { plain: '', rich: '' };
   }
@@ -1414,6 +1462,14 @@ function getPowerColor(name) {
       return 'rgba(94, 234, 212, 0.35)';
     case 'Pillar':
       return 'rgba(192, 132, 252, 0.35)';
+    case 'Mirrorwind':
+      return 'rgba(125, 211, 252, 0.45)';
+    case 'Radiant Shield':
+      return 'rgba(253, 230, 138, 0.45)';
+    case 'Thornstep':
+      return 'rgba(52, 211, 153, 0.45)';
+    case 'Scopebeam':
+      return 'rgba(94, 234, 212, 0.45)';
     case 'Fire':
       return 'rgba(255, 215, 0, 0.35)';
     case 'Ice':
@@ -3374,7 +3430,8 @@ function update(dt) {
           break;
         }
 
-        const damage = ball.specialPower === 'Metal' ? 3 : 1;
+        const damageScale = Number.isFinite(ball.damageScale) ? ball.damageScale : 1;
+        const damage = (ball.specialPower === 'Metal' ? 3 : 1) * damageScale;
         state.lastHitSpecial = ball.specialPower || null;
         applyPowerOnHit(ball, brick, now);
         damageBrick(brick, damage, now, ball.specialPower || null);
@@ -4643,6 +4700,42 @@ function applyPowerOnHit(ball, brick, now, options = {}) {
   } else if (power === 'Pillar') {
     fireLaser(power, brick, now, ['v']);
   } else if (power === 'Crossfire') {
+    fireLaser(power, brick, now, ['h', 'v']);
+  } else if (power === 'Mirrorwind') {
+    brick.effectColor = getPowerColor(power);
+    brick.effectUntil = now + 800;
+    ball.windPierceLeft = Math.max(0, ball.windPierceLeft || 0) + 2;
+    if (!ball.spawnedMirrorClone) {
+      const clone = normalizeBall({
+        x: ball.x + 6,
+        y: ball.y,
+        vx: -ball.vx,
+        vy: ball.vy,
+        r: ball.r,
+        specialPower: 'Mirrorwind',
+        damageScale: 0.6,
+        windPierceLeft: 2,
+        returning: false,
+        reward: false,
+        spawnedMirrorClone: true
+      }, { r: ball.r });
+      state.balls.push(clone);
+      ball.spawnedMirrorClone = true;
+    }
+  } else if (power === 'Radiant Shield') {
+    applyLightStun(brick, ball, now);
+    state.lives = Math.min(getMaxLives() + 2, state.lives + 2);
+    brick.effectColor = getPowerColor(power);
+    brick.effectUntil = now + 1200;
+  } else if (power === 'Thornstep') {
+    brick.thornActive = true;
+    brick.thornNextTick = now + 700;
+    brick.thornSecondTick = now + 1500;
+    brick.thornExpire = now + 1900;
+    brick.effectColor = getPowerColor(power);
+    brick.effectUntil = brick.thornExpire;
+    brick.slowUntil = Math.max(brick.slowUntil || 0, now + 900);
+  } else if (power === 'Scopebeam') {
     fireLaser(power, brick, now, ['h', 'v']);
   }
 }

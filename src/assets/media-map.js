@@ -72,7 +72,11 @@ const MEDIA_LIST = [
   { name: 'Plaguefire', imageUrl: makeIcon('Pl', '#f97316', '#f87171'), color: '#f97316' },
   { name: 'Jetstream', imageUrl: makeIcon('Je', '#5eead4', '#22d3ee'), color: '#5eead4' },
   { name: 'Cyclone', imageUrl: makeIcon('Cy', '#34d399', '#22c55e'), color: '#34d399' },
-  { name: 'Crossfire', imageUrl: makeIcon('Cr', '#facc15', '#f59e0b'), color: '#facc15' }
+  { name: 'Crossfire', imageUrl: makeIcon('Cr', '#facc15', '#f59e0b'), color: '#facc15' },
+  { name: 'Mirrorwind', imageUrl: makeIcon('MW', '#38bdf8', '#60a5fa'), color: '#38bdf8' },
+  { name: 'Radiant Shield', imageUrl: makeIcon('RS', '#fde68a', '#c084fc'), color: '#fde68a' },
+  { name: 'Thornstep', imageUrl: makeIcon('TS', '#22c55e', '#f59e0b'), color: '#22c55e' },
+  { name: 'Scopebeam', imageUrl: makeIcon('SB', '#22d3ee', '#c084fc'), color: '#22d3ee' }
 ];
 
 export const MEDIA_BY_NAME = MEDIA_LIST.reduce((acc, media) => {
