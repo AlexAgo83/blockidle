@@ -113,6 +113,10 @@ const FUSION_SPRITES = [
 const TOP_LIMIT = Infinity;
 const PASS_LIMIT_PER_MODAL = 3;
 const BUILD_LABEL = 'b20';
+const STARFIELD_LAYERS = [
+  { count: 110, speed: 14, size: [0.4, 1.1], alpha: [0.25, 0.55] },
+  { count: 65, speed: 28, size: [0.6, 1.6], alpha: [0.35, 0.8] }
+];
 const API_TOKEN = (
   import.meta?.env?.VITE_API_TOKEN ||
   import.meta?.env?.VITE_API_KEY ||
@@ -378,6 +382,7 @@ const SESSION_SAVE_INTERVAL = 1500;
 let lastSessionSave = -SESSION_SAVE_INTERVAL;
 let sessionDirty = true;
 const PREFS_KEY = 'brickidle_prefs';
+let starfieldLastTime = 0;
 
 const state = {
   keys: {
@@ -462,7 +467,8 @@ const state = {
   lastBossLevelSpawned: 0,
   damageByPower: {},
   beamCooldown: {},
-  beamEffects: []
+  beamEffects: [],
+  starfield: []
 };
 
 const bonusState = {};
@@ -1396,6 +1402,10 @@ function withAimJitter(vx, vy) {
   return { vx: nx * speed, vy: ny * speed };
 }
 
+function randomBetween(min, max) {
+  return min + Math.random() * (max - min);
+}
+
 function resizeCanvas() {
   const dpr = window.devicePixelRatio || 1;
   const container = canvas.parentElement;
@@ -1411,6 +1421,19 @@ function resizeCanvas() {
   ctx.setTransform(scale * dpr, 0, 0, scale * dpr, 0, 0);
   hudBuffer.width = CONFIG.width;
   hudBuffer.height = CONFIG.height;
+}
+
+function initStarfield() {
+  state.starfield = STARFIELD_LAYERS.flatMap((layer) =>
+    Array.from({ length: layer.count }, () => ({
+      x: Math.random() * CONFIG.width,
+      y: Math.random() * CONFIG.height,
+      r: randomBetween(layer.size[0], layer.size[1]),
+      speed: layer.speed,
+      alpha: randomBetween(layer.alpha[0], layer.alpha[1])
+    }))
+  );
+  starfieldLastTime = performance.now ? performance.now() : Date.now();
 }
 
 function computeBrickLayout() {
@@ -3282,10 +3305,32 @@ function update(dt) {
 }
 
 function renderBackground() {
-  ctx.fillStyle = '#0b1223';
+  const now = performance.now ? performance.now() : Date.now();
+  if (!state.starfield.length) initStarfield();
+  if (!starfieldLastTime) starfieldLastTime = now;
+  const dt = Math.min((now - starfieldLastTime) / 1000, 0.05);
+  starfieldLastTime = now;
+
+  ctx.fillStyle = '#050915';
   ctx.fillRect(0, 0, CONFIG.width, CONFIG.height);
+
+  ctx.save();
+  ctx.fillStyle = '#e2e8f0';
+  for (const star of state.starfield) {
+    star.y += star.speed * dt;
+    if (star.y > CONFIG.height + star.r) {
+      star.y = -randomBetween(0, CONFIG.height * 0.2);
+      star.x = Math.random() * CONFIG.width;
+    }
+    ctx.globalAlpha = star.alpha;
+    ctx.beginPath();
+    ctx.arc(star.x, star.y, star.r, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.restore();
+
   const gradient = ctx.createLinearGradient(0, 0, CONFIG.width, CONFIG.height);
-  gradient.addColorStop(0, 'rgba(94, 234, 212, 0.12)');
+  gradient.addColorStop(0, 'rgba(94, 234, 212, 0.08)');
   gradient.addColorStop(1, 'rgba(59, 130, 246, 0.12)');
   ctx.fillStyle = gradient;
   ctx.fillRect(0, 0, CONFIG.width, CONFIG.height);
@@ -4013,9 +4058,11 @@ function init() {
       moduleSpriteReady = false;
     });
   resizeCanvas();
+  initStarfield();
   bindControls();
   window.addEventListener('resize', () => {
     resizeCanvas();
+    initStarfield();
     hudSignature = null;
     clampPaddlePosition();
     if (state.ballHeld) placeBallOnPaddle({ centerPaddle: true });

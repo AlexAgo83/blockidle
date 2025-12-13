@@ -19,20 +19,33 @@
       min-height: 100vh;
       display: grid;
       place-items: center;
-      position: relative;
-      overflow: hidden;
     }
-    body::before,
-    body::after {
-      content: '';
-      position: fixed;
-      inset: -200px 0 0 0;
+    #app {
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+      padding-top: 2.5vh;
+      position: relative;
+      z-index: 1;
+    }
+    .canvas-shell {
+      position: relative;
+      width: 90vw;
+      max-width: 900px;
+      margin: 0 auto;
+    }
+    .star-layer {
+      position: absolute;
+      inset: -40% 0 0 0;
       pointer-events: none;
       background-repeat: repeat;
+      z-index: 1;
       transform: translateZ(0);
-      z-index: 0;
+      mix-blend-mode: screen;
     }
-    body::before {
+    .star-layer.slow {
       background-image:
         radial-gradient(1px 1px at 10px 20px, rgba(255, 255, 255, 0.7), transparent 45%),
         radial-gradient(1.5px 1.5px at 60px 40px, rgba(148, 163, 184, 0.8), transparent 45%),
@@ -41,7 +54,7 @@
       animation: starfall 55s linear infinite;
       opacity: 0.8;
     }
-    body::after {
+    .star-layer.fast {
       background-image:
         radial-gradient(1px 1px at 20px 60px, rgba(255, 255, 255, 0.45), transparent 45%),
         radial-gradient(1.2px 1.2px at 100px 20px, rgba(148, 163, 184, 0.5), transparent 45%),
@@ -57,16 +70,6 @@
       to {
         background-position: 0 900px;
       }
-    }
-    #app {
-      width: 100%;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 12px;
-      padding-top: 2.5vh;
-      position: relative;
-      z-index: 1;
     }
     .narrow {
       width: 90vw;
@@ -323,14 +326,19 @@
       color: #94a3b8;
     }
     canvas {
-      width: auto;
+      width: 100%;
       height: auto;
       border: 2px solid #334155;
       border-radius: 10px;
-      background: radial-gradient(circle at 20% 20%, rgba(148, 163, 184, 0.18), rgba(15, 23, 42, 0.5) 60%), #0b1223;
+      background:
+        radial-gradient(circle at 20% 20%, rgba(56, 189, 248, 0.08), transparent 36%),
+        radial-gradient(circle at 80% 10%, rgba(192, 132, 252, 0.08), transparent 28%),
+        linear-gradient(180deg, #0b1223 0%, #050915 100%);
       box-shadow: 0 12px 30px rgba(0, 0, 0, 0.35);
       display: block;
       margin: 0 auto;
+      position: relative;
+      z-index: 2;
     }
     .commits {
       margin-top: 12px;
@@ -722,7 +730,11 @@
 </head>
 <body>
   <div id="app">
-    <canvas id="game" width="880" height="1728" class="narrow"></canvas>
+    <div class="canvas-shell narrow">
+      <div class="star-layer slow" aria-hidden="true"></div>
+      <div class="star-layer fast" aria-hidden="true"></div>
+      <canvas id="game" width="880" height="1728"></canvas>
+    </div>
     <div class="time-controls narrow">
       <div class="time-left">
         <button id="abandon-btn" type="button" data-i18n="controls.quit">Quit</button>
