@@ -395,7 +395,7 @@ const CONFIG = {
   height: 1728,
   paddleWidth: 160,
   paddleHeight: 16,
-  paddleSpeed: 600,
+  paddleSpeed: 400,
   paddleMaxSpeed: 600, // vitesse max (légèrement supérieure à la balle)
   ballSpeed: 540,
   ballRadius: 8, // rayon des spéciales
@@ -424,8 +424,8 @@ const CONFIG = {
   maxLives: 10,
   startLives: 10,
   maxNormalBalls: 3,
-  specialShotCooldownMs: 250, // 4 tirs/s pour les spéciales
-  normalShotCooldownMs: 500, // 2 tirs/s pour les normales
+  specialShotCooldownMs: 200, // 5 tirs/s pour les spéciales
+  normalShotCooldownMs: 250, // 4 tirs/s pour les normales
   standardBallSpeedMultiplier: 0.75,
   standardBallRadiusMultiplier: 0.75
 };
@@ -1119,7 +1119,9 @@ function getBallRadius(isSpecial) {
 }
 
 function getMaxLives() {
-  return CONFIG.maxLives + 5 * getTalentLevel('Endurance');
+  const enduLevel = getTalentLevel('Endurance');
+  const playerBracketBonus = enduLevel > 0 ? Math.floor((state.playerLevel || 0) / 5) * 5 : 0;
+  return CONFIG.maxLives + 5 * enduLevel + playerBracketBonus;
 }
 
 function clampLivesToMax() {
@@ -1143,7 +1145,7 @@ function getPaddleMaxSpeed() {
 
 function getCooldowns(nextIsSpecial) {
   const level = getTalentLevel('Gloves');
-  const mult = 1 / (1 + 0.1 * level);
+  const mult = 1 / (1 + 0.1 * level + (level === 3 ? 0.05 : 0));
   const base = nextIsSpecial ? CONFIG.specialShotCooldownMs : CONFIG.normalShotCooldownMs;
   return base * mult;
 }
@@ -1368,8 +1370,8 @@ function getTalentDescription(name) {
       };
     case 'Gloves':
       return {
-        plain: 'Increases fire rate by 10% per level',
-        rich: 'Fire rate <span class="power-desc-accent">+10%</span> per level'
+        plain: 'Increases fire rate by 10% per level (Lv3: +35% total)',
+        rich: 'Fire rate <span class="power-desc-accent">+10%</span> per level <span class="power-desc-muted">(Lv3 = <span class="power-desc-accent">+35%</span>)</span>'
       };
     case 'Paddle':
       return {
@@ -1383,8 +1385,8 @@ function getTalentDescription(name) {
       };
     case 'Endurance':
       return {
-        plain: 'Increases max HP by 5 per level',
-        rich: 'Max HP <span class=\"power-desc-accent\">+5</span> per level'
+        plain: 'Increases max HP by 5 per level and +5 per player level bracket (every 5 levels) while owned',
+        rich: 'Max HP <span class=\"power-desc-accent\">+5</span> per level and <span class=\"power-desc-accent\">+5</span> per player <span class=\"power-desc-accent\">5-level</span> bracket while owned'
       };
     case 'Scope':
       return {
