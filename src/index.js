@@ -539,7 +539,8 @@ function t(key) {
 
 function setAutoButtonLabel() {
   if (!autoBtn) return;
-  autoBtn.textContent = state.autoPlay ? t('controls.auto_disable') : t('controls.auto_enable');
+  autoBtn.textContent = 'Auto-aim';
+  autoBtn.classList.toggle('active', !!state.autoPlay);
 }
 
 function applyTranslations() {
@@ -1899,7 +1900,39 @@ function updatePowerPreview(name, labelOverride, kind = 'power', fusionDef = nul
       chip.className = 'fusion-chip';
       const ready = hasFusionIngredients(fusion);
       if (ready) chip.classList.add('ready');
-      chip.textContent = fusion.name;
+      const ingredients = (fusion.ingredients || []).filter((ing) => ing !== name);
+      const missing = ingredients.filter((ing) => {
+        const powerLv = getPowerLevel(ing);
+        const talentLv = getTalentLevel(ing);
+        return !(powerLv > 0 || talentLv > 0);
+      });
+      const label = document.createElement('span');
+      label.textContent = fusion.name;
+      chip.appendChild(label);
+      if (ingredients.length) {
+        if (ingredients.length === 1) {
+          const ing = ingredients[0];
+          const owned = !missing.includes(ing);
+          const part = document.createElement('span');
+          part.textContent = ` (${ing})`;
+          part.style.color = owned ? '#34d399' : '#e2e8f0';
+          chip.appendChild(part);
+        } else {
+          const spanList = document.createElement('span');
+          spanList.style.marginLeft = '4px';
+          ingredients.forEach((ing, idx) => {
+            const part = document.createElement('span');
+            const owned = !missing.includes(ing);
+            part.textContent = ing;
+            part.style.color = owned ? '#34d399' : '#e2e8f0';
+            if (idx < ingredients.length - 1) {
+              part.textContent += ' + ';
+            }
+            spanList.appendChild(part);
+          });
+          chip.appendChild(spanList);
+        }
+      }
       chipsRow.appendChild(chip);
     });
     if (fusions.length) powerPreviewDesc.appendChild(chipsRow);
@@ -2570,7 +2603,6 @@ function renderCatalogLists() {
         ing.textContent = item.ingredients.join(' + ');
         titleWrap.appendChild(ing);
       }
-      header.appendChild(titleWrap);
       const chipsRow = document.createElement('div');
       chipsRow.className = 'fusion-chip-row';
       const relatedFusions = getFusionsForName(item.name);
@@ -2579,10 +2611,45 @@ function renderCatalogLists() {
         chip.className = 'fusion-chip';
         const ready = hasFusionIngredients(fusion);
         if (ready) chip.classList.add('ready');
-        chip.textContent = fusion.name;
+        const ingredients = (fusion.ingredients || []).filter((ing) => ing !== item.name);
+        const missing = ingredients.filter((ing) => {
+          const powerLv = getPowerLevel(ing);
+          const talentLv = getTalentLevel(ing);
+          return !(powerLv > 0 || talentLv > 0);
+        });
+        if (ingredients.length) {
+          const label = document.createElement('span');
+          label.textContent = fusion.name;
+          chip.appendChild(label);
+          const spanList = document.createElement('span');
+          spanList.style.marginLeft = '4px';
+          if (ingredients.length === 1) {
+            const ing = ingredients[0];
+            const owned = !missing.includes(ing);
+            const part = document.createElement('span');
+            part.textContent = `(${ing})`;
+            part.style.color = owned ? '#34d399' : '#e2e8f0';
+            spanList.appendChild(part);
+          } else {
+            ingredients.forEach((ing, idx) => {
+              const part = document.createElement('span');
+              const owned = !missing.includes(ing);
+              part.textContent = ing;
+              part.style.color = owned ? '#34d399' : '#e2e8f0';
+              if (idx < ingredients.length - 1) {
+                part.textContent += ' + ';
+              }
+              spanList.appendChild(part);
+            });
+          }
+          chip.appendChild(spanList);
+        } else {
+          chip.textContent = fusion.name;
+        }
         chipsRow.appendChild(chip);
       });
-      if (relatedFusions.length) el.appendChild(chipsRow);
+      header.appendChild(titleWrap);
+      if (relatedFusions.length) header.appendChild(chipsRow);
       const p = document.createElement('p');
       p.textContent = formatDesc(desc);
       el.appendChild(header);
@@ -3506,7 +3573,8 @@ function update(dt) {
         const damage = (ball.specialPower === 'Metal' ? 3 : 1) * damageScale;
         state.lastHitSpecial = ball.specialPower || null;
         applyPowerOnHit(ball, brick, now);
-        damageBrick(brick, damage, now, ball.specialPower || null);
+        const source = ball.specialPower || 'Standard';
+        damageBrick(brick, damage, now, source);
         applyFireSplash(ball, brick, now, damage);
         if (ball.echoBonus && ball.echoBonus > 0) {
           damageBrick(brick, 0.5, now, 'Echo');
@@ -4897,7 +4965,10 @@ function damageBrick(brick, amount, now, sourcePower = null) {
   brick.hp = Math.max(0, (brick.hp || 1) - amount);
 
   if (sourcePower) {
-    state.damageByPower[sourcePower] = (state.damageByPower[sourcePower] || 0) + amount;
+    const key = sourcePower || 'Standard';
+    state.damageByPower[key] = (state.damageByPower[key] || 0) + amount;
+  } else {
+    state.damageByPower.Standard = (state.damageByPower.Standard || 0) + amount;
   }
 
   const destroyed = brick.hp <= 0;
