@@ -347,7 +347,8 @@ const TALENT_DEFS = [
   { name: 'Scope', maxLevel: 3 },
   { name: 'Momentum', maxLevel: 3 },
   { name: 'Resilience', maxLevel: 3 },
-  { name: 'Surge', maxLevel: 3 }
+  { name: 'Surge', maxLevel: 3 },
+  { name: 'Anti Gravity', maxLevel: 3 }
 ];
 
 function warnMissingMediaMappings() {
@@ -429,7 +430,7 @@ const state = {
   heldBall: {
     x: 0,
     y: 0,
-    r: getBallRadius(false),
+    r: baseBallRadius(false),
     vx: 0,
     vy: 0
   },
@@ -503,6 +504,7 @@ const state = {
   damageShakeUntil: 0,
   shotEffects: []
 };
+globalThis.__brickidle_state = state;
 
 const bonusState = {};
 const beamCooldownMs = 1000;
@@ -662,7 +664,7 @@ function normalizeBall(ball, defaults = {}) {
   return {
     x: safeNumber(ball.x, defaults.x ?? 0),
     y: safeNumber(ball.y, defaults.y ?? 0),
-    r: safeNumber(ball.r, defaults.r ?? getBallRadius(Boolean(ball.specialPower))),
+    r: safeNumber(ball.r, defaults.r ?? baseBallRadius(Boolean(ball.specialPower))),
     vx: safeNumber(ball.vx, defaults.vx ?? 0),
     vy: safeNumber(ball.vy, defaults.vy ?? 0),
     returning: safeBoolean(ball.returning, false),
@@ -1044,9 +1046,18 @@ function getBallBaseDamage(ball) {
   return ball?.specialPower === 'Metal' ? 3 : 1;
 }
 
-function getBallRadius(isSpecial) {
+function baseBallRadius(isSpecial, antiGravityLevel = 0) {
   const base = CONFIG.ballRadius;
-  return isSpecial ? base : base * CONFIG.standardBallRadiusMultiplier;
+  const mult = 1 + 0.15 * Math.max(0, antiGravityLevel);
+  return (isSpecial ? base : base * CONFIG.standardBallRadiusMultiplier) * mult;
+}
+
+function getBallRadius(isSpecial) {
+  const st = globalThis.__brickidle_state;
+  const antiGravityLv = Array.isArray(st?.talents)
+    ? st.talents.find((t) => t.name === 'Anti Gravity')?.level || 0
+    : 0;
+  return baseBallRadius(isSpecial, antiGravityLv);
 }
 
 function getMaxLives() {
@@ -1301,6 +1312,11 @@ function getTalentDescription(name) {
       return {
         plain: 'On new stage: ball speed +15% for 3s (+1s per level)',
         rich: 'On stage start: ball speed <span class=\"power-desc-accent\">+15%</span> for <span class=\"power-desc-accent\">3s</span> <span class=\"power-desc-muted\">(+1s per level)</span>'
+      };
+    case 'Anti Gravity':
+      return {
+        plain: 'Increases ball size by 15% per level (max 45%)',
+        rich: 'Ball size <span class=\"power-desc-accent\">+15%</span> per level <span class=\"power-desc-muted\">(max 45%)</span>'
       };
     default:
       return { plain: '', rich: '' };

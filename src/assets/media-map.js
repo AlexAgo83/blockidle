@@ -20,6 +20,7 @@ import talentScope from './talent-scope.png';
 import talentMomentum from './talent-momentum.png';
 import talentResilience from './talent-resilience.png';
 import talentSurge from './talent-surge.png';
+import talentAntiGravity from './talent-anti-gravity.svg';
 
 import fusionSun from './fusion-sun.png';
 import fusionTundra from './fusion-tundra.png';
@@ -64,6 +65,7 @@ const MEDIA_LIST = [
   { name: 'Momentum', imageUrl: talentMomentum, color: '#fb923c' },
   { name: 'Resilience', imageUrl: talentResilience, color: '#10b981' },
   { name: 'Surge', imageUrl: talentSurge, color: '#c084fc' },
+  { name: 'Anti Gravity', imageUrl: talentAntiGravity, color: '#38bdf8' },
 
   { name: 'Sun', imageUrl: fusionSun, color: '#fbbf24' },
   { name: 'Tundra', imageUrl: fusionTundra, color: '#60a5fa' },
