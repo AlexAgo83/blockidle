@@ -104,24 +104,6 @@ let brickVariants = [];
 let brickVariantsReady = false;
 let bossVariants = [];
 let bossVariantsReady = false;
-const FUSION_SPRITES = [
-  'fusion-sun.png',
-  'fusion-tundra.png',
-  'fusion-forge.png',
-  'fusion-leech.png',
-  'fusion-prism.png',
-  'fusion-spikes.png',
-  'fusion-aurora.png',
-  'fusion-frostbite.png',
-  'fusion-gravebound.png',
-  'fusion-storm.png',
-  'fusion-rust.png',
-  'fusion-echo.png',
-  'fusion-bramble.png',
-  'fusion-radiance.png',
-  'fusion-shard.png',
-  'fusion-plaguefire.png'
-];
 const TOP_LIMIT = Infinity;
 const PASS_LIMIT_PER_MODAL = 3;
 const BUILD_LABEL = 'b20';
@@ -1827,12 +1809,17 @@ function updatePowerPreview(name, labelOverride, kind = 'power', fusionDef = nul
   if (powerPreviewDesc) powerPreviewDesc.innerHTML = desc.rich || desc.plain || 'No details available.';
   if (powerPreviewIcon) {
     const media = MEDIA_BY_NAME[name];
+    powerPreviewIcon.textContent = '';
+    powerPreviewIcon.classList.toggle('has-image', !!media?.imageUrl);
+    powerPreviewIcon.style.background = media?.imageUrl ? 'transparent' : color.replace('0.35', '0.55');
+    powerPreviewIcon.style.borderColor = media?.imageUrl ? 'transparent' : '#334155';
     if (media?.imageUrl) {
-      powerPreviewIcon.textContent = '';
-      powerPreviewIcon.style.background = `${color.replace('0.35', '0.55')} url(${media.imageUrl}) center/cover no-repeat`;
+      const img = document.createElement('img');
+      img.src = media.imageUrl;
+      img.alt = name;
+      powerPreviewIcon.appendChild(img);
     } else {
       powerPreviewIcon.textContent = name.slice(0, 2).toUpperCase();
-      powerPreviewIcon.style.background = color.replace('0.35', '0.55');
     }
     powerPreviewIcon.style.boxShadow = `0 0 12px ${color}`;
   }
@@ -4297,7 +4284,7 @@ function bindControls() {
 
 function init() {
   warnMissingMediaMappings();
-  preloadAssets(['ship.svg', 'ship-flat.svg', 'brick.svg', 'brick-boss.svg', 'ball.svg', ...BRICK_VARIANT_FILES, ...BOSS_VARIANT_FILES, ...FUSION_SPRITES]).catch(() => {});
+  preloadAssets(['ship.svg', 'ship-flat.svg', 'brick.svg', 'brick-boss.svg', 'ball.svg', ...BRICK_VARIANT_FILES, ...BOSS_VARIANT_FILES]).catch(() => {});
   loadImage('ship.svg')
     .then((img) => {
       paddleSprite = img;
