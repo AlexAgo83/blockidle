@@ -41,6 +41,10 @@ export function buildSettingsModal(root = document.body) {
     id: 'toggle-fps',
     labelKey: 'settings.show_fps'
   });
+  const autoPauseToggle = createToggle({
+    id: 'toggle-auto-pause',
+    labelKey: 'settings.auto_pause'
+  });
   const languageField = createSelectField({
     id: 'language-select',
     labelKey: 'settings.language',
@@ -70,6 +74,7 @@ export function buildSettingsModal(root = document.body) {
       settingsGrid,
       damageToggle.wrapper,
       fpsToggle.wrapper,
+      autoPauseToggle.wrapper,
       languageField.wrapper
     ],
     actions: [cancelBtn, saveBtn]
@@ -84,6 +89,7 @@ export function buildSettingsModal(root = document.body) {
     launchInput: launchField.input,
     damageToggle: damageToggle.input,
     fpsToggle: fpsToggle.input,
+    autoPauseToggle: autoPauseToggle.input,
     languageSelect: languageField.select,
     cancelBtn,
     saveBtn: saveBtn

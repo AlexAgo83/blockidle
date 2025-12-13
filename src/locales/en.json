@@ -16,6 +16,7 @@
     "launch_ball": "Launch ball",
     "show_damage": "Show damage by power",
     "show_fps": "Show FPS",
+    "auto_pause": "Auto-pause when window loses focus",
     "language": "Language",
     "save": "Save",
     "cancel": "Cancel",

@@ -16,6 +16,7 @@
     "launch_ball": "Lancer la balle",
     "show_damage": "Afficher les dégâts par pouvoir",
     "show_fps": "Afficher les FPS",
+    "auto_pause": "Pause auto quand la fenêtre perd le focus",
     "language": "Langue",
     "save": "Sauver",
     "cancel": "Annuler",

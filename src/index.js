@@ -58,6 +58,7 @@ const settingsSaveBtn = document.getElementById('settings-save');
 const settingsCancelBtn = document.getElementById('settings-cancel');
 const settingsDamageToggle = document.getElementById('toggle-damage-graph');
 const settingsFpsToggle = document.getElementById('toggle-fps');
+const settingsAutoPauseToggle = document.getElementById('toggle-auto-pause');
 const languageSelect = document.getElementById('language-select');
 const powerSlotsLabel = document.getElementById('power-slots-label');
 const talentSlotsLabel = document.getElementById('talent-slots-label');
@@ -366,7 +367,8 @@ const TALENT_DEFS = [
   { name: 'Resilience', maxLevel: 3 },
   { name: 'Surge', maxLevel: 3 },
   { name: 'Anti Gravity', maxLevel: 3 },
-  { name: 'Booster', maxLevel: 3 }
+  { name: 'Booster', maxLevel: 3 },
+  { name: 'Twin Core', maxLevel: 2 }
 ];
 
 function warnMissingMediaMappings() {
@@ -504,6 +506,7 @@ const state = {
   fps: 0,
   showDamageByPower: true,
   showFps: true,
+  autoPauseEnabled: true,
   pendingPowerChoices: 0,
   powerModalOpen: false,
   currentPowerOptions: [],
@@ -760,7 +763,18 @@ function loadPlayerName() {
 function loadPreferences() {
   try {
     const raw = localStorage.getItem(PREFS_KEY);
-    if (!raw) return;
+    if (!raw) {
+      if (settingsDamageToggle) settingsDamageToggle.checked = state.showDamageByPower;
+      if (settingsFpsToggle) settingsFpsToggle.checked = state.showFps;
+      if (settingsAutoPauseToggle) settingsAutoPauseToggle.checked = state.autoPauseEnabled;
+      if (languageSelect) languageSelect.value = state.language;
+      if (settingsLeftInput && settingsRightInput && settingsLaunchInput) {
+        settingsLeftInput.value = state.keyBindings.left;
+        settingsRightInput.value = state.keyBindings.right;
+        settingsLaunchInput.value = state.keyBindings.launch;
+      }
+      return;
+    }
     const data = JSON.parse(raw);
     if ([1, 2, 3, 5].includes(Number(data.timeScale))) {
       setTimeScale(Number(data.timeScale));
@@ -814,6 +828,12 @@ function loadPreferences() {
     } else if (settingsFpsToggle) {
       settingsFpsToggle.checked = state.showFps;
     }
+    if (typeof data.autoPauseEnabled === 'boolean') {
+      state.autoPauseEnabled = data.autoPauseEnabled;
+      if (settingsAutoPauseToggle) settingsAutoPauseToggle.checked = state.autoPauseEnabled;
+    } else if (settingsAutoPauseToggle) {
+      settingsAutoPauseToggle.checked = state.autoPauseEnabled;
+    }
     if (data.keyBindings) {
       state.keyBindings = sanitizeKeyBindings(data.keyBindings);
     }
@@ -841,6 +861,7 @@ function savePreferences() {
       scoreSort: state.scoreSort,
       showDamageByPower: state.showDamageByPower,
       showFps: state.showFps,
+      autoPauseEnabled: state.autoPauseEnabled,
       keyBindings: state.keyBindings
     };
     localStorage.setItem(PREFS_KEY, JSON.stringify(payload));
@@ -1010,6 +1031,7 @@ function openSettingsModal() {
   settingsLaunchInput.value = state.keyBindings.launch;
   if (settingsDamageToggle) settingsDamageToggle.checked = !!state.showDamageByPower;
   if (settingsFpsToggle) settingsFpsToggle.checked = !!state.showFps;
+  if (settingsAutoPauseToggle) settingsAutoPauseToggle.checked = !!state.autoPauseEnabled;
   settingsModalBackdrop.classList.add('open');
   setTimeout(() => settingsLeftInput?.focus(), 0);
   refreshPauseState();
@@ -1038,6 +1060,9 @@ function applySettingsBindings() {
   }
   if (settingsFpsToggle) {
     state.showFps = !!settingsFpsToggle.checked;
+  }
+  if (settingsAutoPauseToggle) {
+    state.autoPauseEnabled = !!settingsAutoPauseToggle.checked;
   }
   savePreferences();
 }
@@ -1382,6 +1407,11 @@ function getTalentDescription(name) {
         plain: 'Boosts all damage by 10% per level (max 30%)',
         rich: 'All damage <span class=\"power-desc-accent\">+10%</span> per level <span class=\"power-desc-muted\">(max 30%)</span>'
       };
+    case 'Twin Core':
+      return {
+        plain: 'Lv1: max-level powers grant +1 extra ball when picked. Lv2: fusions grant +1 extra ball.',
+        rich: '<span class=\"power-desc-accent\">Lv1</span>: max-level powers grant <span class=\"power-desc-accent\">+1 extra ball</span> when picked. <span class=\"power-desc-accent\">Lv2</span>: fusions grant <span class=\"power-desc-accent\">+1 ball</span>.'
+      };
     default:
       return { plain: '', rich: '' };
   }
@@ -1645,6 +1675,7 @@ function applyPower(powerName) {
   const def = getPowerDef(powerName);
   const existing = state.powers.find((p) => p.name === powerName);
   const fusion = getFusionDef(powerName);
+  const twinCoreLevel = getTalentLevel('Twin Core');
   if (fusion && fusionKind(fusion) === 'talent') return; // route talent fusions elsewhere
   const powerCount = state.powers.length;
   const consumedPower = fusion ? fusion.ingredients.filter((n) => !isTalentName(n)).length : 0;
@@ -1676,6 +1707,12 @@ function applyPower(powerName) {
     for (let i = 0; i < bonusBalls; i += 1) {
       state.specialPocket.push(powerName);
     }
+  }
+  if (!fusion && twinCoreLevel >= 1 && newLevel === def.maxLevel) {
+    state.specialPocket.push(powerName);
+  }
+  if (fusion && twinCoreLevel >= 2) {
+    state.specialPocket.push(powerName);
   }
   clampLivesToMax();
   state.pendingPowerChoices = Math.max(0, state.pendingPowerChoices - 1);
@@ -1820,7 +1857,7 @@ function renderPowerModal(powerOptions, talentOptions) {
         btn.style.color = '';
       }
       const label = currentLv === 0
-        ? fusion ? `${power} (Fusion)` : `${power} (New)`
+        ? fusion ? `${power} (Fusion)` : `${power} ` + 'NEW'
         : `${power} (Lv. ${currentLv} → ${nextLv})`;
       btn.textContent = label;
       btn.dataset.power = power;
@@ -1837,17 +1874,17 @@ function renderPowerModal(powerOptions, talentOptions) {
   });
 
   talentButtons.forEach((btn, idx) => {
-    const talent = talentOptions[idx];
-    if (talent) {
-      btn.style.display = 'block';
-      const currentLv = getTalentLevel(talent);
-      const nextLv = nextTalentLevel(talent);
-      const label = currentLv === 0
-        ? `${talent} (New)`
-        : `${talent} (Lv. ${currentLv} → ${nextLv})`;
-      btn.textContent = label;
-      btn.dataset.talent = talent;
-      btn.title = getTalentDescription(talent).plain;
+      const talent = talentOptions[idx];
+      if (talent) {
+        btn.style.display = 'block';
+        const currentLv = getTalentLevel(talent);
+        const nextLv = nextTalentLevel(talent);
+        const label = currentLv === 0
+          ? `${talent} ` + 'NEW'
+          : `${talent} (Lv. ${currentLv} → ${nextLv})`;
+        btn.textContent = label;
+        btn.dataset.talent = talent;
+        btn.title = getTalentDescription(talent).plain;
       const showPreview = () => updatePowerPreview(talent, label, 'talent');
       btn.onmouseenter = showPreview;
       btn.onpointerenter = showPreview;
@@ -1914,8 +1951,8 @@ function updatePowerPreview(name, labelOverride, kind = 'power', fusionDef = nul
           const ing = ingredients[0];
           const owned = !missing.includes(ing);
           const part = document.createElement('span');
-          part.textContent = ` (${ing})`;
-          part.style.color = owned ? '#34d399' : '#e2e8f0';
+          part.textContent = ing;
+          part.style.color = owned ? '#34d399' : 'rgba(226,232,240,0.6)';
           chip.appendChild(part);
         } else {
           const spanList = document.createElement('span');
@@ -1924,7 +1961,7 @@ function updatePowerPreview(name, labelOverride, kind = 'power', fusionDef = nul
             const part = document.createElement('span');
             const owned = !missing.includes(ing);
             part.textContent = ing;
-            part.style.color = owned ? '#34d399' : '#e2e8f0';
+            part.style.color = owned ? '#34d399' : 'rgba(226,232,240,0.6)';
             if (idx < ingredients.length - 1) {
               part.textContent += ' + ';
             }
@@ -2627,15 +2664,15 @@ function renderCatalogLists() {
             const ing = ingredients[0];
             const owned = !missing.includes(ing);
             const part = document.createElement('span');
-            part.textContent = `(${ing})`;
-            part.style.color = owned ? '#34d399' : '#e2e8f0';
+            part.textContent = ing;
+            part.style.color = owned ? '#34d399' : 'rgba(226,232,240,0.6)';
             spanList.appendChild(part);
           } else {
             ingredients.forEach((ing, idx) => {
               const part = document.createElement('span');
               const owned = !missing.includes(ing);
               part.textContent = ing;
-              part.style.color = owned ? '#34d399' : '#e2e8f0';
+              part.style.color = owned ? '#34d399' : 'rgba(226,232,240,0.6)';
               if (idx < ingredients.length - 1) {
                 part.textContent += ' + ';
               }
@@ -4491,7 +4528,21 @@ function bindControls() {
     };
   };
 
+  const canResumeFromCanvas = () => (
+    !state.powerModalOpen &&
+    !state.infoOpen &&
+    !state.catalogOpen &&
+    !state.settingsOpen &&
+    !state.awaitingName
+  );
+
   canvas.addEventListener('click', (event) => {
+    if (state.manualPause && state.paused && canResumeFromCanvas()) {
+      state.manualPause = false;
+      refreshPauseState();
+      updatePauseButton();
+      return;
+    }
     if (!state.running) {
       state.running = true;
       resetGame();
@@ -4612,12 +4663,13 @@ function init() {
   bindSuggestionToggle();
   bindScoreErrorModal();
   window.addEventListener('blur', () => {
+    if (!state.autoPauseEnabled) return;
     state.manualPause = true;
     refreshPauseState();
     updatePauseButton();
   });
   document.addEventListener('visibilitychange', () => {
-    if (document.hidden) {
+    if (document.hidden && state.autoPauseEnabled) {
       state.manualPause = true;
       refreshPauseState();
       updatePauseButton();

@@ -335,6 +335,18 @@ const MEDIA_LIST = [
     ),
     color: '#f97316'
   },
+  {
+    name: 'Twin Core',
+    imageUrl: makeIcon(
+      'TC',
+      '#a855f7',
+      '#ec4899',
+      'talent',
+      '<g><circle cx="40" cy="46" r="9" fill="url(#tc-left-TC-talent)" stroke="rgba(0,0,0,0.25)" stroke-width="1.2"/><circle cx="56" cy="50" r="9" fill="url(#tc-right-TC-talent)" stroke="rgba(0,0,0,0.25)" stroke-width="1.2"/><path d="M38 58 Q48 62 58 56" fill="none" stroke="rgba(255,255,255,0.6)" stroke-width="2" stroke-linecap="round"/><path d="M44 38 Q48 34 52 38" fill="none" stroke="rgba(255,255,255,0.65)" stroke-width="2" stroke-linecap="round"/><path d="M48 44 L48 52" stroke="#0b1223" stroke-width="2" stroke-linecap="round"/><path d="M44 48 H52" stroke="#0b1223" stroke-width="2" stroke-linecap="round"/></g>',
+      '<radialGradient id="tc-left-TC-talent" cx="50%" cy="45%" r="65%"><stop offset="0%" stop-color="#f5d0fe"/><stop offset="60%" stop-color="#a855f7"/><stop offset="100%" stop-color="#6b21a8"/></radialGradient><radialGradient id="tc-right-TC-talent" cx="45%" cy="50%" r="65%"><stop offset="0%" stop-color="#fce7f3"/><stop offset="60%" stop-color="#ec4899"/><stop offset="100%" stop-color="#9d174d"/></radialGradient>'
+    ),
+    color: '#a855f7'
+  },
 
   // Fusions
   {
