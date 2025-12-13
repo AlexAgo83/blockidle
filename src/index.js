@@ -3892,6 +3892,23 @@ function renderShots() {
 
 function renderBalls() {
   const timeNow = performance.now ? performance.now() : Date.now();
+  const withAlpha = (color, alpha) => {
+    if (!color) return `rgba(244, 114, 182, ${alpha})`;
+    const rgbaMatch = color.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([0-9.]+))?\)/i);
+    if (rgbaMatch) {
+      const [, r, g, b] = rgbaMatch;
+      return `rgba(${r},${g},${b},${alpha})`;
+    }
+    const hexMatch = color.match(/^#?([a-f0-9]{6})$/i);
+    if (hexMatch) {
+      const hex = hexMatch[1];
+      const r = parseInt(hex.slice(0, 2), 16);
+      const g = parseInt(hex.slice(2, 4), 16);
+      const b = parseInt(hex.slice(4, 6), 16);
+      return `rgba(${r},${g},${b},${alpha})`;
+    }
+    return color;
+  };
   const drawBallSprite = (x, y, r, vx, vy, specialPower) => {
     const speed = Math.hypot(vx, vy);
     const spin = (speed / 400) * (timeNow / 16);
@@ -3922,19 +3939,8 @@ function renderBalls() {
     ctx.restore();
   };
 
-  const trailLength = 4;
-  const trailAlpha = 0.2;
   for (const ball of state.balls) {
-    for (let i = 1; i <= trailLength; i += 1) {
-      const t = i / (trailLength + 1);
-      const tx = ball.x - ball.vx * 0.01 * i;
-      const ty = ball.y - ball.vy * 0.01 * i;
-      ctx.fillStyle = `rgba(255, 255, 255, ${trailAlpha * (1 - t)})`;
-      ctx.beginPath();
-      ctx.arc(tx, ty, ball.r * 0.9, 0, Math.PI * 2);
-      ctx.fill();
-    }
-    const fill = (() => {
+    const accent = (() => {
       const blink = (period) => (Math.sin(timeNow / period) + 1) / 2;
       if (ball.specialPower === 'Fire') return `rgba(255, 215, 0, ${(0.35 + 0.65 * blink(80)).toFixed(2)})`;
       if (ball.specialPower === 'Ice') return `rgba(96, 165, 250, ${(0.35 + 0.65 * blink(90)).toFixed(2)})`;
@@ -3944,8 +3950,45 @@ function renderBalls() {
       if (ball.specialPower === 'Light') return `rgba(255, 255, 255, ${(0.3 + 0.7 * blink(80)).toFixed(2)})`;
       if (ball.specialPower === 'Thorns') return `rgba(120, 72, 48, ${(0.35 + 0.65 * blink(100)).toFixed(2)})`;
       if (ball.specialPower === 'Curse') return `rgba(139, 92, 246, ${(0.35 + 0.65 * blink(90)).toFixed(2)})`;
-      return '#f472b6';
+      if (ball.specialPower) return getPowerColor(ball.specialPower);
+      return null;
     })();
+    const fill = '#ffffff'; // neutral base; powers tint via accent/trail/stroke
+    ball.trail = Array.isArray(ball.trail) ? ball.trail : [];
+    ball.trail.push({
+      x: ball.x,
+      y: ball.y,
+      r: ball.r,
+      vx: ball.vx,
+      vy: ball.vy,
+      power: ball.specialPower,
+      powerColor: accent,
+      base: fill
+    });
+    const maxTrail = 10;
+    if (ball.trail.length > maxTrail) {
+      ball.trail.splice(0, ball.trail.length - maxTrail);
+    }
+
+    ctx.save();
+    ctx.shadowBlur = 14;
+    for (let i = 0; i < ball.trail.length - 1; i += 1) {
+      const node = ball.trail[i];
+      const t = i / (ball.trail.length - 1 || 1);
+      const fadeBase = Math.max(0, (1 - t) ** 1.2) * 0.28;
+      // Plus épais à la base (proche de la balle), très fin en extrémité.
+      const radius = node.r * (0.2 + 1.0 * Math.pow(t, 0.4));
+      const baseColor = node.power ? (node.powerColor || getPowerColor(node.power)) : node.base || fill;
+      const fadeScale = node.power ? 1 : 0.75; // 25% moins opaque pour les balles standards
+      const color = withAlpha(baseColor || '#ffffff', fadeBase * fadeScale);
+      ctx.fillStyle = color;
+      ctx.shadowColor = color;
+      ctx.beginPath();
+      const thicknessScale = node.power ? 1 : 0.75; // 25% thinner for standard balls
+      ctx.arc(node.x, node.y, radius * thicknessScale, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.restore();
     ctx.fillStyle = fill;
     drawBallSprite(ball.x, ball.y, ball.r, ball.vx, ball.vy, ball.specialPower);
   }
