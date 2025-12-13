@@ -106,7 +106,7 @@ let bossVariants = [];
 let bossVariantsReady = false;
 const TOP_LIMIT = Infinity;
 const PASS_LIMIT_PER_MODAL = 3;
-const BUILD_LABEL = 'b20';
+const BUILD_LABEL = 'b21';
 const STARFIELD_LAYERS = [
   { count: 110, speed: 14, size: [0.4, 1.1], alpha: [0.25, 0.55] },
   { count: 65, speed: 28, size: [0.6, 1.6], alpha: [0.35, 0.8] }
@@ -408,7 +408,7 @@ const CONFIG = {
   bonusCooldownMs: 5000,
   speedBoostMultiplier: 1.05,
   ballSpeedCap: 1500,
-  speedIncreaseInterval: 30,
+  speedIncreaseInterval: 45,
   speedIncreaseMultiplier: 1.05,
   xpSpeed: 2000,
   xpSize: 7,
@@ -525,7 +525,7 @@ const state = {
 globalThis.__brickidle_state = state;
 
 const bonusState = {};
-const beamCooldownMs = 1000;
+const beamCooldownMs = 800;
 const LOCALES = { en: enLocale, fr: frLocale, es: esLocale };
 
 function t(key) {
@@ -1056,7 +1056,10 @@ function setTimeScale(scale) {
 function getBallSpeed(isSpecial) {
   const base = CONFIG.ballSpeed;
   const plumeLevel = getTalentLevel('Feather');
-  const mult = 1 + 0.1 * plumeLevel;
+  const surgeLevel = getTalentLevel('Surge');
+  const surgeActive = surgeLevel > 0 && state.surgeUntil && state.surgeUntil > (performance.now ? performance.now() : Date.now());
+  const surgeMult = surgeActive ? 1.2 : 1;
+  const mult = (1 + 0.1 * plumeLevel) * surgeMult;
   return (isSpecial ? base : base * CONFIG.standardBallSpeedMultiplier) * mult;
 }
 
@@ -1163,8 +1166,8 @@ function getPowerDescription(name) {
       };
     case 'Curse':
       return {
-        plain: 'Deals 2 delayed damage after 3s and spreads to 1 nearby brick after 1s if the target survives',
-        rich: 'Deals <span class=\"power-desc-accent\">+2</span> damage at <span class=\"power-desc-accent\">t+3s</span> and spreads to <span class=\"power-desc-accent\">1 nearby brick</span> after <span class=\"power-desc-accent\">1s</span> if the target lives'
+        plain: 'Deals delayed damage (+1 at 1.5s, +2 at 3s) and spreads to 2 nearby bricks after 1s if the target survives',
+        rich: 'Delayed hits: <span class="power-desc-accent">+1 @1.5s</span>, <span class="power-desc-accent">+2 @3s</span>; spreads to <span class="power-desc-accent">2 nearby</span> after <span class="power-desc-accent">1s</span> if target survives'
       };
     case 'Wind':
       return {
@@ -1173,13 +1176,13 @@ function getPowerDescription(name) {
       };
     case 'Beamline':
       return {
-        plain: 'On hit: spawns a horizontal laser that hits all bricks on that row (1 dmg, 1s cooldown)',
-        rich: 'On hit: fires a <span class="power-desc-accent">horizontal laser</span> hitting all bricks on that row <span class="power-desc-muted">(1 dmg, 1s cd)</span>'
+        plain: 'On hit: spawns a horizontal laser that hits all bricks on that row (1 dmg, 0.8s cooldown)',
+        rich: 'On hit: fires a <span class="power-desc-accent">horizontal laser</span> hitting all bricks on that row <span class="power-desc-muted">(1 dmg, 0.8s cd)</span>'
       };
     case 'Pillar':
       return {
-        plain: 'On hit: spawns a vertical laser that hits all bricks on that column (1 dmg, 1s cooldown)',
-        rich: 'On hit: fires a <span class="power-desc-accent">vertical laser</span> hitting all bricks on that column <span class="power-desc-muted">(1 dmg, 1s cd)</span>'
+        plain: 'On hit: spawns a vertical laser that hits all bricks on that column (1 dmg, 0.8s cooldown)',
+        rich: 'On hit: fires a <span class="power-desc-accent">vertical laser</span> hitting all bricks on that column <span class="power-desc-muted">(1 dmg, 0.8s cd)</span>'
       };
     case 'Sun':
       return {
@@ -1213,8 +1216,8 @@ function getPowerDescription(name) {
       };
     case 'Aurora':
       return {
-        plain: 'Fusion of Light + Curse: curses in a small area and extends the stun duration by 1s',
-        rich: '<strong>Fusion</strong> of <span class="power-desc-accent">Light + Curse</span>: curses in a small area and extends stun by <span class="power-desc-accent">+1s</span>'
+        plain: 'Fusion of Light + Curse: longer stun/curse and spreads curse to 3 nearby bricks',
+        rich: '<strong>Fusion</strong> of <span class="power-desc-accent">Light + Curse</span>: longer stun/curse and spreads curse to <span class="power-desc-accent">3 nearby</span> bricks'
       };
     case 'Frostbite':
       return {
@@ -1238,8 +1241,8 @@ function getPowerDescription(name) {
       };
     case 'Echo':
       return {
-        plain: 'Fusion of Light + Mirror: adds a small stun on ricochets and a bonus rebound',
-        rich: '<strong>Fusion</strong> of <span class="power-desc-accent">Light + Mirror</span>: small stun on ricochets and one bonus rebound'
+        plain: 'Fusion of Light + Mirror: small stun on ricochets and a bonus rebound that deals extra chip damage',
+        rich: '<strong>Fusion</strong> of <span class="power-desc-accent">Light + Mirror</span>: small stun on ricochets and one bonus rebound with extra <span class="power-desc-accent">chip damage</span>'
       };
     case 'Bramble':
       return {
@@ -1253,8 +1256,8 @@ function getPowerDescription(name) {
       };
     case 'Shard':
       return {
-        plain: 'Fusion of Ice + Gloves: fires ice shards in a cone (1 damage each)',
-        rich: '<strong>Fusion</strong> of <span class="power-desc-accent">Ice + Gloves</span>: cone of ice shards (<span class="power-desc-accent">1 dmg</span> each)'
+        plain: 'Fusion of Ice + Gloves: fires 4 ice shards in a cone (1.5 damage each)',
+        rich: '<strong>Fusion</strong> of <span class="power-desc-accent">Ice + Gloves</span>: cone of <span class="power-desc-accent">4 shards</span> (<span class="power-desc-accent">1.5 dmg</span> each)'
       };
     case 'Plaguefire':
       return {
@@ -1335,8 +1338,8 @@ function getTalentDescription(name) {
       };
     case 'Scope':
       return {
-        plain: 'Reduces aim jitter cone by 1° per level (more precise shots)',
-        rich: 'Aim jitter cone <span class=\"power-desc-accent\">-1°</span> per level <span class=\"power-desc-muted\">(more precise)</span>'
+        plain: 'Reduces aim jitter cone by 1.5° per level (more precise shots)',
+        rich: 'Aim jitter cone <span class=\"power-desc-accent\">-1.5°</span> per level <span class=\"power-desc-muted\">(more precise)</span>'
       };
     case 'Momentum':
       return {
@@ -1350,8 +1353,8 @@ function getTalentDescription(name) {
       };
     case 'Surge':
       return {
-        plain: 'On new stage: ball speed +15% for 3s (+1s per level)',
-        rich: 'On stage start: ball speed <span class=\"power-desc-accent\">+15%</span> for <span class=\"power-desc-accent\">3s</span> <span class=\"power-desc-muted\">(+1s per level)</span>'
+        plain: 'On new stage: ball speed +20% for 4s (+1s per level)',
+        rich: 'On stage start: ball speed <span class=\"power-desc-accent\">+20%</span> for <span class=\"power-desc-accent\">4s</span> <span class=\"power-desc-muted\">(+1s per level)</span>'
       };
     case 'Anti Gravity':
       return {
@@ -1498,7 +1501,7 @@ function getPowerColor(name) {
 
 function withAimJitter(vx, vy) {
   const angle = Math.atan2(vy, vx);
-  const jitter = degToRad(Math.max(0, CONFIG.aimJitterDeg - getTalentLevel('Scope')));
+  const jitter = degToRad(Math.max(0, CONFIG.aimJitterDeg - 1.5 * getTalentLevel('Scope')));
   const offset = (Math.random() * 2 - 1) * jitter;
   const speed = Math.hypot(vx, vy);
   const nx = Math.cos(angle + offset);
@@ -2314,6 +2317,7 @@ function resetGame() {
   state.score = 0;
   const maxLife = getMaxLives();
   state.lives = Math.min(maxLife, CONFIG.startLives + 5 * getTalentLevel('Endurance'));
+  const now = performance.now ? performance.now() : Date.now();
   state.bricks = [];
   state.rowIndex = 0;
   state.spawnTimer = 0;
@@ -2344,6 +2348,7 @@ function resetGame() {
   state.damageByPower = {};
   state.beamCooldown = {};
   state.beamEffects = [];
+  state.surgeUntil = 0;
   state.backendTopScores = [];
   state.gameOverHandled = false;
   state.lastEndedAt = null;
@@ -3035,6 +3040,11 @@ function update(dt) {
     state.speedTimer -= speedInterval;
     state.brickSpeed *= CONFIG.speedIncreaseMultiplier;
     state.level += 1;
+    const surgeLevel = getTalentLevel('Surge');
+    if (surgeLevel > 0) {
+      const surgeDuration = 4000 + 1000 * surgeLevel;
+      state.surgeUntil = now + surgeDuration;
+    }
     maybeSpawnBoss();
   }
 
@@ -3177,7 +3187,8 @@ function update(dt) {
   if (!brick.alive || !brick.poisonActive) continue;
   if (brick.poisonNextTick && brick.poisonNextTick <= now) {
     brick.poisonNextTick = now + 1000;
-    damageBrick(brick, 1, now, 'Poison');
+    const source = brick.poisonSource || (brick.leechActive ? 'Leech' : 'Poison');
+    damageBrick(brick, 1, now, source);
     if (brick.leechActive) {
       const maxLife = getMaxLives();
       if (state.lives < maxLife) {
@@ -3203,22 +3214,31 @@ function update(dt) {
           return { b, dist: Math.hypot(dx, dy) };
         })
         .sort((a, b) => a.dist - b.dist);
-      const target = targets.length ? targets[0].b : null;
-      if (target) {
-        target.curseTick = now + 3000;
-        target.curseSpreadAt = now + 1000;
-        target.effectColor = getPowerColor('Curse');
-        target.effectUntil = target.curseTick;
-      }
+      const picks = targets.slice(0, 2);
+      picks.forEach((entry) => {
+        const target = entry?.b;
+        if (target) {
+          target.curseTick = now + 3000;
+          target.curseMidTick = now + 1500;
+          target.curseSpreadAt = now + 1000;
+          target.curseSource = brick.curseSource || 'Curse';
+          target.effectColor = getPowerColor('Curse');
+          target.effectUntil = target.curseTick;
+        }
+      });
     }
   }
 
   // Tick malédiction (dégât différé)
   for (const brick of state.bricks) {
     if (!brick.alive) continue;
+    if (brick.curseMidTick && brick.curseMidTick <= now) {
+      brick.curseMidTick = null;
+      damageBrick(brick, 1, now, brick.curseSource || 'Curse');
+    }
     if (brick.curseTick && brick.curseTick <= now) {
       brick.curseTick = null;
-      damageBrick(brick, 2, now, 'Curse');
+      damageBrick(brick, 2, now, brick.curseSource || 'Curse');
     }
     if (brick.rustUntil && brick.rustUntil <= now) {
       brick.rustUntil = 0;
@@ -3259,7 +3279,8 @@ function update(dt) {
       brick.thornNextTick = null;
       brick.effectColor = getPowerColor('Thorns');
       brick.effectUntil = brick.thornExpire;
-      damageBrick(brick, 1.5, now, 'Thorns');
+      const source = brick.thornSource || 'Thorns';
+      damageBrick(brick, 1.5, now, source);
       if (brick.gravebound) {
         const maxLife = getMaxLives();
         if (state.lives < maxLife) {
@@ -3273,7 +3294,8 @@ function update(dt) {
       brick.thornSecondTick = null;
       brick.effectColor = getPowerColor('Thorns');
       brick.effectUntil = brick.thornExpire;
-      damageBrick(brick, 0.5, now, 'Thorns');
+      const source = brick.thornSource || 'Thorns';
+      damageBrick(brick, 0.5, now, source);
       if (brick.gravebound) {
         const maxLife = getMaxLives();
         if (state.lives < maxLife) {
@@ -3441,6 +3463,10 @@ function update(dt) {
         applyPowerOnHit(ball, brick, now);
         damageBrick(brick, damage, now, ball.specialPower || null);
         applyFireSplash(ball, brick, now, damage);
+        if (ball.echoBonus && ball.echoBonus > 0) {
+          damageBrick(brick, 0.5, now, 'Echo');
+          ball.echoBonus = Math.max(0, ball.echoBonus - 1);
+        }
 
         if ((ball.specialPower === 'Wind' || ball.specialPower === 'Jetstream' || ball.specialPower === 'Cyclone') && ball.windPierceLeft !== undefined) {
           if (ball.lastWindBrick === brick && ball.lastWindHit && now - ball.lastWindHit < 20) {
@@ -4512,6 +4538,7 @@ function applyPowerOnHit(ball, brick, now, options = {}) {
   } else if (power === 'Poison') {
     brick.poisonActive = true;
     brick.poisonNextTick = now + 1000;
+    brick.poisonSource = power;
     brick.effectColor = getPowerColor(power);
     brick.effectUntil = Number.POSITIVE_INFINITY;
   } else if (power === 'Fire') {
@@ -4524,7 +4551,9 @@ function applyPowerOnHit(ball, brick, now, options = {}) {
     applyLightStun(brick, ball, now);
   } else if (power === 'Curse') {
     brick.curseTick = now + 3000;
+    brick.curseMidTick = now + 1500;
     brick.curseSpreadAt = now + 1000;
+    brick.curseSource = power;
     brick.effectColor = getPowerColor(power);
     brick.effectUntil = brick.curseTick;
   } else if (power === 'Thorns') {
@@ -4532,6 +4561,7 @@ function applyPowerOnHit(ball, brick, now, options = {}) {
     brick.thornNextTick = now + 1000; // +1.5 dmg
     brick.thornSecondTick = now + 2000; // +0.5 dmg
     brick.thornExpire = brick.thornSecondTick;
+    brick.thornSource = power;
     brick.effectColor = getPowerColor(power);
     brick.effectUntil = brick.thornExpire;
   } else if (power === 'Vampire') {
@@ -4548,6 +4578,7 @@ function applyPowerOnHit(ball, brick, now, options = {}) {
     applyLightStun(brick, ball, now); // reuse stun for freeze effect
     brick.poisonActive = true;
     brick.poisonNextTick = now + 1000;
+    brick.poisonSource = power;
     brick.effectColor = getPowerColor(power);
     brick.effectUntil = now + 3000;
     // Also freeze 2 nearby bricks
@@ -4566,6 +4597,7 @@ function applyPowerOnHit(ball, brick, now, options = {}) {
       b.slowUntil = Math.max(b.slowUntil || 0, now + 3000);
       b.poisonActive = true;
       b.poisonNextTick = now + 1000;
+      b.poisonSource = power;
       b.effectColor = getPowerColor(power);
       b.effectUntil = now + 3000;
     }
@@ -4591,6 +4623,7 @@ function applyPowerOnHit(ball, brick, now, options = {}) {
   } else if (power === 'Leech') {
     brick.poisonActive = true;
     brick.poisonNextTick = now + 1000;
+    brick.poisonSource = power;
     brick.effectColor = getPowerColor(power);
     brick.effectUntil = Number.POSITIVE_INFINITY;
     brick.leechActive = true;
@@ -4620,9 +4653,11 @@ function applyPowerOnHit(ball, brick, now, options = {}) {
     brick.effectUntil = now + 600;
     damageBrick(brick, 1, now, 'Spikes');
   } else if (power === 'Aurora') {
-    applyLightStun(brick, ball, now + 500); // shorter extension
-    brick.curseTick = now + 3000;
+    applyLightStun(brick, ball, now + 700); // slightly longer
+    brick.curseTick = now + 3500;
+    brick.curseMidTick = now + 1800;
     brick.curseSpreadAt = now + 1000;
+    brick.curseSource = power;
     brick.effectColor = getPowerColor(power);
     brick.effectUntil = brick.curseTick;
     const cx = brick.x + brick.w / 2;
@@ -4635,9 +4670,10 @@ function applyPowerOnHit(ball, brick, now, options = {}) {
         return { b, dist: Math.hypot(dx, dy) };
       })
       .sort((a, b) => a.dist - b.dist)
-      .slice(0, 2);
+      .slice(0, 3);
     for (const { b } of nearby) {
-      b.curseTick = now + 3000;
+      b.curseTick = now + 3500;
+      b.curseMidTick = now + 1800;
       b.effectColor = getPowerColor(power);
       b.effectUntil = b.curseTick;
     }
@@ -4647,6 +4683,7 @@ function applyPowerOnHit(ball, brick, now, options = {}) {
     brick.thornNextTick = now + 800;
     brick.thornSecondTick = now + 1600;
     brick.thornExpire = now + 2000;
+    brick.thornSource = power;
     brick.effectColor = getPowerColor(power);
     brick.effectUntil = brick.thornExpire;
   } else if (power === 'Gravebound') {
@@ -4655,6 +4692,7 @@ function applyPowerOnHit(ball, brick, now, options = {}) {
     brick.thornSecondTick = now + 1600;
     brick.thornExpire = now + 2000;
     brick.gravebound = true;
+    brick.thornSource = power;
     brick.effectColor = getPowerColor(power);
     brick.effectUntil = brick.thornExpire;
   } else if (power === 'Storm') {
@@ -4678,6 +4716,7 @@ function applyPowerOnHit(ball, brick, now, options = {}) {
   } else if (power === 'Rust') {
     brick.poisonActive = true;
     brick.poisonNextTick = now + 1000;
+    brick.poisonSource = power;
     brick.rustUntil = now + 4000;
     brick.effectColor = getPowerColor(power);
     brick.effectUntil = brick.rustUntil;
@@ -4689,6 +4728,7 @@ function applyPowerOnHit(ball, brick, now, options = {}) {
     brick.thornNextTick = now + 600;
     brick.thornSecondTick = now + 1400;
     brick.thornExpire = now + 2000;
+    brick.thornSource = power;
     brick.effectColor = getPowerColor(power);
     brick.effectUntil = brick.thornExpire;
     ball.vx *= 1.05;
@@ -4710,12 +4750,13 @@ function applyPowerOnHit(ball, brick, now, options = {}) {
         return { b, dist: Math.hypot(dx, dy) };
       })
       .sort((a, b) => a.dist - b.dist)
-      .slice(0, 3);
+      .slice(0, 4);
     for (const { b } of shards) {
-      damageBrick(b, 1, now, 'Shard');
+      damageBrick(b, 1.5, now, 'Shard');
     }
   } else if (power === 'Plaguefire') {
     brick.curseTick = now + 3000;
+    brick.curseSource = power;
     brick.curseSpreadAt = now + 800;
     brick.effectColor = getPowerColor(power);
     brick.effectUntil = brick.curseTick;
@@ -4735,12 +4776,14 @@ function applyPowerOnHit(ball, brick, now, options = {}) {
       .slice(0, 2);
     for (const { b } of targets) {
       b.curseTick = now + 3000;
+      b.curseSource = power;
       b.effectColor = getPowerColor(power);
       b.effectUntil = b.curseTick;
     }
   } else if (power === 'Cyclone') {
     // Apply a short curse on pierced bricks.
     brick.curseTick = now + 2000;
+    brick.curseSource = power;
     brick.effectColor = getPowerColor(power);
     brick.effectUntil = brick.curseTick;
   } else if (power === 'Beamline') {
