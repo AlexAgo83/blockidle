@@ -110,18 +110,19 @@
     }
     .selected {
       transform: translateY(-1px);
+      border-radius: 10px;
     }
     .selected.power {
       outline: 2px solid #22d3ee;
-      box-shadow: 0 0 0 3px rgba(34, 211, 238, 0.35), 0 10px 20px rgba(0, 0, 0, 0.35);
+      box-shadow: 0 0 0 2px rgba(34, 211, 238, 0.35), 0 8px 16px rgba(0, 0, 0, 0.35);
     }
     .selected.talent {
       outline: 2px solid #c084fc;
-      box-shadow: 0 0 0 3px rgba(192, 132, 252, 0.35), 0 10px 20px rgba(0, 0, 0, 0.35);
+      box-shadow: 0 0 0 2px rgba(192, 132, 252, 0.35), 0 8px 16px rgba(0, 0, 0, 0.35);
     }
     .selected.fusion {
       outline: 2px solid #16a34a;
-      box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.35), 0 10px 20px rgba(0, 0, 0, 0.35);
+      box-shadow: 0 0 0 2px rgba(22, 163, 74, 0.35), 0 8px 16px rgba(0, 0, 0, 0.35);
       transform: translateY(-1px);
     }
     .ghost-btn {
@@ -234,7 +235,7 @@
     }
     .power-grid {
       display: grid;
-      grid-template-columns: 1fr 1fr;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
       gap: 10px;
       margin-top: 12px;
       margin-bottom: 10px;
@@ -291,6 +292,7 @@
       justify-content: flex-start;
       gap: 10px;
       width: 100%;
+      min-width: 0;
       cursor: pointer;
       box-shadow: 0 10px 20px rgba(0, 0, 0, 0.25);
       transition: transform 120ms ease, box-shadow 120ms ease;
@@ -363,7 +365,7 @@
     }
     .talent-grid {
       display: grid;
-      grid-template-columns: repeat(2, 1fr);
+      grid-template-columns: repeat(2, minmax(0, 1fr));
       gap: 10px;
       margin-top: 8px;
     }
@@ -380,6 +382,8 @@
       justify-content: flex-start;
       gap: 10px;
       width: 100%;
+      min-width: 0;
+      position: relative;
       cursor: pointer;
       box-shadow: 0 8px 18px rgba(0, 0, 0, 0.25);
       transition: transform 120ms ease, box-shadow 120ms ease;

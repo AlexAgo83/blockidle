@@ -1860,7 +1860,9 @@ function renderPowerModal(powerOptions, talentOptions) {
     const power = powerOptions[idx];
     if (power) {
       btn.classList.remove('has-fusion-partner');
-      btn.style.display = 'block';
+      btn.style.display = 'flex';
+      btn.style.visibility = 'visible';
+      btn.style.pointerEvents = 'auto';
       const currentLv = getPowerLevel(power);
       const nextLv = nextPowerLevel(power);
       const fusion = getFusionDef(power);
@@ -1890,6 +1892,10 @@ function renderPowerModal(powerOptions, talentOptions) {
       btn.onclick = () => handlePowerSelect(power);
     } else {
       btn.style.display = 'none';
+      btn.style.visibility = 'hidden';
+      btn.style.pointerEvents = 'none';
+      btn.innerHTML = '';
+      btn.dataset.power = '';
     }
   });
 
@@ -1897,7 +1903,7 @@ function renderPowerModal(powerOptions, talentOptions) {
       const talent = talentOptions[idx];
       if (talent) {
         btn.classList.remove('has-fusion-partner');
-        btn.style.display = 'block';
+        btn.style.display = 'flex';
         const currentLv = getTalentLevel(talent);
         const nextLv = nextTalentLevel(talent);
         const status = currentLv === 0 ? 'NEW' : `Lv. ${currentLv} → ${nextLv}`;
@@ -1915,6 +1921,10 @@ function renderPowerModal(powerOptions, talentOptions) {
       btn.onclick = () => handleTalentSelect(talent);
     } else {
       btn.style.display = 'none';
+      btn.style.visibility = 'hidden';
+      btn.style.pointerEvents = 'none';
+      btn.innerHTML = '';
+      btn.dataset.talent = '';
     }
   });
 
