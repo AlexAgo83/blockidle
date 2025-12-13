@@ -236,7 +236,7 @@ const FUSION_DEFS = [
     name: 'Aurora',
     maxLevel: 1,
     fusion: true,
-    ingredients: ['Light', 'Curse'],
+    ingredients: ['Pillar', 'Curse'],
     color: 'rgba(244, 244, 255, 0.55)'
   },
   {
@@ -257,7 +257,7 @@ const FUSION_DEFS = [
     name: 'Storm',
     maxLevel: 1,
     fusion: true,
-    ingredients: ['Light', 'Metal'],
+    ingredients: ['Pillar', 'Metal'],
     color: 'rgba(186, 230, 253, 0.55)'
   },
   {
@@ -271,21 +271,21 @@ const FUSION_DEFS = [
     name: 'Echo',
     maxLevel: 1,
     fusion: true,
-    ingredients: ['Light', 'Mirror'],
+    ingredients: ['Beamline', 'Mirror'],
     color: 'rgba(203, 213, 225, 0.55)'
   },
   {
     name: 'Bramble',
     maxLevel: 1,
     fusion: true,
-    ingredients: ['Thorns', 'Feather'],
+    ingredients: ['Vampire', 'Feather'],
     color: 'rgba(74, 222, 128, 0.5)'
   },
   {
     name: 'Radiance',
     maxLevel: 1,
     fusion: true,
-    ingredients: ['Light', 'Endurance'],
+    ingredients: ['Pillar', 'Endurance'],
     color: 'rgba(255, 249, 196, 0.55)'
   },
   {
@@ -306,7 +306,7 @@ const FUSION_DEFS = [
     name: 'Jetstream',
     maxLevel: 1,
     fusion: true,
-    ingredients: ['Wind', 'Scope'],
+    ingredients: ['Beamline', 'Wind'],
     color: 'rgba(94, 234, 212, 0.5)'
   },
   {
@@ -334,7 +334,7 @@ const FUSION_DEFS = [
     name: 'Radiant Shield',
     maxLevel: 1,
     fusion: true,
-    ingredients: ['Light', 'Resilience'],
+    ingredients: ['Vampire', 'Resilience'],
     color: 'rgba(253, 230, 138, 0.55)'
   },
   {
@@ -1216,8 +1216,8 @@ function getPowerDescription(name) {
       };
     case 'Aurora':
       return {
-        plain: 'Fusion of Light + Curse: longer stun/curse and spreads curse to 3 nearby bricks',
-        rich: '<strong>Fusion</strong> of <span class="power-desc-accent">Light + Curse</span>: longer stun/curse and spreads curse to <span class="power-desc-accent">3 nearby</span> bricks'
+        plain: 'Fusion of Pillar + Curse: longer stun/curse and spreads curse to 3 nearby bricks',
+        rich: '<strong>Fusion</strong> of <span class="power-desc-accent">Pillar + Curse</span>: longer stun/curse and spreads curse to <span class="power-desc-accent">3 nearby</span> bricks'
       };
     case 'Frostbite':
       return {
@@ -1241,18 +1241,18 @@ function getPowerDescription(name) {
       };
     case 'Echo':
       return {
-        plain: 'Fusion of Light + Mirror: small stun on ricochets and a bonus rebound that deals extra chip damage',
-        rich: '<strong>Fusion</strong> of <span class="power-desc-accent">Light + Mirror</span>: small stun on ricochets and one bonus rebound with extra <span class="power-desc-accent">chip damage</span>'
+        plain: 'Fusion of Beamline + Mirror: small stun on ricochets and a bonus rebound that deals extra chip damage',
+        rich: '<strong>Fusion</strong> of <span class="power-desc-accent">Beamline + Mirror</span>: small stun on ricochets and one bonus rebound with extra <span class="power-desc-accent">chip damage</span>'
       };
     case 'Bramble':
       return {
-        plain: 'Fusion of Thorns + Feather: faster thorn ticks and slight ball speed on return',
-        rich: '<strong>Fusion</strong> of <span class="power-desc-accent">Thorns + Feather</span>: faster thorn ticks, slight ball speed boost on return'
+        plain: 'Fusion of Vampire + Feather: lifesteal vines, faster thorn ticks, slight ball speed on return',
+        rich: '<strong>Fusion</strong> of <span class="power-desc-accent">Vampire + Feather</span>: lifesteal vines, faster thorn ticks, slight ball speed boost on return'
       };
     case 'Radiance':
       return {
-        plain: 'Fusion of Light + Endurance: brief stun and grants +2 temporary max HP on hit',
-        rich: '<strong>Fusion</strong> of <span class="power-desc-accent">Light + Endurance</span>: stun and gain <span class="power-desc-accent">+2 temp max HP</span> on hit'
+        plain: 'Fusion of Pillar + Endurance: brief stun and grants +2 temporary max HP on hit',
+        rich: '<strong>Fusion</strong> of <span class="power-desc-accent">Pillar + Endurance</span>: stun and gain <span class="power-desc-accent">+2 temp max HP</span> on hit'
       };
     case 'Shard':
       return {
@@ -1266,8 +1266,8 @@ function getPowerDescription(name) {
       };
     case 'Jetstream':
       return {
-        plain: 'Fusion of Wind + Scope: pierces 3 bricks with light auto-steer, then snaps back faster',
-        rich: '<strong>Fusion</strong> of <span class="power-desc-accent">Wind + Scope</span>: pierces <span class="power-desc-accent">3 bricks</span> with light auto-steer, then <span class="power-desc-accent">snaps back faster</span>'
+        plain: 'Fusion of Beamline + Wind: pierces 3 bricks with light auto-steer, then snaps back faster',
+        rich: '<strong>Fusion</strong> of <span class="power-desc-accent">Beamline + Wind</span>: pierces <span class="power-desc-accent">3 bricks</span> with light auto-steer, then <span class="power-desc-accent">snaps back faster</span>'
       };
     case 'Cyclone':
       return {
@@ -1278,6 +1278,21 @@ function getPowerDescription(name) {
       return {
         plain: 'Fusion of Beamline + Pillar: fires both horizontal and vertical lasers on hit (1 dmg, 1s cooldown)',
         rich: '<strong>Fusion</strong> of <span class="power-desc-accent">Beamline + Pillar</span>: fires <span class="power-desc-accent">horizontal + vertical</span> lasers on hit <span class="power-desc-muted">(1 dmg, 1s cd)</span>'
+      };
+    case 'Storm':
+      return {
+        plain: 'Fusion of Pillar + Metal: chains to 2 nearby with +50% damage and a brief stun',
+        rich: '<strong>Fusion</strong> of <span class="power-desc-accent">Pillar + Metal</span>: chains to <span class="power-desc-accent">2 nearby</span> with <span class="power-desc-accent">+50% damage</span> and brief stun'
+      };
+    case 'Aurora':
+      return {
+        plain: 'Fusion of Pillar + Curse: longer stun/curse and spreads curse to 3 nearby bricks',
+        rich: '<strong>Fusion</strong> of <span class="power-desc-accent">Pillar + Curse</span>: longer stun/curse and spreads to <span class="power-desc-accent">3 nearby</span> bricks'
+      };
+    case 'Radiant Shield':
+      return {
+        plain: 'Fusion of Vampire + Resilience: stun on hit + +2 temp HP shield for 5s',
+        rich: '<strong>Fusion</strong> of <span class="power-desc-accent">Vampire + Resilience</span>: stun on hit + <span class="power-desc-accent">+2 temp HP</span> shield for <span class="power-desc-accent">5s</span>'
       };
     case 'Mirrorwind':
       return {
@@ -1378,6 +1393,10 @@ function getPowerLevel(name) {
 
 function getFusionDef(name) {
   return FUSION_DEFS.find((f) => f.name === name);
+}
+
+function getFusionsForName(name) {
+  return FUSION_DEFS.filter((f) => Array.isArray(f.ingredients) && f.ingredients.includes(name));
 }
 
 function isTalentName(name) {
@@ -1870,7 +1889,21 @@ function updatePowerPreview(name, labelOverride, kind = 'power', fusionDef = nul
   const color = isPower ? getPowerColor(name) : 'rgba(148, 163, 184, 0.4)';
   const tag = fusionDef ? 'Fusion · ' : '';
   if (powerPreviewName) powerPreviewName.textContent = labelOverride || `${tag}${name}`;
-  if (powerPreviewDesc) powerPreviewDesc.innerHTML = desc.rich || desc.plain || 'No details available.';
+  if (powerPreviewDesc) {
+    powerPreviewDesc.innerHTML = desc.rich || desc.plain || 'No details available.';
+    const chipsRow = document.createElement('div');
+    chipsRow.className = 'fusion-chip-row';
+    const fusions = getFusionsForName(name);
+    fusions.forEach((fusion) => {
+      const chip = document.createElement('span');
+      chip.className = 'fusion-chip';
+      const ready = hasFusionIngredients(fusion);
+      if (ready) chip.classList.add('ready');
+      chip.textContent = fusion.name;
+      chipsRow.appendChild(chip);
+    });
+    if (fusions.length) powerPreviewDesc.appendChild(chipsRow);
+  }
   if (powerPreviewIcon) {
     const media = MEDIA_BY_NAME[name];
     powerPreviewIcon.textContent = '';
@@ -2538,6 +2571,18 @@ function renderCatalogLists() {
         titleWrap.appendChild(ing);
       }
       header.appendChild(titleWrap);
+      const chipsRow = document.createElement('div');
+      chipsRow.className = 'fusion-chip-row';
+      const relatedFusions = getFusionsForName(item.name);
+      relatedFusions.forEach((fusion) => {
+        const chip = document.createElement('span');
+        chip.className = 'fusion-chip';
+        const ready = hasFusionIngredients(fusion);
+        if (ready) chip.classList.add('ready');
+        chip.textContent = fusion.name;
+        chipsRow.appendChild(chip);
+      });
+      if (relatedFusions.length) el.appendChild(chipsRow);
       const p = document.createElement('p');
       p.textContent = formatDesc(desc);
       el.appendChild(header);
@@ -4498,6 +4543,18 @@ function init() {
   bindSuggestionForm();
   bindSuggestionToggle();
   bindScoreErrorModal();
+  window.addEventListener('blur', () => {
+    state.manualPause = true;
+    refreshPauseState();
+    updatePauseButton();
+  });
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) {
+      state.manualPause = true;
+      refreshPauseState();
+      updatePauseButton();
+    }
+  });
   const savedName = loadPlayerName();
   resetGame();
   loadPreferences();
