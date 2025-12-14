@@ -19,6 +19,7 @@
     "show_damage": "Mostrar daño por poder",
     "show_fps": "Mostrar FPS",
     "show_paddle_rect": "Mostrar rectángulos de la paleta",
+    "show_loadout_sidebar": "Mostrar panel de poderes/talentos",
     "auto_pause": "Pausa automática cuando la ventana pierde el foco",
     "language": "Idioma",
     "save": "Guardar",

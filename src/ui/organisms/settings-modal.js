@@ -63,6 +63,10 @@ export function buildSettingsModal(root = document.body) {
     id: 'toggle-paddle-rect',
     labelKey: 'settings.show_paddle_rect'
   });
+  const loadoutSidebarToggle = createToggle({
+    id: 'toggle-loadout-sidebar',
+    labelKey: 'settings.show_loadout_sidebar'
+  });
   const autoPauseToggle = createToggle({
     id: 'toggle-auto-pause',
     labelKey: 'settings.auto_pause'
@@ -97,6 +101,7 @@ export function buildSettingsModal(root = document.body) {
       damageToggle.wrapper,
       fpsToggle.wrapper,
       paddleDebugToggle.wrapper,
+      loadoutSidebarToggle.wrapper,
       autoPauseToggle.wrapper,
       languageField.wrapper
     ],
@@ -115,6 +120,7 @@ export function buildSettingsModal(root = document.body) {
     damageToggle: damageToggle.input,
     fpsToggle: fpsToggle.input,
     paddleDebugToggle: paddleDebugToggle.input,
+    loadoutSidebarToggle: loadoutSidebarToggle.input,
     autoPauseToggle: autoPauseToggle.input,
     languageSelect: languageField.select,
     cancelBtn,

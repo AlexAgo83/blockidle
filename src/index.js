@@ -62,6 +62,7 @@ const settingsDamageToggle = document.getElementById('toggle-damage-graph');
 const settingsFpsToggle = document.getElementById('toggle-fps');
 const settingsPaddleRectToggle = document.getElementById('toggle-paddle-rect');
 const settingsAutoPauseToggle = document.getElementById('toggle-auto-pause');
+const settingsLoadoutSidebarToggle = document.getElementById('toggle-loadout-sidebar');
 const languageSelect = document.getElementById('language-select');
 const powerSlotsLabel = document.getElementById('power-slots-label');
 const talentSlotsLabel = document.getElementById('talent-slots-label');
@@ -535,11 +536,13 @@ const state = {
   filterMyScores: false,
   scoreSort: 'score',
   topScoresPage: 0,
+  modalSelectionIndex: 0,
   timeScale: 1,
   fps: 0,
   showDamageByPower: true,
   showFps: true,
   showPaddleRects: false,
+  showLoadoutSidebar: false,
   autoPauseEnabled: true,
   pendingPowerChoices: 0,
   powerModalOpen: false,
@@ -808,6 +811,7 @@ function loadPreferences() {
       if (settingsFpsToggle) settingsFpsToggle.checked = state.showFps;
       if (settingsPaddleRectToggle) settingsPaddleRectToggle.checked = state.showPaddleRects;
       if (settingsAutoPauseToggle) settingsAutoPauseToggle.checked = state.autoPauseEnabled;
+      if (settingsLoadoutSidebarToggle) settingsLoadoutSidebarToggle.checked = state.showLoadoutSidebar;
       if (languageSelect) languageSelect.value = state.language;
       if (settingsLeftInput && settingsRightInput && settingsLaunchInput && settingsUpInput && settingsDownInput) {
         settingsLeftInput.value = state.keyBindings.left;
@@ -883,6 +887,12 @@ function loadPreferences() {
     } else if (settingsAutoPauseToggle) {
       settingsAutoPauseToggle.checked = state.autoPauseEnabled;
     }
+    if (typeof data.showLoadoutSidebar === 'boolean') {
+      state.showLoadoutSidebar = data.showLoadoutSidebar;
+      if (settingsLoadoutSidebarToggle) settingsLoadoutSidebarToggle.checked = state.showLoadoutSidebar;
+    } else if (settingsLoadoutSidebarToggle) {
+      settingsLoadoutSidebarToggle.checked = state.showLoadoutSidebar;
+    }
     if (data.keyBindings) {
       state.keyBindings = sanitizeKeyBindings(data.keyBindings);
     }
@@ -915,6 +925,7 @@ function savePreferences() {
       showDamageByPower: state.showDamageByPower,
       showFps: state.showFps,
       showPaddleRects: state.showPaddleRects,
+      showLoadoutSidebar: state.showLoadoutSidebar,
       autoPauseEnabled: state.autoPauseEnabled,
       keyBindings: state.keyBindings
     };
@@ -1089,6 +1100,7 @@ function openSettingsModal() {
   if (settingsFpsToggle) settingsFpsToggle.checked = !!state.showFps;
   if (settingsPaddleRectToggle) settingsPaddleRectToggle.checked = !!state.showPaddleRects;
   if (settingsAutoPauseToggle) settingsAutoPauseToggle.checked = !!state.autoPauseEnabled;
+  if (settingsLoadoutSidebarToggle) settingsLoadoutSidebarToggle.checked = !!state.showLoadoutSidebar;
   settingsModalBackdrop.classList.add('open');
   setTimeout(() => settingsLeftInput?.focus(), 0);
   refreshPauseState();
@@ -1127,6 +1139,9 @@ function applySettingsBindings() {
   }
   if (settingsAutoPauseToggle) {
     state.autoPauseEnabled = !!settingsAutoPauseToggle.checked;
+  }
+  if (settingsLoadoutSidebarToggle) {
+    state.showLoadoutSidebar = !!settingsLoadoutSidebarToggle.checked;
   }
   savePreferences();
 }
@@ -1865,7 +1880,18 @@ function handleTalentSelect(talentName) {
 }
 
 function handlePowerConfirm() {
-  if (!state.currentSelection) return;
+  if (!state.currentSelection) {
+    const entries = getModalEntries();
+    const idx = clamp(state.modalSelectionIndex || 0, 0, entries.length - 1);
+    const target = entries[idx]?.btn;
+    if (target?.dataset.power) {
+      selectPowerOrTalent({ kind: 'power', name: target.dataset.power });
+    } else if (target?.dataset.talent) {
+      selectPowerOrTalent({ kind: 'talent', name: target.dataset.talent });
+    } else {
+      return;
+    }
+  }
   const sel = state.currentSelection;
   if (sel.kind === 'power') {
     applyPower(sel.name);
@@ -1967,6 +1993,7 @@ function renderPowerModal(powerOptions, talentOptions) {
   talentButtons.forEach((btn) => { btn.disabled = false; btn.tabIndex = 0; btn.style.pointerEvents = 'auto'; btn.style.visibility = 'visible'; });
   renderOwnedGrid(ownedPowersGrid, state.powers, 'power');
   renderOwnedGrid(ownedTalentsGrid, state.talents, 'talent');
+  state.modalSelectionIndex = 0;
   powerButtons.forEach((btn, idx) => {
     const power = powerOptions[idx];
     if (power) {
@@ -2053,6 +2080,7 @@ function renderPowerModal(powerOptions, talentOptions) {
   const talentSlots = `${state.talents.length}/${MAX_TALENTS} slots`;
   if (powerSlotsLabel) powerSlotsLabel.textContent = powerSlots;
   if (talentSlotsLabel) talentSlotsLabel.textContent = talentSlots;
+  focusModalSelection(true);
   if (firstPower) {
     const currentLv = getPowerLevel(firstPower);
     const nextLv = nextPowerLevel(firstPower);
@@ -2067,6 +2095,80 @@ function renderPowerModal(powerOptions, talentOptions) {
     const label = `${firstTalent} ${status}`;
     const hasFusionPartner = currentLv === 0 && hasOwnedFusionPartner(firstTalent);
     updatePowerPreview(firstTalent, { label, statusText: status, fusionBadge: hasFusionPartner }, 'talent');
+  }
+  selectFirstModalEntry();
+}
+
+function getModalEntries() {
+  const entries = [];
+  if (Array.isArray(state.currentPowerOptions)) {
+    state.currentPowerOptions.forEach((p, i) => {
+      if (p && powerButtons[i]) entries.push({ btn: powerButtons[i] });
+    });
+  }
+  if (Array.isArray(state.currentTalentOptions)) {
+    state.currentTalentOptions.forEach((t, i) => {
+      if (t && talentButtons[i]) entries.push({ btn: talentButtons[i] });
+    });
+  }
+  return entries;
+}
+
+function focusModalSelection(reset = false) {
+  const entries = getModalEntries();
+  if (!entries.length) return;
+  const maxIndex = entries.length - 1;
+  const idx = reset ? 0 : clamp(state.modalSelectionIndex || 0, 0, maxIndex);
+  state.modalSelectionIndex = idx;
+  entries.forEach((entry, i) => {
+    entry.btn.classList.toggle('modal-selected', i === idx);
+    entry.btn.style.boxShadow = i === idx ? '0 0 0 3px rgba(56,189,248,0.75)' : '';
+  });
+  const target = entries[idx]?.btn;
+  if (target) target.focus();
+}
+
+function selectFirstModalEntry() {
+  const entries = getModalEntries();
+  if (!entries.length) return;
+  const first = entries[0]?.btn;
+  if (!first) return;
+  if (first.dataset.power) {
+    selectPowerOrTalent({ kind: 'power', name: first.dataset.power });
+  } else if (first.dataset.talent) {
+    selectPowerOrTalent({ kind: 'talent', name: first.dataset.talent });
+  }
+  state.modalSelectionIndex = 0;
+  focusModalSelection(true);
+  if (powerConfirmBtn) powerConfirmBtn.disabled = false;
+}
+
+function moveModalSelection(dx, dy) {
+  const entries = getModalEntries();
+  const total = entries.length;
+  if (!total) return;
+  const cols = 2;
+  const maxIndex = total - 1;
+  let idx = clamp(state.modalSelectionIndex || 0, 0, maxIndex);
+  const row = Math.floor(idx / cols);
+  const col = idx % cols;
+  let newRow = row + dy;
+  let newCol = Math.max(0, Math.min(cols - 1, col + dx));
+  const maxRow = Math.floor(maxIndex / cols);
+  newRow = Math.max(0, Math.min(maxRow, newRow));
+  let newIdx = newRow * cols + newCol;
+  if (newIdx > maxIndex) newIdx = maxIndex;
+  state.modalSelectionIndex = newIdx;
+  const target = entries[newIdx]?.btn;
+  if (target) {
+    if (target.dataset.power) {
+      selectPowerOrTalent({ kind: 'power', name: target.dataset.power });
+    } else if (target.dataset.talent) {
+      selectPowerOrTalent({ kind: 'talent', name: target.dataset.talent });
+    }
+    target.focus();
+  } else {
+    focusModalSelection();
   }
 }
 
@@ -4951,53 +5053,54 @@ function renderHUD() {
     let infoY = barY + 36; // espace accru au-dessus de la liste des pouvoirs
     const panelWidth = 220;
     const panelX = barX - 10;
+  let powersBlockHeight = 0;
+  let talentsBlockHeight = 0;
+  let talentsY = infoY;
+  if (state.showLoadoutSidebar) {
     const powerLines = state.powers; // affiche tous
-    let powersBlockHeight = 0;
     if (powerLines.length) {
       const powersY = infoY;
       const blockH = 26 + powerLines.length * 18;
-      h.fillStyle = 'rgba(15,23,42,0.55)';
-      h.fillRect(panelX, powersY - 22, panelWidth, blockH);
-      h.strokeStyle = 'rgba(148,163,184,0.35)';
-      h.strokeRect(panelX, powersY - 22, panelWidth, blockH);
-      h.fillStyle = '#e2e8f0';
-      h.fillText('Powers:', barX, powersY);
-      powerLines.forEach((p, idx) => {
-        const def = getPowerDef(p.name);
-        const label = p.level >= def.maxLevel ? 'MAX' : `Lv. ${p.level}`;
-        const fusion = getFusionDef(p.name);
-        h.fillStyle = fusion ? '#16a34a' : '#e2e8f0';
-        h.fillText(`- ${p.name} (${label})`, barX, powersY + 20 + idx * 18);
-      });
-      h.fillStyle = '#e2e8f0';
-      powersBlockHeight = 20 + powerLines.length * 18;
-      infoY += powersBlockHeight + 10;
+        h.fillStyle = 'rgba(15,23,42,0.55)';
+        h.fillRect(panelX, powersY - 22, panelWidth, blockH);
+        h.strokeStyle = 'rgba(148,163,184,0.35)';
+        h.strokeRect(panelX, powersY - 22, panelWidth, blockH);
+        h.fillStyle = '#e2e8f0';
+        h.fillText('Powers:', barX, powersY);
+        powerLines.forEach((p, idx) => {
+          const def = getPowerDef(p.name);
+          const label = p.level >= def.maxLevel ? 'MAX' : `Lv. ${p.level}`;
+          const fusion = getFusionDef(p.name);
+          h.fillStyle = fusion ? '#16a34a' : '#e2e8f0';
+          h.fillText(`- ${p.name} (${label})`, barX, powersY + 20 + idx * 18);
+        });
+        h.fillStyle = '#e2e8f0';
+        powersBlockHeight = 20 + powerLines.length * 18;
+        infoY += powersBlockHeight + 10;
+      }
+
+      // Talents
+      const talentLines = state.talents;
+      if (talentLines.length) {
+        const blockH = 26 + talentLines.length * 18;
+        h.fillStyle = 'rgba(15,23,42,0.55)';
+        h.fillRect(panelX, talentsY - 22, panelWidth, blockH);
+        h.strokeStyle = 'rgba(148,163,184,0.35)';
+        h.strokeRect(panelX, talentsY - 22, panelWidth, blockH);
+        h.fillStyle = '#e2e8f0';
+        h.fillText('Talents:', barX, talentsY);
+        talentLines.forEach((t, idx) => {
+          const def = getTalentDef(t.name);
+          const label = t.level >= def.maxLevel ? 'MAX' : `Lv. ${t.level}`;
+          h.fillText(`- ${t.name} (${label})`, barX, talentsY + 20 + idx * 18);
+        });
+        talentsBlockHeight = 20 + talentLines.length * 18;
+      }
     }
 
-    // Talents
-    const talentLines = state.talents;
-    let talentsY = infoY;
-    let talentsBlockHeight = 0;
-    if (talentLines.length) {
-      const blockH = 26 + talentLines.length * 18;
-      h.fillStyle = 'rgba(15,23,42,0.55)';
-      h.fillRect(panelX, talentsY - 22, panelWidth, blockH);
-      h.strokeStyle = 'rgba(148,163,184,0.35)';
-      h.strokeRect(panelX, talentsY - 22, panelWidth, blockH);
-      h.fillStyle = '#e2e8f0';
-      h.fillText('Talents:', barX, talentsY);
-      talentLines.forEach((t, idx) => {
-        const def = getTalentDef(t.name);
-        const label = t.level >= def.maxLevel ? 'MAX' : `Lv. ${t.level}`;
-        h.fillText(`- ${t.name} (${label})`, barX, talentsY + 20 + idx * 18);
-      });
-      talentsBlockHeight = 20 + talentLines.length * 18;
-    }
-
-    // Histogramme dégâts par pouvoir (en bas à droite)
-    const listBottom = talentsY + talentsBlockHeight;
-    const histY = Math.min(CONFIG.height - 140, listBottom + 50); // plus d'espace avant l'histogramme
-    const histX = barX;
+    // Histogramme dégâts par pouvoir (à gauche sous le bloc FPS)
+    const histX = leftX;
+    const histY = leftY + 60; // under FPS/Score block
     const entries = Object.entries(state.damageByPower || {}).sort((a, b) => b[1] - a[1]).slice(0, 6);
     if (state.showDamageByPower && entries.length) {
       const labelY = histY;
@@ -5111,6 +5214,15 @@ function bindControls() {
     if (state.awaitingName || isSettingsOpen() || isCatalogOpen()) return;
     const keyValue = normalizeKeyValue(event.key || event.code);
     if (state.powerModalOpen) {
+      const moveLeft = isKeyBinding(event, state.keyBindings.left);
+      const moveRight = isKeyBinding(event, state.keyBindings.right);
+      const moveUp = isKeyBinding(event, state.keyBindings.up);
+      const moveDown = isKeyBinding(event, state.keyBindings.down);
+      if (moveLeft || moveRight || moveUp || moveDown) {
+        event.preventDefault();
+        moveModalSelection((moveRight ? 1 : 0) - (moveLeft ? 1 : 0), (moveDown ? 1 : 0) - (moveUp ? 1 : 0));
+        return;
+      }
       if (keyValue === 'enter') {
         event.preventDefault();
         handlePowerConfirm();

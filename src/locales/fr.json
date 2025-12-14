@@ -19,6 +19,7 @@
     "show_damage": "Afficher les dégâts par pouvoir",
     "show_fps": "Afficher les FPS",
     "show_paddle_rect": "Afficher les rectangles du paddle",
+    "show_loadout_sidebar": "Afficher le panel pouvoirs/talents",
     "auto_pause": "Pause auto quand la fenêtre perd le focus",
     "language": "Langue",
     "save": "Sauver",
