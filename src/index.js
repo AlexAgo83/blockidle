@@ -1310,7 +1310,7 @@ function renderPilotModal() {
       <div class="pilot-card-body">
         <span class="pilot-name">${pilot.name}</span>
         ${pilot.tagline ? `<span class="pilot-tagline">${pilot.tagline}</span>` : ''}
-        <span class="pilot-start-title">${title}${startIcon ? ` <span class="pilot-start-icon-wrap">${startIcon}</span>` : ''}</span>
+        <span class="pilot-start-title">${startIcon ? `<span class="pilot-start-icon-wrap">${startIcon}</span> ` : ''}${title}</span>
         <span class="pilot-start-desc">${desc}</span>
       </div>
     `;
@@ -3254,13 +3254,15 @@ function getLoadoutSummary() {
 
 function buildScorePayload(endedAt) {
   const loadout = getLoadoutSummary();
+  const pilot = state.activePilotId ? { pilot: state.activePilotId } : {};
   return {
     player: state.playerName || 'Anonymous',
     score: state.score,
     stage: state.level,
     level: state.playerLevel,
     endedAt,
-    ...loadout
+    ...loadout,
+    ...pilot
   };
 }
 
@@ -3912,6 +3914,21 @@ function renderTopScoresPanel() {
     name.style.fontSize = '75%';
     const playerName = (e.player || '???').slice(0, 12);
     name.textContent = `${start + idx + 1}. ${playerName} (${buildLabel})`;
+    const pilotName = e.pilot ? (getPilotDef(e.pilot)?.name || e.pilot) : null;
+    const pilotTag = pilotName ? (() => {
+      const tag = document.createElement('span');
+      tag.textContent = pilotName;
+      tag.style.fontSize = '10px';
+      tag.style.padding = '2px 6px';
+      tag.style.marginTop = '4px';
+      tag.style.borderRadius = '999px';
+      tag.style.background = 'rgba(99,102,241,0.15)';
+      tag.style.border = '1px solid rgba(99,102,241,0.35)';
+      tag.style.color = '#cbd5e1';
+      tag.style.display = 'inline-flex';
+      tag.style.alignItems = 'center';
+      return tag;
+    })() : null;
     if (player && playerBest !== null && (e.player || '').trim() === player) {
       const sc = Number(e.score) || 0;
       if (sc === playerBest) {
@@ -3961,6 +3978,7 @@ function renderTopScoresPanel() {
       nameWrap.style.alignItems = 'flex-start';
       nameWrap.style.justifyContent = 'center';
       nameWrap.appendChild(name);
+      if (pilotTag) nameWrap.appendChild(pilotTag);
       if (dateLabel.textContent) nameWrap.appendChild(dateLabel);
       item.appendChild(nameWrap);
 
