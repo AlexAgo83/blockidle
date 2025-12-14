@@ -1991,6 +1991,18 @@ function renderPowerModal(powerOptions, talentOptions) {
   }
   powerButtons.forEach((btn) => { btn.disabled = false; btn.tabIndex = 0; btn.style.pointerEvents = 'auto'; btn.style.visibility = 'visible'; });
   talentButtons.forEach((btn) => { btn.disabled = false; btn.tabIndex = 0; btn.style.pointerEvents = 'auto'; btn.style.visibility = 'visible'; });
+  const powerTitleEl = document.querySelector('.power-title');
+  const talentTitleEl = document.querySelector('.talent-title');
+  if (powerTitleEl) powerTitleEl.style.marginBottom = '4px';
+  if (talentTitleEl) talentTitleEl.style.marginBottom = '4px';
+  if (ownedPowersGrid) {
+    ownedPowersGrid.style.transform = 'scale(0.9)';
+    ownedPowersGrid.style.transformOrigin = 'top left';
+  }
+  if (ownedTalentsGrid) {
+    ownedTalentsGrid.style.transform = 'scale(0.9)';
+    ownedTalentsGrid.style.transformOrigin = 'top left';
+  }
   renderOwnedGrid(ownedPowersGrid, state.powers, 'power');
   renderOwnedGrid(ownedTalentsGrid, state.talents, 'talent');
   state.modalSelectionIndex = 0;
@@ -2293,6 +2305,8 @@ function renderOwnedGrid(container, items, kind = 'power') {
   const target = Math.max(minCells, Math.ceil(cells.length / 4) * 4);
   while (cells.length < target) cells.push(null);
   container.innerHTML = '';
+  container.style.transform = 'scale(0.9)';
+  container.style.transformOrigin = 'top left';
   cells.forEach((entry) => {
     const cell = document.createElement('div');
     cell.className = 'owned-cell';
@@ -3296,13 +3310,17 @@ function renderTopScoresPanel() {
     if (combined.length) {
       const iconRow = document.createElement('div');
       iconRow.className = 'score-loadout-row';
-      iconRow.style.display = 'flex';
-      iconRow.style.flexWrap = 'wrap';
+      iconRow.style.display = 'grid';
+      iconRow.style.gridTemplateColumns = 'repeat(4, auto)';
+      iconRow.style.justifyItems = 'center';
+      iconRow.style.alignItems = 'center';
       iconRow.style.marginTop = '4px';
       iconRow.style.transform = 'scale(0.75)';
       iconRow.style.transformOrigin = 'center top';
       iconRow.style.justifyContent = 'center';
-      combined.forEach((itm) => {
+      iconRow.style.rowGap = '4px';
+      iconRow.style.columnGap = '6px';
+      combined.slice(0, 8).forEach((itm) => {
         const badge = makeIconBadge(itm, itm.type);
         iconRow.appendChild(badge);
       });
