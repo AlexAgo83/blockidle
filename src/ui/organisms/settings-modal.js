@@ -47,8 +47,7 @@ export function buildSettingsModal(root = document.body) {
     leftField.wrapper,
     rightField.wrapper,
     upField.wrapper,
-    downField.wrapper,
-    launchField.wrapper
+    downField.wrapper
   ].forEach((node) => settingsGrid.appendChild(node));
 
   const damageToggle = createToggle({
@@ -121,7 +120,7 @@ export function buildSettingsModal(root = document.body) {
     rightInput: rightField.input,
     upInput: upField.input,
     downInput: downField.input,
-    launchInput: launchField.input,
+    launchInput: null,
     damageToggle: damageToggle.input,
     fpsToggle: fpsToggle.input,
     paddleDebugToggle: paddleDebugToggle.input,

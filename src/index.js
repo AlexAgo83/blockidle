@@ -820,13 +820,13 @@ function loadPreferences() {
       if (settingsAutoPauseToggle) settingsAutoPauseToggle.checked = state.autoPauseEnabled;
       if (settingsLoadoutSidebarToggle) settingsLoadoutSidebarToggle.checked = state.showLoadoutSidebar;
       if (languageSelect) languageSelect.value = state.language;
-      if (settingsLeftInput && settingsRightInput && settingsLaunchInput && settingsUpInput && settingsDownInput) {
-        settingsLeftInput.value = state.keyBindings.left;
-        settingsRightInput.value = state.keyBindings.right;
-        settingsUpInput.value = state.keyBindings.up;
-        settingsDownInput.value = state.keyBindings.down;
-        settingsLaunchInput.value = state.keyBindings.launch;
-      }
+    if (settingsLeftInput && settingsRightInput && settingsUpInput && settingsDownInput) {
+      settingsLeftInput.value = state.keyBindings.left;
+      settingsRightInput.value = state.keyBindings.right;
+      settingsUpInput.value = state.keyBindings.up;
+      settingsDownInput.value = state.keyBindings.down;
+      if (settingsLaunchInput) settingsLaunchInput.value = state.keyBindings.launch;
+    }
       return;
     }
     const data = JSON.parse(raw);
@@ -909,12 +909,12 @@ function loadPreferences() {
     if (data.keyBindings) {
       state.keyBindings = sanitizeKeyBindings(data.keyBindings);
     }
-    if (settingsLeftInput && settingsRightInput && settingsLaunchInput && settingsUpInput && settingsDownInput) {
+    if (settingsLeftInput && settingsRightInput && settingsUpInput && settingsDownInput) {
       settingsLeftInput.value = state.keyBindings.left;
       settingsRightInput.value = state.keyBindings.right;
       settingsUpInput.value = state.keyBindings.up;
       settingsDownInput.value = state.keyBindings.down;
-      settingsLaunchInput.value = state.keyBindings.launch;
+      if (settingsLaunchInput) settingsLaunchInput.value = state.keyBindings.launch;
     }
     state.scoreSort = 'score';
     if (scoreSortSelect) scoreSortSelect.value = 'score';
@@ -1109,7 +1109,7 @@ function openSettingsModal() {
   settingsRightInput.value = state.keyBindings.right;
   if (settingsUpInput) settingsUpInput.value = state.keyBindings.up;
   if (settingsDownInput) settingsDownInput.value = state.keyBindings.down;
-  settingsLaunchInput.value = state.keyBindings.launch;
+  if (settingsLaunchInput) settingsLaunchInput.value = state.keyBindings.launch;
   if (settingsDamageToggle) settingsDamageToggle.checked = !!state.showDamageByPower;
   if (settingsFpsToggle) settingsFpsToggle.checked = !!state.showFps;
   if (settingsPaddleRectToggle) settingsPaddleRectToggle.checked = !!state.showPaddleRects;
@@ -5489,7 +5489,6 @@ function bindControls() {
   captureKey(settingsRightInput);
   captureKey(settingsUpInput);
   captureKey(settingsDownInput);
-  captureKey(settingsLaunchInput);
   timeButtons.forEach((btn) => {
     btn.addEventListener('click', () => {
       const val = Number(btn.dataset.speed) || 1;
