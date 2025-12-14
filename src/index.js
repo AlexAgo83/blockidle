@@ -167,6 +167,7 @@ const DEFAULT_KEYS = {
 const MAX_POWERS = 4;
 const MAX_TALENTS = 4;
 const formatDesc = (desc) => desc?.plain || desc?.rich || '';
+const SCORE_PAGE_SIZE = 10;
 
 const API_BASE = (() => {
   const envBase = (import.meta?.env?.VITE_API_BASE || '').trim();
@@ -533,6 +534,7 @@ const state = {
   filterCurrentBuild: true,
   filterMyScores: false,
   scoreSort: 'score',
+  topScoresPage: 0,
   timeScale: 1,
   fps: 0,
   showDamageByPower: true,
@@ -3107,17 +3109,27 @@ function renderTopScoresPanel() {
       }
     });
   }
-  const limit = state.topScoresExpanded ? TOP_LIMIT : Math.min(3, TOP_LIMIT);
-  filtered.slice(0, limit).forEach((entry, idx) => {
+  const pageSize = SCORE_PAGE_SIZE;
+  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
+  if (state.topScoresPage >= totalPages) state.topScoresPage = totalPages - 1;
+  if (state.topScoresPage < 0) state.topScoresPage = 0;
+  const page = state.topScoresPage;
+  const start = page * pageSize;
+  const slice = filtered.slice(start, start + pageSize);
+  slice.forEach((entry, idx) => {
     const e = typeof entry === 'object' ? entry : { score: entry };
     const item = document.createElement('div');
     item.className = 'score-item';
+    const buildLabel = e.build ? e.build : 'Old';
+    const faded = !buildLabel || buildLabel === 'Old' || (/^b(\d+)/i.test(buildLabel) && Number(RegExp.$1) < 21);
+    if (faded) {
+      item.style.opacity = '0.55';
+    }
     const name = document.createElement('div');
     name.className = 'score-player';
     name.style.fontSize = '75%';
-    const buildLabel = e.build ? e.build : 'Old';
     const playerName = (e.player || '???').slice(0, 12);
-    name.textContent = `${idx + 1}. ${playerName} (${buildLabel})`;
+    name.textContent = `${start + idx + 1}. ${playerName} (${buildLabel})`;
     if (player && playerBest !== null && (e.player || '').trim() === player) {
       const sc = Number(e.score) || 0;
       if (sc === playerBest) {
@@ -3126,6 +3138,18 @@ function renderTopScoresPanel() {
         badge.textContent = 'PB';
         name.appendChild(badge);
       }
+    }
+    if (Number.isFinite(e.stage) && e.stage > 0) {
+      const stageBadge = document.createElement('span');
+      stageBadge.textContent = `Stage ${e.stage}`;
+      stageBadge.style.fontSize = '10px';
+      stageBadge.style.padding = '2px 6px';
+      stageBadge.style.marginLeft = '6px';
+      stageBadge.style.borderRadius = '10px';
+      stageBadge.style.background = 'rgba(56,189,248,0.18)';
+      stageBadge.style.color = '#bae6fd';
+      stageBadge.style.border = '1px solid rgba(56,189,248,0.45)';
+      name.appendChild(stageBadge);
     }
     const loadout = (() => {
       const parsed = parseScoreLoadout(e);
@@ -3166,6 +3190,48 @@ function renderTopScoresPanel() {
 
     scoreListEl.appendChild(item);
   });
+
+  if (totalPages > 1) {
+    const nav = document.createElement('div');
+    nav.className = 'score-nav';
+    nav.style.display = 'flex';
+    nav.style.alignItems = 'center';
+    nav.style.justifyContent = 'center';
+    nav.style.gap = '10px';
+    nav.style.marginTop = '8px';
+
+    const prev = document.createElement('button');
+    prev.textContent = '◀ Prev';
+    prev.disabled = page === 0;
+    prev.className = 'score-nav-btn';
+    prev.onclick = () => {
+      if (state.topScoresPage > 0) {
+        state.topScoresPage -= 1;
+        renderTopScoresPanel();
+      }
+    };
+
+    const info = document.createElement('span');
+    info.textContent = `Page ${page + 1} / ${totalPages}`;
+    info.style.color = '#e2e8f0';
+    info.style.fontSize = '12px';
+
+    const next = document.createElement('button');
+    next.textContent = 'Next ▶';
+    next.disabled = page >= totalPages - 1;
+    next.className = 'score-nav-btn';
+    next.onclick = () => {
+      if (state.topScoresPage < totalPages - 1) {
+        state.topScoresPage += 1;
+        renderTopScoresPanel();
+      }
+    };
+
+    nav.appendChild(prev);
+    nav.appendChild(info);
+    nav.appendChild(next);
+    scoreListEl.appendChild(nav);
+  }
 }
 
 function setSuggestionStatus(text, isError = false) {
