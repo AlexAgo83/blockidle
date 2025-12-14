@@ -23,6 +23,11 @@ export class CreateScoreDto {
 
   @IsOptional()
   @IsString()
+  @MaxLength(32)
+  pilot?: string;
+
+  @IsOptional()
+  @IsString()
   endedAt?: string;
 
   @IsOptional()

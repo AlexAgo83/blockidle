@@ -11,7 +11,7 @@ export class ScoresService {
     const safeLimit = Math.max(1, Math.min(100, Math.floor(limit)));
     const result = await this.db.query(
       `
-        SELECT player, score, stage, level, ended_at, submitted_at, created_at, build, powers, talents, fusions
+        SELECT player, score, stage, level, ended_at, submitted_at, created_at, build, powers, talents, fusions, pilot
         FROM scores
         ORDER BY score DESC, ended_at ASC
         LIMIT $1
@@ -37,6 +37,7 @@ export class ScoresService {
       return Number.isNaN(d.getTime()) ? new Date().toISOString() : d.toISOString();
     })();
     const safeBuild = (payload.build || 'Old').slice(0, 32);
+    const safePilot = (payload.pilot || '').slice(0, 32) || null;
     const asStringList = (value?: string[]) => Array.isArray(value) ? value.filter((v) => typeof v === 'string').map((v) => v.slice(0, 64)).slice(0, 50) : [];
     const powers = JSON.stringify(asStringList(payload.powers));
     const talents = JSON.stringify(asStringList(payload.talents));
@@ -44,8 +45,8 @@ export class ScoresService {
 
     const result = await this.db.query(
       `
-        INSERT INTO scores (player, score, stage, level, ended_at, build, powers, talents, fusions, submitted_at)
-        VALUES ($1, $2, COALESCE($3, 1), COALESCE($4, 1), $5, $6, $7::jsonb, $8::jsonb, $9::jsonb, now())
+        INSERT INTO scores (player, score, stage, level, ended_at, build, powers, talents, fusions, pilot, submitted_at)
+        VALUES ($1, $2, COALESCE($3, 1), COALESCE($4, 1), $5, $6, $7::jsonb, $8::jsonb, $9::jsonb, $10, now())
         ON CONFLICT (player, build)
         DO UPDATE SET
           score = GREATEST(scores.score, EXCLUDED.score),
@@ -56,10 +57,11 @@ export class ScoresService {
           powers = CASE WHEN EXCLUDED.score > scores.score THEN EXCLUDED.powers ELSE scores.powers END,
           talents = CASE WHEN EXCLUDED.score > scores.score THEN EXCLUDED.talents ELSE scores.talents END,
           fusions = CASE WHEN EXCLUDED.score > scores.score THEN EXCLUDED.fusions ELSE scores.fusions END,
+          pilot = CASE WHEN EXCLUDED.score > scores.score THEN EXCLUDED.pilot ELSE scores.pilot END,
           submitted_at = now()
-        RETURNING player, score, stage, level, ended_at, submitted_at, created_at, build, powers, talents, fusions
+        RETURNING player, score, stage, level, ended_at, submitted_at, created_at, build, powers, talents, fusions, pilot
       `,
-      [name, payload.score, safeStage, safeLevel, endedAtIso, safeBuild, powers, talents, fusions]
+      [name, payload.score, safeStage, safeLevel, endedAtIso, safeBuild, powers, talents, fusions, safePilot]
     );
     return result.rows[0];
   }

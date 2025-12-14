@@ -529,6 +529,7 @@ const SESSION_SAVE_INTERVAL = 1500;
 let lastSessionSave = -SESSION_SAVE_INTERVAL;
 let sessionDirty = true;
 const PREFS_KEY = 'brickidle_prefs';
+const PILOT_PROGRESS_KEY = 'brickidle_pilot_progress_v1';
 let starfieldLastTime = 0;
 
 const state = {
@@ -640,7 +641,8 @@ const state = {
   stageScalingNotified: false,
   maxLifeBonus: 0,
   cachedMaxLives: 0,
-  pilotFeats: {}
+  pilotFeats: {},
+  pilotUnlocks: []
 };
 globalThis.__brickidle_state = state;
 
@@ -1193,6 +1195,31 @@ function markSessionDirty() {
   sessionDirty = true;
 }
 
+function savePilotProgress() {
+  try {
+    const payload = {
+      feats: state.pilotFeats || {},
+      unlocks: state.pilotUnlocks || []
+    };
+    localStorage.setItem(PILOT_PROGRESS_KEY, JSON.stringify(payload));
+  } catch (_) {
+    // ignore
+  }
+}
+
+function loadPilotProgress() {
+  try {
+    const raw = localStorage.getItem(PILOT_PROGRESS_KEY);
+    if (!raw) return;
+    const parsed = JSON.parse(raw);
+    if (parsed?.feats) state.pilotFeats = parsed.feats;
+    if (Array.isArray(parsed?.unlocks)) state.pilotUnlocks = parsed.unlocks;
+    ensurePilotUnlocks();
+  } catch (_) {
+    // ignore
+  }
+}
+
 function getSessionSnapshot() {
   return {
     version: SESSION_VERSION,
@@ -1238,6 +1265,8 @@ function getSessionSnapshot() {
       awaitingPilot: state.awaitingPilot,
       activePilotId: state.activePilotId,
       selectedPilotId: state.selectedPilotId,
+      pilotFeats: state.pilotFeats,
+      pilotUnlocks: state.pilotUnlocks,
       playerName: state.playerName,
       backendTopScores: state.backendTopScores
     }
@@ -1245,7 +1274,7 @@ function getSessionSnapshot() {
 }
 
 function saveSession() {
-  clearSession(); // on ne persiste plus la partie
+  clearSession(); // on ne persiste plus la partie, juste les feats/pilots via prefs
 }
 
 function clearSession() {
@@ -1307,6 +1336,7 @@ function renderPilotModal() {
   if (pilotSubtitle) {
     pilotSubtitle.textContent = t('pilot_modal.subtitle');
   }
+  ensurePilotUnlocks();
   // reset scroll to avoid content hidden on top when re-opening
   pilotListEl.scrollTop = 0;
   pilotListEl.innerHTML = '';
@@ -1316,7 +1346,7 @@ function renderPilotModal() {
     const startIcon = startMedia?.imageUrl
       ? `<img src="${startMedia.imageUrl}" alt="${pilot.start?.name || ''}" class="pilot-start-icon" style="width:28px; height:28px;" />`
       : '';
-    const locked = idx > 0; // pour l'instant, seul le premier est ouvert
+    const locked = !state.pilotUnlocks[idx];
     const feats = getPilotFeats(pilot.id);
     const card = document.createElement('button');
     card.type = 'button';
@@ -1417,7 +1447,11 @@ function openPilotModal() {
 function handlePilotConfirm() {
   const pilot = getPilotDef(state.selectedPilotId);
   if (!pilot) return;
+  const idx = getPilotIndex(pilot.id);
+  ensurePilotUnlocks();
+  if (idx > 0 && !state.pilotUnlocks[idx]) return; // verrouillé
   state.activePilotId = pilot.id;
+  state.selectedPilotId = pilot.id;
   closePilotModal();
   grantStartingLoadout(pilot);
   pushNotification(`${pilot.name} ready (Lv.1 ${pilot.start?.name || 'Loadout'})`, 5000);
@@ -1650,6 +1684,10 @@ function getPilotDef(id) {
   return PILOT_DEFS.find((p) => p.id === id) || null;
 }
 
+function getPilotIndex(id) {
+  return PILOT_DEFS.findIndex((p) => p.id === id);
+}
+
 function getPilotStartDescription(pilot) {
   if (!pilot?.start) return { title: '', desc: '' };
   const isPower = pilot.start.kind === 'power';
@@ -1673,6 +1711,25 @@ function setPilotFeat(pilotId, index, value = true) {
   const arr = Array.isArray(state.pilotFeats[pilotId]) ? [...state.pilotFeats[pilotId]] : [false, false, false];
   arr[index] = value;
   state.pilotFeats[pilotId] = arr;
+  savePilotProgress();
+}
+
+function ensurePilotUnlocks() {
+  if (!Array.isArray(state.pilotUnlocks)) {
+    state.pilotUnlocks = [];
+  }
+  while (state.pilotUnlocks.length < PILOT_DEFS.length) {
+    state.pilotUnlocks.push(false);
+  }
+  state.pilotUnlocks[0] = true; // le premier est toujours disponible
+}
+
+function unlockPilot(index) {
+  ensurePilotUnlocks();
+  if (index >= 0 && index < state.pilotUnlocks.length) {
+    state.pilotUnlocks[index] = true;
+    savePilotProgress();
+  }
 }
 
 function getPowerDescription(name) {
@@ -2268,12 +2325,35 @@ function gainXp(amount) {
       pushNotification(`Max HP +${delta} (Level ${state.playerLevel})`, 5000);
     }
     prevMaxLife = newMaxLife;
+    checkPilotFeatProgress(state.level);
     leveled = true;
   }
   state.cachedMaxLives = prevMaxLife;
   if (leveled) {
     tryOpenPowerModal();
   }
+}
+
+function checkPilotFeatProgress(stageLevel) {
+  if (!state.activePilotId) return;
+  ensurePilotUnlocks();
+  const caps = [10, 40, 60];
+  caps.forEach((cap, idx) => {
+    if (stageLevel >= cap && !getPilotFeats(state.activePilotId)[idx]) {
+      setPilotFeat(state.activePilotId, idx, true);
+      const pilotName = getPilotDef(state.activePilotId)?.name || 'Pilot';
+      pushNotification(`${pilotName}: Stage ${cap} reached`, 5000);
+      if (idx === 0) {
+        const currentIndex = getPilotIndex(state.activePilotId);
+        const nextIndex = currentIndex + 1;
+        if (nextIndex < PILOT_DEFS.length && !state.pilotUnlocks[nextIndex]) {
+          unlockPilot(nextIndex);
+          const nextName = PILOT_DEFS[nextIndex]?.name || `Pilot ${nextIndex + 1}`;
+          pushNotification(`${nextName} unlocked!`, 5000);
+        }
+      }
+    }
+  });
 }
 
 function tryOpenPowerModal() {
@@ -3525,6 +3605,7 @@ function resetGame() {
   state.activePilotId = null;
   state.selectedPilotId = null;
   state.awaitingPilot = false;
+  ensurePilotUnlocks();
   const maxLife = getMaxLives();
   state.cachedMaxLives = maxLife;
   state.lives = Math.min(maxLife, CONFIG.startLives + 5 * getTalentLevel('Stim Pack'));
@@ -4580,6 +4661,7 @@ function update(dt) {
     state.speedTimer -= speedInterval;
     state.brickSpeed *= CONFIG.speedIncreaseMultiplier;
     state.level += 1;
+    checkPilotFeatProgress(state.level);
     if (state.level === 20 && !state.stageScalingNotified) {
       pushNotification('Bricks now gain +1% HP per stage', 5000);
       state.stageScalingNotified = true;
@@ -6460,6 +6542,7 @@ function init() {
   fetchTopScoresFromBackend(TOP_LIMIT);
   fetchSuggestionsFromBackend();
   fetchCommits();
+  loadPilotProgress();
   setInterval(() => {
     fetchTopScoresFromBackend().catch(() => {});
   }, 30000);
