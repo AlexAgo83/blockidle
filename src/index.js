@@ -637,7 +637,9 @@ const state = {
   royalSurgeUntil: 0,
   royalSurgeXpMult: 1,
   migratedFusionKinds: false,
-  stageScalingNotified: false
+  stageScalingNotified: false,
+  maxLifeBonus: 0,
+  cachedMaxLives: 0
 };
 globalThis.__brickidle_state = state;
 
@@ -1584,7 +1586,8 @@ function grantTempHpOnce(powerName, amount = 2, cooldownMs = 5000) {
 function getMaxLives() {
   const stimLevel = getTalentLevel('Stim Pack');
   const playerBracketBonus = Math.floor((state.playerLevel || 0) / 5);
-  return CONFIG.maxLives + stimLevel * 5 + playerBracketBonus;
+  const bonus = state.maxLifeBonus || 0;
+  return CONFIG.maxLives + stimLevel * 5 + playerBracketBonus + bonus;
 }
 
 function clampLivesToMax() {
@@ -1781,8 +1784,8 @@ function getPowerDescription(name) {
       };
     case 'Radiance':
       return {
-        plain: 'Fusion of Pillar + Stim Pack: brief stun and grants +2 temporary max HP on hit',
-        rich: '<strong>Fusion</strong> of <span class="power-desc-accent">Pillar + Stim Pack</span>: stun and gain <span class="power-desc-accent">+2 temp max HP</span> on hit'
+        plain: 'Fusion of Pillar + Stim Pack: on pick gain +15 max HP, and hits briefly stun',
+        rich: '<strong>Fusion</strong> of <span class="power-desc-accent">Pillar + Stim Pack</span>: on pick gain <span class="power-desc-accent">+15 max HP</span> and hits briefly stun'
       };
     case 'Shard':
       return {
@@ -1806,8 +1809,8 @@ function getPowerDescription(name) {
       };
     case 'Crossfire':
       return {
-        plain: 'Fusion of Beamline + Pillar: fires both horizontal and vertical lasers on hit (1 dmg, 1s cooldown)',
-        rich: '<strong>Fusion</strong> of <span class="power-desc-accent">Beamline + Pillar</span>: fires <span class="power-desc-accent">horizontal + vertical</span> lasers on hit <span class="power-desc-muted">(1 dmg, 1s cd)</span>'
+        plain: 'Fusion of Beamline + Pillar: fires both horizontal and vertical lasers on hit (1 dmg, ~0.65s cooldown)',
+        rich: '<strong>Fusion</strong> of <span class="power-desc-accent">Beamline + Pillar</span>: fires <span class="power-desc-accent">horizontal + vertical</span> lasers on hit <span class="power-desc-muted">(1 dmg, ~0.65s cd)</span>'
       };
     case 'Storm':
       return {
@@ -2227,13 +2230,22 @@ function gainXp(amount) {
   const gained = Math.max(1, Math.round(amount * totalMult));
   state.xp += gained;
   let leveled = false;
+  let prevMaxLife = getMaxLives();
   while (state.xp >= state.xpNeeded) {
     state.xp -= state.xpNeeded;
     state.playerLevel += 1;
     state.xpNeeded = xpForLevel(state.playerLevel);
     state.pendingPowerChoices += 1;
+    const newMaxLife = getMaxLives();
+    if (newMaxLife > prevMaxLife) {
+      const delta = newMaxLife - prevMaxLife;
+      state.lives = Math.min(newMaxLife, state.lives + delta);
+      pushNotification(`Max HP +${delta} (Level ${state.playerLevel})`, 5000);
+    }
+    prevMaxLife = newMaxLife;
     leveled = true;
   }
+  state.cachedMaxLives = prevMaxLife;
   if (leveled) {
     tryOpenPowerModal();
   }
@@ -2251,9 +2263,15 @@ function tryOpenPowerModal() {
       return fusion && fusionKind(fusion) === 'talent' && getTalentLevel(t.name) > 0;
     })
     .flatMap((t) => getFusionDef(t.name)?.ingredients || []);
+  const blockedByActiveFusion = [...state.powers, ...state.talents]
+    .map((p) => getFusionDef(p.name))
+    .filter(Boolean)
+    .filter((f) => Array.isArray(f.ingredients))
+    .flatMap((f) => f.ingredients.filter((ing) => isTalentName(ing)));
+  const blockedTalents = new Set([...blockedTalentIngredients, ...blockedByActiveFusion]);
   const availableTalents = [...TALENT_DEFS, ...FUSION_DEFS.filter((f) => fusionKind(f) === 'talent')]
     .map((t) => t.name)
-    .filter((name) => !blockedTalentIngredients.includes(name))
+    .filter((name) => !blockedTalents.has(name))
     .filter((name) => canUpgradeTalent(name));
 
   if (!availablePowers.length && !availableTalents.length) {
@@ -2332,6 +2350,13 @@ function applyPower(powerName, options = {}) {
       state.specialPocket = state.specialPocket.filter((p) => !fusion.ingredients.includes(p));
       removeShipSkins(fusion.ingredients);
       purgeFusionIngredients(fusion);
+    }
+    if (powerName === 'Radiance') {
+      state.maxLifeBonus = (state.maxLifeBonus || 0) + 15;
+      const maxLife = getMaxLives();
+      state.cachedMaxLives = maxLife;
+      state.lives = Math.min(maxLife, state.lives + 15);
+      pushNotification('Radiance: Max HP +15', 5000);
     }
   }
   if (newLevel <= 2) {
@@ -2506,9 +2531,15 @@ function handlePowerReroll() {
       return fusion && fusionKind(fusion) === 'talent' && getTalentLevel(t.name) > 0;
     })
     .flatMap((t) => getFusionDef(t.name)?.ingredients || []);
+  const blockedByActiveFusion = [...state.powers, ...state.talents]
+    .map((p) => getFusionDef(p.name))
+    .filter(Boolean)
+    .filter((f) => Array.isArray(f.ingredients))
+    .flatMap((f) => f.ingredients.filter((ing) => isTalentName(ing)));
+  const blockedTalents = new Set([...blockedTalentIngredients, ...blockedByActiveFusion]);
   const availableTalents = [...TALENT_DEFS, ...FUSION_DEFS.filter((f) => fusionKind(f) === 'talent')]
     .map((t) => t.name)
-    .filter((name) => !blockedTalentIngredients.includes(name))
+    .filter((name) => !blockedTalents.has(name))
     .filter((name) => canUpgradeTalent(name));
   state.currentPowerOptions = sampleOptions(availablePowers, 4);
   state.currentTalentOptions = sampleOptions(availableTalents, 4);
@@ -3463,10 +3494,14 @@ function fireLaser(powerName, brick, now, modes = []) {
 function resetGame() {
   state.score = 0;
   state.activeShipSkins = [];
+  state.maxLifeBonus = 0;
+  state.cachedMaxLives = 0;
+  state.stageScalingNotified = false;
   state.activePilotId = null;
   state.selectedPilotId = null;
   state.awaitingPilot = false;
   const maxLife = getMaxLives();
+  state.cachedMaxLives = maxLife;
   state.lives = Math.min(maxLife, CONFIG.startLives + 5 * getTalentLevel('Stim Pack'));
   const now = performance.now ? performance.now() : Date.now();
   state.bricks = [];
@@ -4523,14 +4558,6 @@ function update(dt) {
     if (state.level === 20 && !state.stageScalingNotified) {
       pushNotification('Bricks now gain +1% HP per stage', 5000);
       state.stageScalingNotified = true;
-    }
-    const oldMaxLife = state.cachedMaxLives || getMaxLives();
-    const newMaxLife = getMaxLives();
-    state.cachedMaxLives = newMaxLife;
-    if (newMaxLife > oldMaxLife) {
-      const delta = newMaxLife - oldMaxLife;
-      state.lives = Math.min(newMaxLife, state.lives + delta);
-      pushNotification(`Max HP +${delta} (Level ${state.playerLevel || state.level})`, 5000);
     }
     if (state.level % 5 === 0 && state.rerollRemaining < REROLL_LIMIT_PER_MODAL) {
       state.rerollRemaining = Math.min(REROLL_LIMIT_PER_MODAL, state.rerollRemaining + 1);
@@ -6668,7 +6695,6 @@ function applyPowerOnHit(ball, brick, now, options = {}) {
     ball.vy *= 1.05;
   } else if (power === 'Radiance') {
     applyLightStun(brick, ball, now);
-    grantTempHpOnce(power, 2, 5000);
     brick.effectColor = getPowerColor(power);
     brick.effectUntil = now + 1000;
   } else if (power === 'Shard') {
