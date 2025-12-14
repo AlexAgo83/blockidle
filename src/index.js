@@ -113,7 +113,7 @@ let bossVariants = [];
 let bossVariantsReady = false;
 const TOP_LIMIT = Infinity;
 const PASS_LIMIT_PER_MODAL = 3;
-const BUILD_LABEL = 'b21';
+const BUILD_LABEL = 'b22';
 const STARFIELD_LAYERS = [
   { count: 110, speed: 14, size: [0.4, 1.1], alpha: [0.25, 0.55] },
   { count: 65, speed: 28, size: [0.6, 1.6], alpha: [0.35, 0.8] }
