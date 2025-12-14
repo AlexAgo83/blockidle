@@ -27,6 +27,7 @@ const talentButtons = Array.from(document.querySelectorAll('.talent-btn'));
 const powerPreviewName = document.getElementById('power-preview-name');
 const powerPreviewDesc = document.getElementById('power-preview-desc');
 const powerPreviewIcon = document.getElementById('power-preview-icon');
+const notificationPanel = document.getElementById('notification-panel');
 const nameModalBackdrop = document.getElementById('name-modal-backdrop');
 const playerNameInput = document.getElementById('player-name-input');
 const playerNameSubmit = document.getElementById('player-name-submit');
@@ -635,7 +636,8 @@ const state = {
   regenStageHeals: 0,
   royalSurgeUntil: 0,
   royalSurgeXpMult: 1,
-  migratedFusionKinds: false
+  migratedFusionKinds: false,
+  stageScalingNotified: false
 };
 globalThis.__brickidle_state = state;
 
@@ -813,6 +815,18 @@ function applyTranslations() {
     powerRerollBtn.classList.toggle('success', state.rerollRemaining > 0);
     powerRerollBtn.classList.toggle('disabled', state.rerollRemaining <= 0);
   }
+}
+
+function pushNotification(text, duration = 3000) {
+  if (!notificationPanel || !text) return;
+  const item = document.createElement('div');
+  item.className = 'notification';
+  item.textContent = text;
+  notificationPanel.appendChild(item);
+  setTimeout(() => {
+    item.classList.add('hide');
+    setTimeout(() => item.remove(), 250);
+  }, duration);
 }
 
 function degToRad(deg) {
@@ -1393,6 +1407,7 @@ function handlePilotConfirm() {
   state.activePilotId = pilot.id;
   closePilotModal();
   grantStartingLoadout(pilot);
+  pushNotification(`${pilot.name} ready (Lv.1 ${pilot.start?.name || 'Loadout'})`, 5000);
   markSessionDirty();
   refreshPauseState();
 }
@@ -1568,8 +1583,8 @@ function grantTempHpOnce(powerName, amount = 2, cooldownMs = 5000) {
 
 function getMaxLives() {
   const stimLevel = getTalentLevel('Stim Pack');
-  const playerBracketBonus = stimLevel > 0 ? Math.floor((state.playerLevel || 0) / 5) * 5 : 0;
-  return CONFIG.maxLives + 5 * stimLevel + playerBracketBonus;
+  const playerBracketBonus = Math.floor((state.playerLevel || 0) / 5);
+  return CONFIG.maxLives + stimLevel * 5 + playerBracketBonus;
 }
 
 function clampLivesToMax() {
@@ -2192,7 +2207,10 @@ function computeBrickLayout() {
 function getBrickHP() {
   const base = 1;
   const ramp = Math.floor(state.rowIndex / 8);
-  return Math.min(base + ramp, 5);
+  const raw = Math.min(base + ramp, 5);
+  const stage = state.level || 1;
+  const extraScale = stage >= 20 ? 1 + 0.01 * (stage - 19) : 1;
+  return Math.max(1, Math.ceil(raw * extraScale));
 }
 
 function xpForLevel(level) {
@@ -2335,6 +2353,7 @@ function applyPower(powerName, options = {}) {
   if (!skipClose) {
     closePowerModal();
   }
+  pushNotification(`${powerName} ${existing ? `Lv.${newLevel}` : 'unlocked'}`, 5000);
   if (consumeChoice) {
     if (state.pendingPowerChoices > 0) {
       tryOpenPowerModal();
@@ -2439,6 +2458,7 @@ function applyTalent(talentName, options = {}) {
   if (!skipClose) {
     closePowerModal();
   }
+  pushNotification(`${talentName} ${existing ? `Lv.${existing.level || 1}` : 'unlocked'}`, 5000);
   if (consumeChoice) {
     if (state.pendingPowerChoices > 0) {
       tryOpenPowerModal();
@@ -3402,7 +3422,7 @@ function purgeFusionIngredients(fusion) {
 
 function fireLaser(powerName, brick, now, modes = []) {
   if (!Array.isArray(modes) || modes.length === 0) return;
-  const cooldown = powerName === 'Crossfire' ? beamCooldownMs * 0.6 : beamCooldownMs;
+  const cooldown = powerName === 'Crossfire' ? beamCooldownMs * 0.66 : beamCooldownMs;
   const last = state.beamCooldown[powerName] || 0;
   if (now - last < cooldown) return;
   state.beamCooldown[powerName] = now;
@@ -3489,6 +3509,7 @@ function resetGame() {
   state.gameOverHandled = false;
   state.lastEndedAt = null;
   state.scoreSubmitted = false;
+  state.stageScalingNotified = false;
   powerModalBackdrop.classList.remove('open');
   if (pilotModalBackdrop) pilotModalBackdrop.classList.remove('open');
   placeBallOnPaddle({ centerPaddle: true });
@@ -4499,6 +4520,18 @@ function update(dt) {
     state.speedTimer -= speedInterval;
     state.brickSpeed *= CONFIG.speedIncreaseMultiplier;
     state.level += 1;
+    if (state.level === 20 && !state.stageScalingNotified) {
+      pushNotification('Bricks now gain +1% HP per stage', 5000);
+      state.stageScalingNotified = true;
+    }
+    const oldMaxLife = state.cachedMaxLives || getMaxLives();
+    const newMaxLife = getMaxLives();
+    state.cachedMaxLives = newMaxLife;
+    if (newMaxLife > oldMaxLife) {
+      const delta = newMaxLife - oldMaxLife;
+      state.lives = Math.min(newMaxLife, state.lives + delta);
+      pushNotification(`Max HP +${delta} (Level ${state.playerLevel || state.level})`, 5000);
+    }
     if (state.level % 5 === 0 && state.rerollRemaining < REROLL_LIMIT_PER_MODAL) {
       state.rerollRemaining = Math.min(REROLL_LIMIT_PER_MODAL, state.rerollRemaining + 1);
       if (powerRerollBtn) {

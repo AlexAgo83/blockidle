@@ -1111,6 +1111,35 @@
       font-weight: 700;
       letter-spacing: 0.01em;
     }
+    .notification-panel {
+      position: fixed;
+      bottom: 12px;
+      left: 12px;
+      display: flex;
+      flex-direction: column-reverse;
+      gap: 6px;
+      max-width: 280px;
+      pointer-events: none;
+      z-index: 12;
+    }
+    .notification {
+      padding: 8px 10px;
+      border-radius: 8px;
+      background: rgba(15, 23, 42, 0.9);
+      border: 1px solid rgba(148, 163, 184, 0.35);
+      color: #e2e8f0;
+      font-size: 0.85rem;
+      line-height: 1.3;
+      box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+      opacity: 1;
+      transform: translateX(0);
+      transition: opacity 200ms ease, transform 200ms ease;
+      pointer-events: auto;
+    }
+    .notification.hide {
+      opacity: 0;
+      transform: translateX(-8px);
+    }
     </style>
   </head>
   <body>
@@ -1120,6 +1149,7 @@
       <div class="star-layer fast" aria-hidden="true"></div>
       <canvas id="game" width="880" height="1728"></canvas>
     </div>
+    <div id="notification-panel" class="notification-panel" aria-live="polite"></div>
       <div class="time-controls narrow">
         <div class="time-left">
           <button id="abandon-btn" type="button" data-i18n="controls.quit">Quit</button>
