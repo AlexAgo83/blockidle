@@ -623,7 +623,8 @@ const state = {
   activeShipSkins: [],
   regenStageHeals: 0,
   royalSurgeUntil: 0,
-  royalSurgeXpMult: 1
+  royalSurgeXpMult: 1,
+  migratedFusionKinds: false
 };
 globalThis.__brickidle_state = state;
 
@@ -720,13 +721,14 @@ function sanitizeKeyBindings(raw) {
 
 function clampPaddlePosition() {
   const { paddle } = state;
-  const mirrorLevel = getTalentLevel('Mirror');
-  const prismFusion = getTalentLevel('Prism Paddle') > 0;
+  const mirrorLevel = Math.max(
+    getTalentLevel('Mirror'),
+    getTalentLevel('Prism Paddle') > 0 ? getTalentDef('Mirror').maxLevel : 0
+  );
   const halfWidth = paddle.w * 0.5;
   const gap = 8;
-  const extraWidth = prismFusion ? paddle.w * 0.35 : 0;
-  const minOffset = mirrorLevel >= 1 ? -halfWidth - gap - extraWidth : 0;
-  const maxOffset = mirrorLevel >= 2 ? paddle.w + gap + halfWidth + extraWidth : paddle.w;
+  const minOffset = mirrorLevel >= 1 ? -halfWidth - gap : 0;
+  const maxOffset = mirrorLevel >= 2 ? paddle.w + gap + halfWidth : paddle.w;
 
   // Bordures extérieures
   paddle.x = clamp(paddle.x, -minOffset, CONFIG.width - maxOffset);
@@ -991,6 +993,24 @@ function loadPreferences() {
       if (settingsAutoPauseToggle) settingsAutoPauseToggle.checked = state.autoPauseEnabled;
       if (settingsLoadoutSidebarToggle) settingsLoadoutSidebarToggle.checked = state.showLoadoutSidebar;
       data.prefsVersion = 1;
+    }
+    if (!state.migratedFusionKinds) {
+      // Move Prism Paddle / Royal Surge from powers to talents if present
+      const talentFusions = ['Prism Paddle', 'Royal Surge', 'Thornstep'];
+      const moved = [];
+      state.powers = state.powers.filter((p) => {
+        if (talentFusions.includes(p.name)) {
+          moved.push({ name: p.name, level: p.level || 1 });
+          return false;
+        }
+        return true;
+      });
+      moved.forEach((t) => {
+        const existing = state.talents.find((x) => x.name === t.name);
+        if (existing) existing.level = Math.max(existing.level, t.level);
+        else state.talents.push({ name: t.name, level: t.level });
+      });
+      state.migratedFusionKinds = true;
     }
   } catch (_) {
     // ignore parsing/storage errors
@@ -1308,8 +1328,7 @@ function getPaddleSpeed() {
   const level = getTalentLevel('Boots');
   const mult = 1 + 0.1 * level;
   const aimMult = state.autoPlay ? 0.5 : 2; // slower in auto-aim, faster in manual
-  const prismBoost = getTalentLevel('Prism Paddle') > 0 ? 1.05 : 1;
-  return CONFIG.paddleSpeed * mult * aimMult * prismBoost;
+  return CONFIG.paddleSpeed * mult * aimMult;
 }
 
 function getPaddleMaxSpeed() {
@@ -1327,9 +1346,11 @@ function getCooldowns(nextIsSpecial) {
 }
 
 function getPaddleWidth() {
-  const level = getTalentLevel('Paddle');
-  const fusionBonus = getTalentLevel('Prism Paddle') > 0 ? 0.1 : 0;
-  const mult = 1 + 0.2 * level + fusionBonus;
+  const level = Math.max(
+    getTalentLevel('Paddle'),
+    getTalentLevel('Prism Paddle') > 0 ? getTalentDef('Paddle').maxLevel : 0
+  );
+  const mult = 1 + 0.2 * level;
   return CONFIG.paddleWidth * mult;
 }
 
@@ -1778,6 +1799,12 @@ function canUpgradeTalent(name) {
   const def = getTalentDef(name);
   const fusion = getFusionDef(name);
   if (fusion && fusionKind(fusion) !== 'talent') return false;
+  if (fusion && fusionKind(fusion) === 'talent' && hasFusionIngredients(fusion)) {
+    // Block ingredients if fusion already owned
+    const ownedFusion = getTalentLevel(name) > 0;
+    const ingredientOwned = fusion.ingredients.some((ing) => getPowerLevel(ing) > 0 || getTalentLevel(ing) > 0);
+    if (ownedFusion && ingredientOwned) return false;
+  }
   if (fusion && !hasFusionIngredients(fusion)) return false;
   if (!hasTalentSlotFor(name)) return false;
   return getTalentLevel(name) < def.maxLevel;
@@ -2237,7 +2264,10 @@ function renderPowerModal(powerOptions, talentOptions) {
         btn.style.display = 'flex';
         const currentLv = getTalentLevel(talent);
         const nextLv = nextTalentLevel(talent);
-        const status = currentLv === 0 ? 'NEW' : `Lv. ${currentLv} → ${nextLv}`;
+      const fusion = getFusionDef(talent);
+      const status = currentLv === 0
+        ? fusion ? 'FUSION' : 'NEW'
+        : `Lv. ${currentLv} → ${nextLv}`;
         const hasFusionPartner = currentLv === 0 && hasOwnedFusionPartner(talent);
         const label = `${talent} ${status}${hasFusionPartner ? ' F' : ''}`;
         const badgeHtml = hasFusionPartner ? '<span class="fusion-badge" title="Fusion ready">F</span>' : '';
@@ -2245,7 +2275,7 @@ function renderPowerModal(powerOptions, talentOptions) {
         const iconHtml = media?.imageUrl
           ? `<img class="btn-icon" src="${media.imageUrl}" alt="${talent} icon" style="width: 20%; height: 20%; object-fit: contain; margin-right: 8px;" />`
           : '';
-        btn.innerHTML = `<span class="btn-title" style="display:flex; align-items:center; font-size:90%; font-weight:700;">${iconHtml}<span>${talent}</span></span><span class="btn-right"><span class="btn-state">${status}</span>${badgeHtml}</span>`;
+        btn.innerHTML = `<span class="btn-title" style="display:flex; align-items:center; font-size:90%; font-weight:700;">${iconHtml}<span>${talent}</span></span><span class="btn-right"><span class="btn-state ${fusion ? 'fusion' : ''}">${status}</span>${badgeHtml}</span>`;
         btn.dataset.talent = talent;
         btn.title = getTalentDescription(talent).plain;
       const showPreview = () => updatePowerPreview(talent, { label, statusText: status, fusionBadge: hasFusionPartner }, 'talent');
@@ -4143,17 +4173,14 @@ function update(dt) {
   // Collision brique/paddle : considéré comme une sortie (perte de vie) et la brique est détruite.
   const paddleRects = (() => {
     const rects = [{ x: paddle.x, y: paddle.y, w: paddle.w, h: paddle.h }];
-    const mirrorLevel = getTalentLevel('Mirror');
-    const prismFusion = getTalentLevel('Prism Paddle') > 0;
+    const mirrorLevel = Math.max(
+      getTalentLevel('Mirror'),
+      getTalentLevel('Prism Paddle') > 0 ? getTalentDef('Mirror').maxLevel : 0
+    );
     const halfWidth = paddle.w * 0.5;
     const gap = 8;
     if (mirrorLevel >= 1) rects.push({ x: paddle.x - halfWidth - gap, y: paddle.y, w: halfWidth, h: paddle.h });
     if (mirrorLevel >= 2) rects.push({ x: paddle.x + paddle.w + gap, y: paddle.y, w: halfWidth, h: paddle.h });
-    if (prismFusion) {
-      const shortW = Math.max(30, paddle.w * 0.35);
-      rects.push({ x: paddle.x - shortW - gap * 0.5, y: paddle.y, w: shortW, h: paddle.h });
-      rects.push({ x: paddle.x + paddle.w + gap * 0.5, y: paddle.y, w: shortW, h: paddle.h });
-    }
     return rects;
   })();
   for (const brick of state.bricks) {
@@ -4531,8 +4558,7 @@ function update(dt) {
       const damageMult = 1.1;
       const currentBoost = Math.max(1, ball.damageScale || 1);
       const nextBoost = Math.min(currentBoost * damageMult, 1.1 ** 3); // max ~1.331
-      const prismFusion = getTalentLevel('Prism Paddle') > 0;
-      const speedBoost = Math.min(Math.hypot(ball.vx, ball.vy) * bounceSpeedMult * (prismFusion ? 1.05 : 1), getBallSpeed(Boolean(ball.specialPower)) * 1.35);
+      const speedBoost = Math.min(Math.hypot(ball.vx, ball.vy) * bounceSpeedMult, getBallSpeed(Boolean(ball.specialPower)) * 1.35);
       const speedRatio = speedBoost / (Math.hypot(ball.vx, ball.vy) || 1);
       ball.vx *= speedRatio;
       ball.vy *= speedRatio;
