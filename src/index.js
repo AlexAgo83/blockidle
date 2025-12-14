@@ -125,7 +125,7 @@ let bossVariantsReady = false;
 const TOP_LIMIT = Infinity;
 const PASS_LIMIT_PER_MODAL = 2;
 const REROLL_LIMIT_PER_MODAL = 2;
-const BUILD_LABEL = 'b23';
+const BUILD_LABEL = 'b24';
 const STARFIELD_LAYERS = [
   { count: 110, speed: 14, size: [0.4, 1.1], alpha: [0.25, 0.55] },
   { count: 65, speed: 28, size: [0.6, 1.6], alpha: [0.35, 0.8] }
@@ -639,7 +639,8 @@ const state = {
   migratedFusionKinds: false,
   stageScalingNotified: false,
   maxLifeBonus: 0,
-  cachedMaxLives: 0
+  cachedMaxLives: 0,
+  pilotFeats: {}
 };
 globalThis.__brickidle_state = state;
 
@@ -1316,6 +1317,7 @@ function renderPilotModal() {
       ? `<img src="${startMedia.imageUrl}" alt="${pilot.start?.name || ''}" class="pilot-start-icon" style="width:28px; height:28px;" />`
       : '';
     const locked = idx > 0; // pour l'instant, seul le premier est ouvert
+    const feats = getPilotFeats(pilot.id);
     const card = document.createElement('button');
     card.type = 'button';
     card.className = `pilot-card${locked ? ' locked' : ''}`;
@@ -1334,6 +1336,9 @@ function renderPilotModal() {
         </div>
         ${pilot.tagline ? `<span class="pilot-tagline">${pilot.tagline}</span>` : ''}
         <span class="pilot-start-desc">${desc}</span>
+        <div class="pilot-feats">
+          ${[0, 1, 2].map((i) => `<span class="pilot-feat ${feats[i] ? 'checked' : ''}"></span>`).join('')}
+        </div>
       </div>
     `;
     card.onclick = () => handlePilotSelect(pilot.id);
@@ -1654,6 +1659,20 @@ function getPilotStartDescription(pilot) {
   const levelLabel = state.language === 'fr' ? 'Niv. 1' : state.language === 'es' ? 'Nv. 1' : 'Lv. 1';
   const title = `${name} (${levelLabel})`;
   return { title, desc: desc?.plain || '' };
+}
+
+function getPilotFeats(pilotId) {
+  const feats = state.pilotFeats || {};
+  const entry = feats[pilotId];
+  if (Array.isArray(entry) && entry.length === 3) return entry;
+  return [false, false, false];
+}
+
+function setPilotFeat(pilotId, index, value = true) {
+  if (!state.pilotFeats) state.pilotFeats = {};
+  const arr = Array.isArray(state.pilotFeats[pilotId]) ? [...state.pilotFeats[pilotId]] : [false, false, false];
+  arr[index] = value;
+  state.pilotFeats[pilotId] = arr;
 }
 
 function getPowerDescription(name) {
