@@ -1,4 +1,4 @@
-import { IsNumber, IsOptional, IsString, MaxLength } from 'class-validator';
+import { IsArray, IsNumber, IsOptional, IsString, MaxLength } from 'class-validator';
 
 export class CreateScoreDto {
   @IsString()
@@ -24,4 +24,19 @@ export class CreateScoreDto {
   @IsOptional()
   @IsString()
   endedAt?: string;
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  powers?: string[];
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  talents?: string[];
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  fusions?: string[];
 }

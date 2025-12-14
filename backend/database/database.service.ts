@@ -40,16 +40,24 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
         level INTEGER DEFAULT 1,
         ended_at TIMESTAMPTZ DEFAULT now(),
         created_at TIMESTAMPTZ DEFAULT now(),
-        build TEXT
+        submitted_at TIMESTAMPTZ DEFAULT now(),
+        build TEXT,
+        powers JSONB,
+        talents JSONB,
+        fusions JSONB
       )
     `);
     await this.query('ALTER TABLE scores ADD COLUMN IF NOT EXISTS stage INTEGER DEFAULT 1');
     await this.query('ALTER TABLE scores ADD COLUMN IF NOT EXISTS level INTEGER DEFAULT 1');
     await this.query('ALTER TABLE scores ADD COLUMN IF NOT EXISTS ended_at TIMESTAMPTZ DEFAULT now()');
+    await this.query('ALTER TABLE scores ADD COLUMN IF NOT EXISTS submitted_at TIMESTAMPTZ DEFAULT now()');
     await this.query('ALTER TABLE scores ADD COLUMN IF NOT EXISTS build TEXT');
     await this.query('ALTER TABLE scores DROP CONSTRAINT IF EXISTS scores_player_key');
     await this.query('ALTER TABLE scores ALTER COLUMN build SET DEFAULT \'Old\'');
     await this.query('UPDATE scores SET build = COALESCE(build, \'Old\') WHERE build IS NULL');
+    await this.query('ALTER TABLE scores ADD COLUMN IF NOT EXISTS powers JSONB');
+    await this.query('ALTER TABLE scores ADD COLUMN IF NOT EXISTS talents JSONB');
+    await this.query('ALTER TABLE scores ADD COLUMN IF NOT EXISTS fusions JSONB');
     await this.query('CREATE UNIQUE INDEX IF NOT EXISTS scores_player_build_idx ON scores (player, build)');
 
     await this.query(`

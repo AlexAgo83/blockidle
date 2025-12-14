@@ -417,7 +417,7 @@ const CONFIG = {
   height: 1728,
   paddleWidth: 160,
   paddleHeight: 16,
-  paddleSpeed: 400,
+  paddleSpeed: 200,
   paddleMaxSpeed: 600, // vitesse max (légèrement supérieure à la balle)
   ballSpeed: 540,
   ballRadius: 8, // rayon des spéciales
@@ -1187,13 +1187,15 @@ function clampLivesToMax() {
 function getPaddleSpeed() {
   const level = getTalentLevel('Boots');
   const mult = 1 + 0.1 * level;
-  return CONFIG.paddleSpeed * mult;
+  const aimMult = state.autoPlay ? 0.5 : 2; // slower in auto-aim, faster in manual
+  return CONFIG.paddleSpeed * mult * aimMult;
 }
 
 function getPaddleMaxSpeed() {
   const level = getTalentLevel('Boots');
   const mult = 1 + 0.1 * level;
-  return CONFIG.paddleMaxSpeed * mult;
+  const aimMult = state.autoPlay ? 0.5 : 2;
+  return CONFIG.paddleMaxSpeed * mult * aimMult;
 }
 
 function getCooldowns(nextIsSpecial) {
@@ -2434,6 +2436,71 @@ function selectTargetBrick() {
   return alive.sort((a, b) => b.y - a.y)[0];
 }
 
+function getDangerBrick() {
+  const dangerY = CONFIG.height * 0.78;
+  return state.bricks
+    .filter((b) => b.alive && b.y + b.h >= dangerY)
+    .sort((a, b) => (b.y + b.h) - (a.y + a.h))[0] || null;
+}
+
+function getCriticalBall() {
+  const limitY = CONFIG.height * 0.78;
+  return state.balls
+    .filter((b) => b.vy > 0 && b.y >= limitY)
+    .sort((a, b) => b.y - a.y)[0] || null;
+}
+
+function reflectInBounds(x, min, max) {
+  const span = max - min;
+  if (span <= 0) return min;
+  let wrapped = (x - min) % (span * 2);
+  if (wrapped < 0) wrapped += span * 2;
+  if (wrapped > span) {
+    return max - (wrapped - span);
+  }
+  return min + wrapped;
+}
+
+function predictBallInterceptX(ball) {
+  if (!ball || ball.vy <= 0) return null;
+  const targetY = state.paddle.y;
+  const time = (targetY - ball.y) / ball.vy;
+  if (!Number.isFinite(time) || time <= 0) return null;
+  const minX = ball.r;
+  const maxX = CONFIG.width - ball.r;
+  return reflectInBounds(ball.x + ball.vx * time, minX, maxX);
+}
+
+function getLoadoutSummary() {
+  const toEntry = (item) => `${item.name}:${item.level || 1}`;
+  const powers = [];
+  const talents = [];
+  const fusions = [];
+  state.powers.forEach((p) => {
+    const fusionDef = getFusionDef(p.name);
+    if (fusionDef && fusionKind(fusionDef) === 'power') fusions.push(toEntry(p));
+    else powers.push(toEntry(p));
+  });
+  state.talents.forEach((t) => {
+    const fusionDef = getFusionDef(t.name);
+    if (fusionDef && fusionKind(fusionDef) === 'talent') fusions.push(toEntry(t));
+    else talents.push(toEntry(t));
+  });
+  return { powers, talents, fusions };
+}
+
+function buildScorePayload(endedAt) {
+  const loadout = getLoadoutSummary();
+  return {
+    player: state.playerName || 'Anonymous',
+    score: state.score,
+    stage: state.level,
+    level: state.playerLevel,
+    endedAt,
+    ...loadout
+  };
+}
+
 function placeBallOnPaddle({ centerPaddle = false, refill = false, preserveY = false } = {}) {
   const { paddle, heldBall } = state;
   paddle.w = getPaddleWidth();
@@ -2484,10 +2551,24 @@ function launchBall() {
   if (state.autoPlay) {
     const target = selectTargetBrick();
     if (target) {
-      const dx = target.x + target.w / 2 - originX;
-      const dy = target.y + target.h / 2 - originY;
+      let aimX = target.x + target.w / 2;
+      const aimY = target.y + target.h / 2;
+      const nearLeftWall = aimX < 100;
+      const nearRightWall = aimX > CONFIG.width - 100;
+      if (nearLeftWall) aimX -= 60; // petit angle sur le mur pour exploiter les rebonds
+      if (nearRightWall) aimX += 60;
+      const dx = aimX - originX;
+      const dy = aimY - originY;
       const len = Math.hypot(dx, dy) || 1;
-      const aimed = withAimJitter((dx / len) * speed, (dy / len) * speed);
+      const baseVx = (dx / len) * speed;
+      const baseVy = (dy / len) * speed;
+      const minRatio = 0.2;
+      const maxRatio = 0.9;
+      const ratio = clamp(Math.abs(baseVx) / speed, minRatio, maxRatio);
+      const vxSign = Math.sign(baseVx) || 1;
+      const tunedVx = vxSign * ratio * speed;
+      const tunedVy = -Math.sqrt(Math.max(speed ** 2 - tunedVx ** 2, 0.001));
+      const aimed = withAimJitter(tunedVx, tunedVy);
       vx = aimed.vx;
       vy = aimed.vy;
       if (vy > -40) vy = -Math.abs(vy) - 40;
@@ -2668,6 +2749,7 @@ function saveScore(score) {
           endedAt: new Date().toISOString(),
           build: BUILD_LABEL
         };
+    if (!entry.build) entry.build = BUILD_LABEL;
     scores.push(entry);
     scores.sort((a, b) => (b.score || 0) - (a.score || 0));
     const top = scores.slice(0, TOP_LIMIT);
@@ -2888,6 +2970,98 @@ function renderCatalogLists() {
   renderList(catalogFusions, FUSION_DEFS, 'power');
 }
 
+function parseLoadoutList(val) {
+  const arr = Array.isArray(val)
+    ? val
+    : typeof val === 'string'
+      ? val.split('|')
+      : [];
+  return arr
+    .map((entry) => {
+      if (!entry) return null;
+      const [name, levelRaw] = String(entry).split(':');
+      const nameClean = (name || '').trim();
+      if (!nameClean) return null;
+      const level = Number(levelRaw);
+      return { name: nameClean, level: Number.isFinite(level) ? level : 1 };
+    })
+    .filter(Boolean);
+}
+
+function parseScoreLoadout(entry) {
+  return {
+    powers: parseLoadoutList(entry?.powers),
+    talents: parseLoadoutList(entry?.talents),
+    fusions: parseLoadoutList(entry?.fusions)
+  };
+}
+
+function makeIconBadge(item, type) {
+  const badge = document.createElement('div');
+  const size = 22;
+  const media = MEDIA_BY_NAME[item.name];
+  badge.className = 'score-loadout-icon';
+  badge.style.width = `${size}px`;
+  badge.style.height = `${size}px`;
+  badge.style.borderRadius = '6px';
+  badge.style.backgroundSize = 'cover';
+  badge.style.backgroundPosition = 'center';
+  badge.style.backgroundRepeat = 'no-repeat';
+  badge.style.display = 'inline-flex';
+  badge.style.alignItems = 'center';
+  badge.style.justifyContent = 'center';
+  badge.style.marginRight = '6px';
+  badge.style.marginBottom = '4px';
+  badge.style.boxShadow = '0 0 0 1px rgba(255,255,255,0.25), 0 4px 10px rgba(0,0,0,0.35)';
+  badge.style.backgroundColor = 'rgba(15,23,42,0.7)';
+  const borderColors = {
+    power: '#38bdf8',
+    talent: '#c084fc',
+    fusion: '#34d399'
+  };
+  badge.style.outline = `2px solid ${borderColors[type] || 'rgba(226,232,240,0.5)'}`;
+  if (media?.imageUrl) {
+    const img = document.createElement('img');
+    img.src = media.imageUrl;
+    img.alt = `${item.name} icon`;
+    img.style.width = '18px';
+    img.style.height = '18px';
+    img.style.objectFit = 'contain';
+    badge.appendChild(img);
+  } else {
+    badge.textContent = item.name.slice(0, 2).toUpperCase();
+    badge.style.fontSize = '10px';
+    badge.style.color = '#e2e8f0';
+  }
+  const levelText = item.level && item.level > 1 ? ` Lv.${item.level}` : '';
+  badge.title = `${item.name}${levelText} (${type})`;
+  return badge;
+}
+
+const mockLoadoutCache = new Map();
+function pickRandom(list, maxCount) {
+  const src = [...list];
+  const count = Math.max(0, Math.min(maxCount, src.length));
+  const picked = [];
+  while (picked.length < count && src.length) {
+    const idx = Math.floor(Math.random() * src.length);
+    const [item] = src.splice(idx, 1);
+    picked.push(item);
+  }
+  return picked;
+}
+
+function getMockLoadout(entry) {
+  const key = `${entry.player || 'anon'}|${entry.score || 0}|${entry.endedAt || ''}`;
+  if (mockLoadoutCache.has(key)) return mockLoadoutCache.get(key);
+  const powers = pickRandom(POWER_DEFS.map((p) => p.name), 3).map((name) => ({ name, level: 1 }));
+  const talents = pickRandom(TALENT_DEFS.map((t) => t.name), 2).map((name) => ({ name, level: 1 }));
+  const fusions = pickRandom(FUSION_DEFS.map((f) => f.name), 2).map((name) => ({ name, level: 1 }));
+  const loadout = { powers, talents, fusions };
+  mockLoadoutCache.set(key, loadout);
+  return loadout;
+}
+
 function renderTopScoresPanel() {
   if (!scoreListEl) return;
   scoreListEl.innerHTML = '';
@@ -2940,6 +3114,7 @@ function renderTopScoresPanel() {
     item.className = 'score-item';
     const name = document.createElement('div');
     name.className = 'score-player';
+    name.style.fontSize = '75%';
     const buildLabel = e.build ? e.build : 'Old';
     const playerName = (e.player || '???').slice(0, 12);
     name.textContent = `${idx + 1}. ${playerName} (${buildLabel})`;
@@ -2952,11 +3127,43 @@ function renderTopScoresPanel() {
         name.appendChild(badge);
       }
     }
-    const pts = document.createElement('div');
-    pts.className = 'score-points';
-    pts.textContent = `${formatScore(e.score || 0)} pts`;
-    item.appendChild(name);
-    item.appendChild(pts);
+    const loadout = (() => {
+      const parsed = parseScoreLoadout(e);
+      return parsed;
+    })();
+    const combined = [
+      ...loadout.powers.map((p) => ({ ...p, type: 'power' })),
+      ...loadout.talents.map((t) => ({ ...t, type: 'talent' })),
+      ...loadout.fusions.map((f) => ({ ...f, type: 'fusion' }))
+    ];
+    if (combined.length) {
+      const iconRow = document.createElement('div');
+      iconRow.className = 'score-loadout-row';
+      iconRow.style.display = 'flex';
+      iconRow.style.flexWrap = 'wrap';
+      iconRow.style.marginTop = '4px';
+      iconRow.style.transform = 'scale(0.75)';
+      iconRow.style.transformOrigin = 'center top';
+      iconRow.style.justifyContent = 'center';
+      combined.forEach((itm) => {
+        const badge = makeIconBadge(itm, itm.type);
+        iconRow.appendChild(badge);
+      });
+      item.appendChild(name);
+      item.appendChild(iconRow);
+      const pts = document.createElement('div');
+      pts.className = 'score-points';
+      pts.textContent = `${formatScore(e.score || 0)} pts`;
+      pts.style.marginTop = '4px';
+      item.appendChild(pts);
+    } else {
+      const pts = document.createElement('div');
+      pts.className = 'score-points';
+      pts.textContent = `${formatScore(e.score || 0)} pts`;
+      item.appendChild(name);
+      item.appendChild(pts);
+    }
+
     scoreListEl.appendChild(item);
   });
 }
@@ -3353,15 +3560,12 @@ function triggerGameOver() {
   if (state.gameOverHandled) return;
   state.running = false;
   state.gameOverHandled = true;
+  state.manualPause = false;
+  state.paused = false;
+  updatePauseButton();
   const endedAt = new Date().toISOString();
   state.lastEndedAt = endedAt;
-  const payload = {
-          player: state.playerName || 'Anonymous',
-    score: state.score,
-    stage: state.level,
-    level: state.playerLevel,
-    endedAt
-  };
+  const payload = buildScorePayload(endedAt);
   saveScore(payload);
   handleBackendScoreSubmit(payload);
   markSessionDirty();
@@ -3507,14 +3711,36 @@ function update(dt) {
     : (state.balls.find((b) => b.vy > 0) || state.balls[0] || heldBall);
 
   if (state.autoPlay) {
-    // Suivi automatique lissé (approche progressive du point visé).
-    const targetX = refBall && refBall.vy > 0
-      ? refBall.x - paddle.w / 2
-      : CONFIG.width / 2 - paddle.w / 2;
-    const smoothing = 8; // plus élevé = plus réactif
-    const maxStep = getPaddleMaxSpeed() * dt;
-    const delta = (targetX - paddle.x) * smoothing * dt;
-    paddle.x += clamp(delta, -maxStep, maxStep);
+    const defaultY = CONFIG.height - 60;
+    const criticalBall = getCriticalBall();
+    const trackedBall = criticalBall || state.balls.find((b) => b.vy > 0) || state.balls[0] || refBall;
+    let targetX = CONFIG.width / 2 - paddle.w / 2;
+    let targetY = defaultY;
+
+    if (trackedBall && trackedBall.vy > 0) {
+      const interceptX = predictBallInterceptX(trackedBall);
+      if (interceptX !== null) {
+        targetX = interceptX - paddle.w / 2;
+      }
+    }
+
+    const dangerBrick = getDangerBrick() || selectTargetBrick();
+    if (!trackedBall || trackedBall.vy <= 0) {
+      if (dangerBrick) {
+        targetX = dangerBrick.x + dangerBrick.w / 2 - paddle.w / 2;
+        targetY = clamp(dangerBrick.y + dangerBrick.h + 40, CONFIG.height * 0.55, CONFIG.height - 40);
+      }
+    } else if (dangerBrick && !criticalBall) {
+      const biasX = dangerBrick.x + dangerBrick.w / 2 - paddle.w / 2;
+      targetX = targetX * 0.6 + biasX * 0.4;
+    }
+
+    const smoothing = 7;
+    const maxStep = getPaddleMaxSpeed() * dt * 0.8;
+    const deltaX = (targetX - paddle.x) * smoothing * dt;
+    paddle.x += clamp(deltaX, -maxStep, maxStep);
+    const deltaY = (targetY - paddle.y) * smoothing * dt;
+    paddle.y += clamp(deltaY, -maxStep, maxStep);
   } else {
     const paddleSpeed = getPaddleSpeed();
     if (keys.left) {
@@ -3980,18 +4206,25 @@ function getDamageEntries(maxCount = 8) {
     .slice(0, maxCount);
 }
 
-function drawDamageOverlay(ctxTarget, title = 'Damage by power') {
+function drawDamageOverlay(ctxTarget, title = 'Damage by power', options = {}) {
   const maxRows = 10;
   const entries = getDamageEntries(maxRows);
   if (!entries.length) return;
+  const { topY = null } = options;
   const panelW = 540;
   const barH = 14;
   const barGap = 22;
   const panelH = 90 + entries.length * barGap;
   const x = (CONFIG.width - panelW) / 2;
-  const maxY = state.paused && state.manualPause ? CONFIG.height - CONFIG.height * 0.25 : CONFIG.height - 40;
-  const minY = state.paused && state.manualPause ? CONFIG.height / 2 + 60 : 20;
-  let y = maxY - panelH;
+  const isPause = state.paused && state.manualPause;
+  const maxY = isPause ? CONFIG.height - CONFIG.height * 0.25 : CONFIG.height - 40;
+  const minY = isPause ? CONFIG.height / 2 + 60 : 20;
+  let y;
+  if (Number.isFinite(topY)) {
+    y = Math.min(topY, maxY - panelH);
+  } else {
+    y = maxY - panelH;
+  }
   if (y < minY) y = minY;
   ctxTarget.save();
   ctxTarget.fillStyle = '#e2e8f0';
@@ -4735,6 +4968,8 @@ function renderHUD() {
       h.fillText('Paused', 120, CONFIG.height / 2);
       h.font = '20px "Segoe UI", sans-serif';
       h.fillText('Press Resume to continue', 120, CONFIG.height / 2 + 32);
+      h.font = '16px "Segoe UI", sans-serif';
+      h.fillText('Tip: Settings lets you enable/disable auto-pause.', 120, CONFIG.height / 2 + 56);
       drawDamageOverlay(h, 'Damage by power');
     }
 
@@ -4745,7 +4980,7 @@ function renderHUD() {
       h.font = '32px "Segoe UI", sans-serif';
       h.fillText('Game over - Press Enter to replay', 120, CONFIG.height / 2);
       h.fillText(`Score: ${formatScore(state.score)}`, 120, CONFIG.height / 2 + 36);
-      drawDamageOverlay(h, 'Damage by power');
+      drawDamageOverlay(h, 'Damage by power', { topY: CONFIG.height / 2 + 72 });
     }
   }
 
@@ -5067,13 +5302,13 @@ function init() {
   bindSuggestionToggle();
   bindScoreErrorModal();
   window.addEventListener('blur', () => {
-    if (!state.autoPauseEnabled) return;
+    if (!state.autoPauseEnabled || state.gameOverHandled || !state.running) return;
     state.manualPause = true;
     refreshPauseState();
     updatePauseButton();
   });
   document.addEventListener('visibilitychange', () => {
-    if (document.hidden && state.autoPauseEnabled) {
+    if (document.hidden && state.autoPauseEnabled && state.running) {
       state.manualPause = true;
       refreshPauseState();
       updatePauseButton();
