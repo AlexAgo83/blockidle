@@ -63,6 +63,10 @@ export function buildSettingsModal(root = document.body) {
     id: 'toggle-paddle-rect',
     labelKey: 'settings.show_paddle_rect'
   });
+  const ballTrailsToggle = createToggle({
+    id: 'toggle-ball-trails',
+    labelKey: 'settings.show_ball_trails'
+  });
   const loadoutSidebarToggle = createToggle({
     id: 'toggle-loadout-sidebar',
     labelKey: 'settings.show_loadout_sidebar'
@@ -101,6 +105,7 @@ export function buildSettingsModal(root = document.body) {
       damageToggle.wrapper,
       fpsToggle.wrapper,
       paddleDebugToggle.wrapper,
+      ballTrailsToggle.wrapper,
       loadoutSidebarToggle.wrapper,
       autoPauseToggle.wrapper,
       languageField.wrapper
@@ -120,6 +125,7 @@ export function buildSettingsModal(root = document.body) {
     damageToggle: damageToggle.input,
     fpsToggle: fpsToggle.input,
     paddleDebugToggle: paddleDebugToggle.input,
+    ballTrailsToggle: ballTrailsToggle.input,
     loadoutSidebarToggle: loadoutSidebarToggle.input,
     autoPauseToggle: autoPauseToggle.input,
     languageSelect: languageField.select,

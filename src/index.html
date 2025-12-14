@@ -585,7 +585,7 @@
     }
     .settings-grid {
       display: grid;
-      grid-template-columns: 1fr 1fr;
+      grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
       gap: 10px;
     }
     .settings-grid label {
@@ -597,10 +597,13 @@
       border: 1px solid #334155;
       background: #0f172a;
       color: #e2e8f0;
-      padding: 8px 10px;
+      padding: 6px 8px;
       font-size: 0.95rem;
       outline: none;
       text-transform: none;
+      max-width: 120px;
+      width: 100%;
+      justify-self: flex-start;
     }
     .settings-option {
       display: flex;
@@ -609,6 +612,7 @@
       margin-top: 4px;
       color: #e2e8f0;
       font-weight: 600;
+      font-size: 0.85rem;
     }
     .settings-option input[type="checkbox"] {
       width: 18px;

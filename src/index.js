@@ -61,6 +61,7 @@ const settingsCancelBtn = document.getElementById('settings-cancel');
 const settingsDamageToggle = document.getElementById('toggle-damage-graph');
 const settingsFpsToggle = document.getElementById('toggle-fps');
 const settingsPaddleRectToggle = document.getElementById('toggle-paddle-rect');
+const settingsBallTrailsToggle = document.getElementById('toggle-ball-trails');
 const settingsAutoPauseToggle = document.getElementById('toggle-auto-pause');
 const settingsLoadoutSidebarToggle = document.getElementById('toggle-loadout-sidebar');
 const languageSelect = document.getElementById('language-select');
@@ -542,9 +543,10 @@ const state = {
   modalSelectionIndex: 0,
   timeScale: 1,
   fps: 0,
-  showDamageByPower: true,
-  showFps: true,
+  showDamageByPower: false,
+  showFps: false,
   showPaddleRects: false,
+  showBallTrails: false,
   showLoadoutSidebar: false,
   autoPauseEnabled: true,
   pendingPowerChoices: 0,
@@ -697,6 +699,7 @@ function computeHudSignature() {
     damage: dmgEntries.map(([k, v]) => `${k}:${v}`).join('|'),
     showDamageByPower: state.showDamageByPower,
     showFps: state.showFps,
+    showBallTrails: state.showBallTrails,
     fps: state.fps,
     paused: state.paused,
     manualPause: state.manualPause
@@ -813,6 +816,7 @@ function loadPreferences() {
       if (settingsDamageToggle) settingsDamageToggle.checked = state.showDamageByPower;
       if (settingsFpsToggle) settingsFpsToggle.checked = state.showFps;
       if (settingsPaddleRectToggle) settingsPaddleRectToggle.checked = state.showPaddleRects;
+      if (settingsBallTrailsToggle) settingsBallTrailsToggle.checked = state.showBallTrails;
       if (settingsAutoPauseToggle) settingsAutoPauseToggle.checked = state.autoPauseEnabled;
       if (settingsLoadoutSidebarToggle) settingsLoadoutSidebarToggle.checked = state.showLoadoutSidebar;
       if (languageSelect) languageSelect.value = state.language;
@@ -884,6 +888,12 @@ function loadPreferences() {
     } else if (settingsPaddleRectToggle) {
       settingsPaddleRectToggle.checked = state.showPaddleRects;
     }
+    if (typeof data.showBallTrails === 'boolean') {
+      state.showBallTrails = data.showBallTrails;
+      if (settingsBallTrailsToggle) settingsBallTrailsToggle.checked = state.showBallTrails;
+    } else if (settingsBallTrailsToggle) {
+      settingsBallTrailsToggle.checked = state.showBallTrails;
+    }
     if (typeof data.autoPauseEnabled === 'boolean') {
       state.autoPauseEnabled = data.autoPauseEnabled;
       if (settingsAutoPauseToggle) settingsAutoPauseToggle.checked = state.autoPauseEnabled;
@@ -928,6 +938,7 @@ function savePreferences() {
       showDamageByPower: state.showDamageByPower,
       showFps: state.showFps,
       showPaddleRects: state.showPaddleRects,
+      showBallTrails: state.showBallTrails,
       showLoadoutSidebar: state.showLoadoutSidebar,
       autoPauseEnabled: state.autoPauseEnabled,
       keyBindings: state.keyBindings
@@ -1102,6 +1113,7 @@ function openSettingsModal() {
   if (settingsDamageToggle) settingsDamageToggle.checked = !!state.showDamageByPower;
   if (settingsFpsToggle) settingsFpsToggle.checked = !!state.showFps;
   if (settingsPaddleRectToggle) settingsPaddleRectToggle.checked = !!state.showPaddleRects;
+  if (settingsBallTrailsToggle) settingsBallTrailsToggle.checked = !!state.showBallTrails;
   if (settingsAutoPauseToggle) settingsAutoPauseToggle.checked = !!state.autoPauseEnabled;
   if (settingsLoadoutSidebarToggle) settingsLoadoutSidebarToggle.checked = !!state.showLoadoutSidebar;
   settingsModalBackdrop.classList.add('open');
@@ -1139,6 +1151,9 @@ function applySettingsBindings() {
   }
   if (settingsPaddleRectToggle) {
     state.showPaddleRects = !!settingsPaddleRectToggle.checked;
+  }
+  if (settingsBallTrailsToggle) {
+    state.showBallTrails = !!settingsBallTrailsToggle.checked;
   }
   if (settingsAutoPauseToggle) {
     state.autoPauseEnabled = !!settingsAutoPauseToggle.checked;
@@ -3324,18 +3339,19 @@ function renderTopScoresPanel() {
         name.appendChild(badge);
       }
     }
-    if (Number.isFinite(e.stage) && e.stage > 0) {
-      const stageBadge = document.createElement('span');
-      stageBadge.textContent = `Stage ${e.stage}`;
-      stageBadge.style.fontSize = '10px';
-      stageBadge.style.padding = '2px 6px';
-      stageBadge.style.marginLeft = '6px';
-      stageBadge.style.borderRadius = '10px';
-      stageBadge.style.background = 'rgba(56,189,248,0.18)';
-      stageBadge.style.color = '#bae6fd';
-      stageBadge.style.border = '1px solid rgba(56,189,248,0.45)';
-      name.appendChild(stageBadge);
-    }
+    const stageBadge = Number.isFinite(e.stage) && e.stage > 0
+      ? (() => {
+        const badge = document.createElement('span');
+        badge.textContent = `Stage ${e.stage}`;
+        badge.style.fontSize = '10px';
+        badge.style.padding = '2px 6px';
+        badge.style.borderRadius = '10px';
+        badge.style.background = 'rgba(56,189,248,0.18)';
+        badge.style.color = '#bae6fd';
+        badge.style.border = '1px solid rgba(56,189,248,0.45)';
+        return badge;
+      })()
+      : null;
     const dateLabel = document.createElement('div');
     dateLabel.style.fontSize = '11px';
     dateLabel.style.color = 'rgba(226,232,240,0.65)';
@@ -3386,18 +3402,40 @@ function renderTopScoresPanel() {
       iconRow.style.alignSelf = 'center';
       item.appendChild(iconRow);
 
+      const ptsWrap = document.createElement('div');
+      ptsWrap.style.display = 'flex';
+      ptsWrap.style.flexDirection = 'column';
+      ptsWrap.style.alignItems = 'flex-end';
+      ptsWrap.style.gap = '4px';
+      if (stageBadge) {
+        stageBadge.style.margin = '0';
+        stageBadge.style.alignSelf = 'flex-end';
+        ptsWrap.appendChild(stageBadge);
+      }
       const pts = document.createElement('div');
       pts.className = 'score-points';
       pts.textContent = `${formatScore(e.score || 0)} pts`;
-      pts.style.display = 'flex';
-      pts.style.alignItems = 'center';
-      item.appendChild(pts);
+      ptsWrap.appendChild(pts);
+      item.appendChild(ptsWrap);
     } else {
       const pts = document.createElement('div');
       pts.className = 'score-points';
       pts.textContent = `${formatScore(e.score || 0)} pts`;
       item.appendChild(name);
-      item.appendChild(pts);
+      if (stageBadge) {
+        const ptsWrap = document.createElement('div');
+        ptsWrap.style.display = 'flex';
+        ptsWrap.style.flexDirection = 'column';
+        ptsWrap.style.alignItems = 'flex-end';
+        ptsWrap.style.gap = '4px';
+        stageBadge.style.margin = '0';
+        stageBadge.style.alignSelf = 'flex-end';
+        ptsWrap.appendChild(stageBadge);
+        ptsWrap.appendChild(pts);
+        item.appendChild(ptsWrap);
+      } else {
+        item.appendChild(pts);
+      }
     }
 
     scoreListEl.appendChild(item);
@@ -5034,6 +5072,12 @@ function renderBalls() {
       return null;
     })();
     const fill = '#ffffff'; // neutral base; powers tint via accent/trail/stroke
+    if (!state.showBallTrails) {
+      ball.trail = [];
+      ctx.fillStyle = fill;
+      drawBallSprite(ball.x, ball.y, ball.r, ball.vx, ball.vy, ball.specialPower, ball);
+      continue;
+    }
     ball.trail = Array.isArray(ball.trail) ? ball.trail : [];
     ball.trail.push({
       x: ball.x,

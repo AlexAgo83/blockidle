@@ -19,6 +19,7 @@
     "show_damage": "Show damage by power",
     "show_fps": "Show FPS",
     "show_paddle_rect": "Show paddle hitboxes",
+    "show_ball_trails": "Show ball trails (may impact performance)",
     "show_loadout_sidebar": "Show sidebar powers/talents",
     "auto_pause": "Auto-pause when window loses focus",
     "language": "Language",
