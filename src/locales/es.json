@@ -21,6 +21,7 @@
     "show_paddle_rect": "Mostrar rectángulos de la paleta",
     "show_ball_trails": "Mostrar estelas de las bolas (puede afectar rendimiento)",
     "show_loadout_sidebar": "Mostrar panel de poderes/talentos",
+    "auto_aim": "Activar apuntado automático",
     "auto_pause": "Pausa automática cuando la ventana pierde el foco",
     "language": "Idioma",
     "save": "Guardar",

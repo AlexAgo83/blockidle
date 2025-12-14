@@ -74,6 +74,7 @@ const settingsLoadoutSidebarToggle = document.getElementById('toggle-loadout-sid
 const languageSelect = document.getElementById('language-select');
 const powerSlotsLabel = document.getElementById('power-slots-label');
 const talentSlotsLabel = document.getElementById('talent-slots-label');
+const settingsAutoAimToggle = document.getElementById('toggle-auto-aim');
 const ownedPowersGrid = document.getElementById('owned-powers-grid');
 const ownedTalentsGrid = document.getElementById('owned-talents-grid');
 const timeButtons = Array.from(document.querySelectorAll('.time-btn'));
@@ -1023,6 +1024,7 @@ function loadPreferences() {
       if (settingsFpsToggle) settingsFpsToggle.checked = state.showFps;
       if (settingsPaddleRectToggle) settingsPaddleRectToggle.checked = state.showPaddleRects;
       if (settingsBallTrailsToggle) settingsBallTrailsToggle.checked = state.showBallTrails;
+      if (settingsAutoAimToggle) settingsAutoAimToggle.checked = state.autoPlay;
       if (settingsAutoPauseToggle) settingsAutoPauseToggle.checked = state.autoPauseEnabled;
       if (settingsLoadoutSidebarToggle) settingsLoadoutSidebarToggle.checked = state.showLoadoutSidebar;
       if (languageSelect) languageSelect.value = state.language;
@@ -1042,6 +1044,7 @@ function loadPreferences() {
     if (typeof data.autoPlay === 'boolean') {
       state.autoPlay = data.autoPlay;
       setAutoButtonLabel();
+      if (settingsAutoAimToggle) settingsAutoAimToggle.checked = state.autoPlay;
     }
     if (typeof data.language === 'string' && ['en', 'fr', 'es'].includes(data.language)) {
       state.language = data.language;
@@ -1106,6 +1109,7 @@ function loadPreferences() {
     } else if (settingsAutoPauseToggle) {
       settingsAutoPauseToggle.checked = state.autoPauseEnabled;
     }
+    if (settingsAutoAimToggle) settingsAutoAimToggle.checked = state.autoPlay;
     if (typeof data.showLoadoutSidebar === 'boolean') {
       state.showLoadoutSidebar = data.showLoadoutSidebar;
       if (settingsLoadoutSidebarToggle) settingsLoadoutSidebarToggle.checked = state.showLoadoutSidebar;
@@ -1535,6 +1539,7 @@ function openSettingsModal() {
   if (settingsBallTrailsToggle) settingsBallTrailsToggle.checked = !!state.showBallTrails;
   if (settingsAutoPauseToggle) settingsAutoPauseToggle.checked = !!state.autoPauseEnabled;
   if (settingsLoadoutSidebarToggle) settingsLoadoutSidebarToggle.checked = !!state.showLoadoutSidebar;
+  if (settingsAutoAimToggle) settingsAutoAimToggle.checked = !!state.autoPlay;
   settingsModalBackdrop.classList.add('open');
   setTimeout(() => settingsLeftInput?.focus(), 0);
   refreshPauseState();
@@ -1576,6 +1581,10 @@ function applySettingsBindings() {
   }
   if (settingsAutoPauseToggle) {
     state.autoPauseEnabled = !!settingsAutoPauseToggle.checked;
+  }
+  if (settingsAutoAimToggle) {
+    state.autoPlay = !!settingsAutoAimToggle.checked;
+    setAutoButtonLabel();
   }
   if (settingsLoadoutSidebarToggle) {
     state.showLoadoutSidebar = !!settingsLoadoutSidebarToggle.checked;
@@ -6275,11 +6284,14 @@ function bindControls() {
     if (isKeyBinding(event, state.keyBindings.up)) state.keys.up = false;
     if (isKeyBinding(event, state.keyBindings.down)) state.keys.down = false;
   });
-  autoBtn.addEventListener('click', () => {
-    state.autoPlay = !state.autoPlay;
-    setAutoButtonLabel();
-    savePreferences();
-  });
+  if (autoBtn) {
+    autoBtn.addEventListener('click', () => {
+      state.autoPlay = !state.autoPlay;
+      setAutoButtonLabel();
+      if (settingsAutoAimToggle) settingsAutoAimToggle.checked = state.autoPlay;
+      savePreferences();
+    });
+  }
   // Speed slider interactions
   if (speedStops.length && speedThumb && speedFill) {
     const speeds = [1, 2, 3, 5];

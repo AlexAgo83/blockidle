@@ -74,6 +74,10 @@ export function buildSettingsModal(root = document.body) {
     id: 'toggle-auto-pause',
     labelKey: 'settings.auto_pause'
   });
+  const autoAimToggle = createToggle({
+    id: 'toggle-auto-aim',
+    labelKey: 'settings.auto_aim'
+  });
   const languageField = createSelectField({
     id: 'language-select',
     labelKey: 'settings.language',
@@ -107,6 +111,7 @@ export function buildSettingsModal(root = document.body) {
       ballTrailsToggle.wrapper,
       loadoutSidebarToggle.wrapper,
       autoPauseToggle.wrapper,
+      autoAimToggle.wrapper,
       languageField.wrapper
     ],
     actions: [cancelBtn, saveBtn]
@@ -127,6 +132,7 @@ export function buildSettingsModal(root = document.body) {
     ballTrailsToggle: ballTrailsToggle.input,
     loadoutSidebarToggle: loadoutSidebarToggle.input,
     autoPauseToggle: autoPauseToggle.input,
+    autoAimToggle: autoAimToggle.input,
     languageSelect: languageField.select,
     cancelBtn,
     saveBtn: saveBtn

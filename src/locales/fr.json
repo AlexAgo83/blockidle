@@ -21,6 +21,7 @@
     "show_paddle_rect": "Afficher les rectangles du paddle",
     "show_ball_trails": "Afficher les traînées des balles (peut impacter les perfs)",
     "show_loadout_sidebar": "Afficher le panel pouvoirs/talents",
+    "auto_aim": "Activer la visée auto",
     "auto_pause": "Pause auto quand la fenêtre perd le focus",
     "language": "Langue",
     "save": "Sauver",
