@@ -2003,18 +2003,21 @@ function renderPowerModal(powerOptions, talentOptions) {
   powerButtons.forEach((btn) => { btn.disabled = false; btn.tabIndex = 0; btn.style.pointerEvents = 'auto'; btn.style.visibility = 'visible'; });
   talentButtons.forEach((btn) => { btn.disabled = false; btn.tabIndex = 0; btn.style.pointerEvents = 'auto'; btn.style.visibility = 'visible'; });
   if (ownedPowersGrid) {
-    ownedPowersGrid.style.transform = 'scale(0.9)';
-    ownedPowersGrid.style.transformOrigin = 'top left';
+    ownedPowersGrid.style.transform = 'scale(1.1)';
+    ownedPowersGrid.style.transformOrigin = 'center center';
     ownedPowersGrid.style.justifyItems = 'center';
     ownedPowersGrid.style.margin = '0';
     ownedPowersGrid.style.padding = '0';
+    ownedPowersGrid.style.marginBottom = '12px';
   }
   if (ownedTalentsGrid) {
-    ownedTalentsGrid.style.transform = 'scale(0.9)';
-    ownedTalentsGrid.style.transformOrigin = 'top left';
+    ownedTalentsGrid.style.transform = 'scale(1.1)';
+    ownedTalentsGrid.style.transformOrigin = 'center center';
     ownedTalentsGrid.style.justifyItems = 'center';
     ownedTalentsGrid.style.margin = '0';
     ownedTalentsGrid.style.padding = '0';
+    ownedTalentsGrid.style.marginTop = '8px';
+    ownedTalentsGrid.style.marginBottom = '12px';
   }
   const modalGrids = document.querySelectorAll('.power-grid');
   modalGrids.forEach((grid) => {
@@ -2322,8 +2325,8 @@ function renderOwnedGrid(container, items, kind = 'power') {
   const target = Math.max(minCells, Math.ceil(cells.length / 4) * 4);
   while (cells.length < target) cells.push(null);
   container.innerHTML = '';
-  container.style.transform = 'scale(0.9)';
-  container.style.transformOrigin = 'top left';
+  container.style.transform = 'scale(1.1)';
+  container.style.transformOrigin = 'center center';
   cells.forEach((entry) => {
     const cell = document.createElement('div');
     cell.className = 'owned-cell';
@@ -2345,7 +2348,16 @@ function renderOwnedGrid(container, items, kind = 'power') {
     const media = MEDIA_BY_NAME[entry.name];
     const badge = document.createElement('span');
     badge.className = 'badge';
-    badge.textContent = `Lv.${entry.level || 1}`;
+    const lvl = entry.level || 1;
+    badge.textContent = lvl >= (isPower ? getPowerDef(entry.name).maxLevel : getTalentDef(entry.name).maxLevel) ? 'M' : `${lvl}`;
+    badge.style.fontSize = '10px';
+    badge.style.padding = '2px 5px';
+    badge.style.position = 'absolute';
+    badge.style.top = '2px';
+    badge.style.right = '2px';
+    badge.style.left = 'auto';
+    badge.style.transform = 'none';
+    badge.style.whiteSpace = 'nowrap';
     if (isPower) badge.style.background = '#38bdf8';
     else badge.style.background = '#c084fc';
     if (media?.imageUrl) {
