@@ -131,11 +131,29 @@
       border: 1px solid #334155;
       box-shadow: none;
     }
+    .ghost-btn.success {
+      background: linear-gradient(135deg, #22c55e, #16a34a);
+      border-color: rgba(34, 197, 94, 0.6);
+      color: #0b172a;
+    }
+    .ghost-btn.disabled {
+      background: linear-gradient(135deg, #cbd5e1, #94a3b8);
+      border-color: rgba(148, 163, 184, 0.6);
+      color: #0f172a;
+      box-shadow: none;
+      opacity: 0.9;
+      cursor: not-allowed;
+      filter: grayscale(0.2);
+    }
     .ghost-btn:hover {
       box-shadow: 0 0 0 3px rgba(148, 163, 184, 0.25);
     }
     .ghost-btn:active {
       box-shadow: 0 0 0 2px rgba(148, 163, 184, 0.35);
+    }
+    .ghost-btn.disabled:hover,
+    .danger-btn.disabled:hover {
+      box-shadow: none;
     }
     #pause-btn {
       background: linear-gradient(135deg, #f59e0b, #f97316);
@@ -868,6 +886,13 @@
       border: none;
       box-shadow: 0 8px 16px rgba(248, 113, 113, 0.3);
     }
+    .danger-btn.disabled {
+      background: linear-gradient(135deg, #cbd5e1, #94a3b8);
+      color: #0f172a;
+      box-shadow: none;
+      cursor: not-allowed;
+      opacity: 0.9;
+    }
     .danger-btn:hover {
       box-shadow: 0 10px 20px rgba(248, 113, 113, 0.35);
     }
@@ -1146,7 +1171,10 @@
       <div class="modal-actions" style="justify-content: space-between;">
         <div style="display:flex; gap:8px;">
           <button id="power-open-catalog" type="button" class="ghost-btn" data-i18n="power_modal.catalog">Catalog</button>
-          <button id="power-pass-btn" type="button" class="danger-btn" data-i18n="power_modal.pass">Pass</button>
+          <div style="display:flex; gap:8px;">
+            <button id="power-pass-btn" type="button" class="danger-btn" data-i18n="power_modal.pass">Pass</button>
+            <button id="power-reroll-btn" type="button" class="ghost-btn">Roll (2)</button>
+          </div>
         </div>
         <button id="power-confirm-btn" type="button" disabled data-i18n="power_modal.confirm">Confirm</button>
       </div>

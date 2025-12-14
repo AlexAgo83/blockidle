@@ -19,6 +19,7 @@ const aimToggle = null;
 const autoFireToggle = null;
 const powerModalBackdrop = document.getElementById('power-modal-backdrop');
 const powerPassBtn = document.getElementById('power-pass-btn');
+const powerRerollBtn = document.getElementById('power-reroll-btn');
 const powerCatalogBtn = document.getElementById('power-open-catalog');
 const powerConfirmBtn = document.getElementById('power-confirm-btn');
 const powerButtons = Array.from(document.querySelectorAll('.power-btn'));
@@ -117,7 +118,8 @@ let brickVariantsReady = false;
 let bossVariants = [];
 let bossVariantsReady = false;
 const TOP_LIMIT = Infinity;
-const PASS_LIMIT_PER_MODAL = 3;
+const PASS_LIMIT_PER_MODAL = 2;
+const REROLL_LIMIT_PER_MODAL = 2;
 const BUILD_LABEL = 'b23';
 const STARFIELD_LAYERS = [
   { count: 110, speed: 14, size: [0.4, 1.1], alpha: [0.25, 0.55] },
@@ -610,6 +612,7 @@ const state = {
   currentSelection: null, // { kind: 'power'|'talent', name }
   language: 'en',
   passRemaining: PASS_LIMIT_PER_MODAL,
+  rerollRemaining: REROLL_LIMIT_PER_MODAL,
   lastHitSpecial: null,
   lastVampireHeal: 0,
   lastBossLevelSpawned: 0,
@@ -685,9 +688,19 @@ function applyTranslations() {
   }
   setAutoButtonLabel();
   updatePauseButton();
-  if (powerPassBtn) powerPassBtn.textContent = `${t('power_modal.pass')} (${state.passRemaining})`;
+  if (powerPassBtn) {
+    powerPassBtn.textContent = `${t('power_modal.pass')} (${state.passRemaining})`;
+    powerPassBtn.disabled = state.passRemaining <= 0;
+    powerPassBtn.classList.toggle('disabled', state.passRemaining <= 0);
+  }
   if (powerConfirmBtn) powerConfirmBtn.textContent = t('power_modal.confirm');
   if (powerCatalogBtn) powerCatalogBtn.textContent = t('power_modal.catalog');
+  if (powerRerollBtn) {
+    powerRerollBtn.textContent = `Roll (${state.rerollRemaining})`;
+    powerRerollBtn.disabled = state.rerollRemaining <= 0;
+    powerRerollBtn.classList.toggle('success', state.rerollRemaining > 0);
+    powerRerollBtn.classList.toggle('disabled', state.rerollRemaining <= 0);
+  }
 }
 
 function degToRad(deg) {
@@ -1977,6 +1990,17 @@ function tryOpenPowerModal() {
   state.powerModalOpen = true;
   state.currentSelection = null;
   powerModalBackdrop.classList.add('open');
+  if (powerPassBtn) {
+    powerPassBtn.textContent = `${t('power_modal.pass')} (${state.passRemaining})`;
+    powerPassBtn.disabled = state.passRemaining <= 0;
+    powerPassBtn.classList.toggle('disabled', state.passRemaining <= 0);
+  }
+  if (powerRerollBtn) {
+    powerRerollBtn.textContent = `Roll (${state.rerollRemaining})`;
+    powerRerollBtn.disabled = state.rerollRemaining <= 0;
+    powerRerollBtn.classList.toggle('success', state.rerollRemaining > 0);
+    powerRerollBtn.classList.toggle('disabled', state.rerollRemaining <= 0);
+  }
   refreshPauseState();
 }
 
@@ -2161,6 +2185,45 @@ function handlePowerPass() {
   markSessionDirty();
 }
 
+function handlePowerReroll() {
+  if (!state.powerModalOpen || state.pendingPowerChoices <= 0) return;
+  if (state.rerollRemaining <= 0) return;
+  state.rerollRemaining = Math.max(0, state.rerollRemaining - 1);
+  state.currentSelection = null;
+  powerButtons.forEach((btn) => btn.classList.remove('selected'));
+  talentButtons.forEach((btn) => btn.classList.remove('selected'));
+  if (powerConfirmBtn) powerConfirmBtn.disabled = true;
+  const availablePowers = ALL_POWER_DEFS
+    .filter((p) => fusionKind(p) === 'power')
+    .map((p) => p.name)
+    .filter((name) => canUpgradePower(name));
+  const blockedTalentIngredients = state.talents
+    .filter((t) => {
+      const fusion = getFusionDef(t.name);
+      return fusion && fusionKind(fusion) === 'talent' && getTalentLevel(t.name) > 0;
+    })
+    .flatMap((t) => getFusionDef(t.name)?.ingredients || []);
+  const availableTalents = [...TALENT_DEFS, ...FUSION_DEFS.filter((f) => fusionKind(f) === 'talent')]
+    .map((t) => t.name)
+    .filter((name) => !blockedTalentIngredients.includes(name))
+    .filter((name) => canUpgradeTalent(name));
+  state.currentPowerOptions = sampleOptions(availablePowers, 4);
+  state.currentTalentOptions = sampleOptions(availableTalents, 4);
+  renderPowerModal(state.currentPowerOptions, state.currentTalentOptions);
+  powerModalBackdrop.classList.add('open');
+  if (powerRerollBtn) {
+    powerRerollBtn.textContent = `Roll (${state.rerollRemaining})`;
+    powerRerollBtn.disabled = state.rerollRemaining <= 0;
+    powerRerollBtn.classList.toggle('success', state.rerollRemaining > 0);
+    powerRerollBtn.classList.toggle('disabled', state.rerollRemaining <= 0);
+  }
+  if (powerPassBtn) {
+    powerPassBtn.disabled = state.passRemaining <= 0;
+    powerPassBtn.classList.toggle('disabled', state.passRemaining <= 0);
+  }
+  refreshPauseState();
+}
+
 function closePowerModal() {
   powerModalBackdrop.classList.remove('open');
   state.powerModalOpen = false;
@@ -2183,6 +2246,13 @@ function closePowerModal() {
   if (powerPassBtn) {
     powerPassBtn.disabled = state.passRemaining <= 0;
     powerPassBtn.textContent = `${t('power_modal.pass')} (${state.passRemaining})`;
+    powerPassBtn.classList.toggle('disabled', state.passRemaining <= 0);
+  }
+  if (powerRerollBtn) {
+    powerRerollBtn.disabled = state.rerollRemaining <= 0;
+    powerRerollBtn.textContent = `Roll (${state.rerollRemaining})`;
+    powerRerollBtn.classList.toggle('success', state.rerollRemaining > 0);
+    powerRerollBtn.classList.toggle('disabled', state.rerollRemaining <= 0);
   }
 }
 
@@ -2190,6 +2260,13 @@ function renderPowerModal(powerOptions, talentOptions) {
   if (powerPassBtn) {
     powerPassBtn.disabled = state.passRemaining <= 0;
     powerPassBtn.textContent = `${t('power_modal.pass')} (${state.passRemaining})`;
+    powerPassBtn.classList.toggle('disabled', state.passRemaining <= 0);
+  }
+  if (powerRerollBtn) {
+    powerRerollBtn.disabled = state.rerollRemaining <= 0;
+    powerRerollBtn.textContent = `Roll (${state.rerollRemaining})`;
+    powerRerollBtn.classList.toggle('success', state.rerollRemaining > 0);
+    powerRerollBtn.classList.toggle('disabled', state.rerollRemaining <= 0);
   }
   powerButtons.forEach((btn) => { btn.disabled = false; btn.tabIndex = 0; btn.style.pointerEvents = 'auto'; btn.style.visibility = 'visible'; });
   talentButtons.forEach((btn) => { btn.disabled = false; btn.tabIndex = 0; btn.style.pointerEvents = 'auto'; btn.style.visibility = 'visible'; });
@@ -3110,6 +3187,7 @@ function resetGame() {
   state.regenStageHeals = 0;
   state.royalSurgeUntil = 0;
   state.royalSurgeXpMult = 1;
+  state.rerollRemaining = REROLL_LIMIT_PER_MODAL;
   state.passRemaining = PASS_LIMIT_PER_MODAL;
   state.lastVampireHeal = 0;
   state.lastBossLevelSpawned = 0;
@@ -4113,6 +4191,15 @@ function update(dt) {
     state.speedTimer -= speedInterval;
     state.brickSpeed *= CONFIG.speedIncreaseMultiplier;
     state.level += 1;
+    if (state.level % 5 === 0 && state.rerollRemaining < REROLL_LIMIT_PER_MODAL) {
+      state.rerollRemaining = Math.min(REROLL_LIMIT_PER_MODAL, state.rerollRemaining + 1);
+      if (powerRerollBtn) {
+        powerRerollBtn.textContent = `Roll (${state.rerollRemaining})`;
+        powerRerollBtn.disabled = state.rerollRemaining <= 0;
+        powerRerollBtn.classList.toggle('success', state.rerollRemaining > 0);
+        powerRerollBtn.classList.toggle('disabled', state.rerollRemaining <= 0);
+      }
+    }
     const surgeLevel = getTalentLevel('Surge');
     const crownSurge = getFusionDef('Royal Surge') && getTalentLevel('Royal Surge') > 0;
     if (surgeLevel > 0) {
@@ -5769,6 +5856,7 @@ function bindControls() {
     }
   });
   powerPassBtn?.addEventListener('click', handlePowerPass);
+  powerRerollBtn?.addEventListener('click', handlePowerReroll);
   powerCatalogBtn?.addEventListener('click', () => {
     state.catalogReturnToPower = state.powerModalOpen;
     closePowerModal();
