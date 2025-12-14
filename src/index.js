@@ -3298,6 +3298,11 @@ function renderTopScoresPanel() {
       stageBadge.style.border = '1px solid rgba(56,189,248,0.45)';
       name.appendChild(stageBadge);
     }
+    const dateLabel = document.createElement('div');
+    dateLabel.style.fontSize = '11px';
+    dateLabel.style.color = 'rgba(226,232,240,0.65)';
+    const dateVal = e.endedAt || e.updatedAt || e.created_at || null;
+    dateLabel.textContent = dateVal ? new Date(dateVal).toLocaleDateString() : '';
     const loadout = (() => {
       const parsed = parseScoreLoadout(e);
       return parsed;
@@ -3308,28 +3313,46 @@ function renderTopScoresPanel() {
       ...loadout.fusions.map((f) => ({ ...f, type: 'fusion' }))
     ];
     if (combined.length) {
+      item.style.display = 'grid';
+      item.style.gridTemplateColumns = 'auto 1fr auto';
+      item.style.alignItems = 'center';
+      item.style.columnGap = '12px';
+
+      // Name on the left (stacked with date)
+      const nameWrap = document.createElement('div');
+      nameWrap.style.display = 'flex';
+      nameWrap.style.flexDirection = 'column';
+      nameWrap.style.alignItems = 'flex-start';
+      nameWrap.style.justifyContent = 'center';
+      nameWrap.appendChild(name);
+      if (dateLabel.textContent) nameWrap.appendChild(dateLabel);
+      item.appendChild(nameWrap);
+
+      // Loadout centered vertically/horizontally in its own column
       const iconRow = document.createElement('div');
       iconRow.className = 'score-loadout-row';
       iconRow.style.display = 'grid';
       iconRow.style.gridTemplateColumns = 'repeat(4, auto)';
       iconRow.style.justifyItems = 'center';
       iconRow.style.alignItems = 'center';
-      iconRow.style.marginTop = '4px';
       iconRow.style.transform = 'scale(0.75)';
-      iconRow.style.transformOrigin = 'center top';
-      iconRow.style.justifyContent = 'center';
+      iconRow.style.transformOrigin = 'center center';
       iconRow.style.rowGap = '4px';
       iconRow.style.columnGap = '6px';
+      iconRow.style.margin = '0';
       combined.slice(0, 8).forEach((itm) => {
         const badge = makeIconBadge(itm, itm.type);
         iconRow.appendChild(badge);
       });
-      item.appendChild(name);
+      iconRow.style.justifySelf = 'center';
+      iconRow.style.alignSelf = 'center';
       item.appendChild(iconRow);
+
       const pts = document.createElement('div');
       pts.className = 'score-points';
       pts.textContent = `${formatScore(e.score || 0)} pts`;
-      pts.style.marginTop = '4px';
+      pts.style.display = 'flex';
+      pts.style.alignItems = 'center';
       item.appendChild(pts);
     } else {
       const pts = document.createElement('div');
