@@ -70,6 +70,13 @@
     "pass": "Passer",
     "confirm": "Valider"
   },
+  "pilot_modal": {
+    "title": "Choisis ton pilote",
+    "subtitle": "Chaque pilote démarre avec un pouvoir ou talent de niveau 1.",
+    "confirm": "Commencer la partie",
+    "start_power": "Pouvoir de départ",
+    "start_talent": "Talent de départ"
+  },
   "suggestions": {
     "header": "Suggestions & bugs",
     "note": "Lié à ton pseudo",

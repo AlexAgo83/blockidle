@@ -201,6 +201,8 @@
       padding: 18px 18px 14px;
       width: min(90vw, 360px);
       box-shadow: 0 16px 40px rgba(0, 0, 0, 0.4);
+      max-height: 90vh;
+      overflow: auto;
     }
     .modal-body {
       display: grid;
@@ -219,6 +221,116 @@
       line-height: 1.45;
       font-size: 0.96rem;
       letter-spacing: 0.01em;
+    }
+    /* Reset pilot modal to a simple, readable layout */
+    .pilot-modal {
+      width: min(95vw, 420px);
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      max-height: 90vh;
+      padding: 12px 0 14px;
+    }
+    .pilot-modal h2 {
+      margin: 0 14px 4px;
+      font-size: 1.1rem;
+      letter-spacing: 0.01em;
+    }
+    .pilot-modal .subtitle {
+      margin: 0 14px 8px;
+      font-size: 0.9rem;
+      line-height: 1.35;
+      color: #cdd2dc;
+    }
+    .pilot-grid {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin: 6px 0;
+      flex: 1 1 auto;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      padding: 0 14px;
+    }
+    .pilot-card {
+      -webkit-appearance: none;
+      appearance: none;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px;
+      border-radius: 10px;
+      border: 1px solid #334155;
+      background: #111827;
+      color: #e5e7eb;
+      cursor: pointer;
+      text-align: left;
+      transition: background 120ms ease, border-color 120ms ease;
+    }
+    .pilot-card:hover,
+    .pilot-card.selected {
+      background: #1f2937;
+      border-color: #38bdf8;
+    }
+    .pilot-avatar {
+      width: 64px;
+      height: 64px;
+      border-radius: 8px;
+      border: 1px solid #334155;
+      overflow: hidden;
+      flex-shrink: 0;
+      background: #0f172a;
+      display: grid;
+      place-items: center;
+    }
+    .pilot-avatar img,
+    .pilot-avatar .pilot-avatar-img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+    .pilot-card-body {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      line-height: 1.35;
+    }
+    .pilot-name {
+      font-weight: 800;
+      font-size: 1rem;
+      color: #e5e7eb;
+    }
+    .pilot-tagline {
+      color: #cbd5e1;
+      font-size: 0.9rem;
+    }
+    .pilot-start-title {
+      font-weight: 600;
+      color: #93c5fd;
+      font-size: 0.9rem;
+    }
+    .pilot-start-desc {
+      color: #e5e7eb;
+      font-size: 0.85rem;
+    }
+    .pilot-start-icon-wrap {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      vertical-align: middle;
+    }
+    @media (max-width: 520px) {
+      .pilot-card {
+        grid-template-columns: 1fr;
+      }
+      .pilot-card-header {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+      .pilot-tagline {
+        text-align: left;
+      }
     }
     .input-group {
       display: flex;
@@ -1121,6 +1233,16 @@
       <div class="modal-actions">
         <button id="open-catalog" type="button" data-i18n="info.catalog">Powers & Talents</button>
         <button id="info-close" type="button" data-i18n="info.close">Close</button>
+      </div>
+    </div>
+  </div>
+  <div id="pilot-modal-backdrop" class="modal-backdrop">
+    <div class="modal pilot-modal">
+      <h2 data-i18n="pilot_modal.title">Choisis ton pilote</h2>
+      <p id="pilot-subtitle" class="subtitle" data-i18n="pilot_modal.subtitle">Chaque pilote démarre avec un pouvoir ou talent niveau 1.</p>
+      <div id="pilot-list" class="pilot-grid"></div>
+      <div class="modal-actions" style="justify-content: flex-end;">
+        <button id="pilot-confirm-btn" type="button" disabled data-i18n="pilot_modal.confirm">Confirmer</button>
       </div>
     </div>
   </div>

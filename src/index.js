@@ -30,6 +30,10 @@ const powerPreviewIcon = document.getElementById('power-preview-icon');
 const nameModalBackdrop = document.getElementById('name-modal-backdrop');
 const playerNameInput = document.getElementById('player-name-input');
 const playerNameSubmit = document.getElementById('player-name-submit');
+const pilotModalBackdrop = document.getElementById('pilot-modal-backdrop');
+const pilotListEl = document.getElementById('pilot-list');
+const pilotConfirmBtn = document.getElementById('pilot-confirm-btn');
+const pilotSubtitle = document.getElementById('pilot-subtitle');
 const abandonBtn = document.getElementById('abandon-btn');
 const pauseBtn = document.getElementById('pause-btn');
 const infoBtn = document.getElementById('info-btn');
@@ -573,6 +577,8 @@ const state = {
   talents: [],
   specialPocket: [],
   playerName: '',
+  activePilotId: null,
+  selectedPilotId: null,
   backendTopScores: [],
   submittingScore: false,
   suggestions: [],
@@ -586,6 +592,7 @@ const state = {
   catalogOpen: false,
   catalogReturnToPower: false,
   settingsOpen: false,
+  awaitingPilot: false,
   gameOverHandled: false,
   lastEndedAt: null,
   awaitingName: false,
@@ -635,6 +642,104 @@ globalThis.__brickidle_state = state;
 const bonusState = {};
 const beamCooldownMs = 800;
 const LOCALES = { en: enLocale, fr: frLocale, es: esLocale };
+
+function makePilotPortrait({ initials, bgStart, bgEnd, face, accent, visor, stroke = accent }) {
+  const safeId = (initials || 'P').replace(/[^A-Za-z0-9]/g, '') || 'P';
+  const bgId = `pilotBg${safeId}`;
+  const visorId = `pilotVisor${safeId}`;
+  const svg = `
+<svg xmlns="http://www.w3.org/2000/svg" width="96" height="96" viewBox="0 0 96 96">
+  <defs>
+    <linearGradient id="${bgId}" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0%" stop-color="${bgStart}"/>
+      <stop offset="100%" stop-color="${bgEnd}"/>
+    </linearGradient>
+    <linearGradient id="${visorId}" x1="0" x2="1" y1="0" y2="0">
+      <stop offset="0%" stop-color="${visor}" stop-opacity="0.9"/>
+      <stop offset="100%" stop-color="${accent}" stop-opacity="0.8"/>
+    </linearGradient>
+  </defs>
+  <rect x="4" y="4" width="88" height="88" rx="20" fill="url(#${bgId})" stroke="${stroke}" stroke-width="3" opacity="0.92"/>
+  <circle cx="48" cy="52" r="26" fill="${face}" stroke="${stroke}" stroke-width="3"/>
+  <path d="M28 54 Q48 46 68 54 Q64 70 48 74 Q32 70 28 54 Z" fill="${accent}" opacity="0.18"/>
+  <rect x="24" y="34" width="48" height="20" rx="10" fill="url(#${visorId})" stroke="${stroke}" stroke-width="2.4" opacity="0.95"/>
+  <path d="M32 44 L40 42 M56 42 L64 44" stroke="rgba(11,18,35,0.8)" stroke-width="3" stroke-linecap="round"/>
+  <circle cx="48" cy="58" r="8" fill="rgba(0,0,0,0.35)" stroke="rgba(255,255,255,0.35)" stroke-width="1.5"/>
+  <path d="M30 30 C34 20 62 20 66 32" stroke="${accent}" stroke-width="3" stroke-linecap="round" opacity="0.9"/>
+  <text x="48" y="88" text-anchor="middle" font-family="Inter, 'Segoe UI', sans-serif" font-size="14" font-weight="800" fill="${accent}" opacity="0.9">${initials}</text>
+</svg>`;
+  return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
+}
+
+const PILOT_PORTRAITS = {
+  pyra: makePilotPortrait({
+    initials: 'Py',
+    bgStart: '#1f0a15',
+    bgEnd: '#f97316',
+    face: '#2b1120',
+    accent: '#fbbf24',
+    visor: '#fb7185',
+    stroke: '#fb923c'
+  }),
+  frostbyte: makePilotPortrait({
+    initials: 'Fb',
+    bgStart: '#0a1f3f',
+    bgEnd: '#38bdf8',
+    face: '#0b172a',
+    accent: '#7dd3fc',
+    visor: '#22d3ee',
+    stroke: '#38bdf8'
+  }),
+  nosfer: makePilotPortrait({
+    initials: 'Ns',
+    bgStart: '#200018',
+    bgEnd: '#ef4444',
+    face: '#1b0b17',
+    accent: '#c084fc',
+    visor: '#f87171',
+    stroke: '#f43f5e'
+  }),
+  atlas: makePilotPortrait({
+    initials: 'At',
+    bgStart: '#2a1a00',
+    bgEnd: '#f59e0b',
+    face: '#1f1300',
+    accent: '#f8fafc',
+    visor: '#fbbf24',
+    stroke: '#eab308'
+  })
+};
+
+const PILOT_DEFS = [
+  {
+    id: 'pyra',
+    name: 'Pyra',
+    start: { kind: 'power', name: 'Fire' },
+    tagline: '',
+    color: '#f97316'
+  },
+  {
+    id: 'frostbyte',
+    name: 'Frostbyte',
+    start: { kind: 'power', name: 'Ice' },
+    tagline: '',
+    color: '#38bdf8'
+  },
+  {
+    id: 'nosfer',
+    name: 'Nosfer',
+    start: { kind: 'power', name: 'Vampire' },
+    tagline: '',
+    color: '#f43f5e'
+  },
+  {
+    id: 'atlas',
+    name: 'Atlas',
+    start: { kind: 'power', name: 'Crusher' },
+    tagline: '',
+    color: '#f59e0b'
+  }
+];
 
 function t(key) {
   const lang = state?.language || 'en';
@@ -686,6 +791,12 @@ function applyTranslations() {
       if (opt) opt.textContent = t(`settings.lang_${code}`);
     });
     languageSelect.value = lang;
+  }
+  if (state.awaitingPilot && (pilotConfirmBtn || pilotListEl)) {
+    const defaultPilotId = state.selectedPilotId || PILOT_DEFS[0]?.id;
+    if (defaultPilotId) {
+      handlePilotSelect(defaultPilotId, { silent: true });
+    }
   }
   setAutoButtonLabel();
   updatePauseButton();
@@ -1107,6 +1218,9 @@ function getSessionSnapshot() {
       lastEndedAt: state.lastEndedAt,
       scoreSubmitted: state.scoreSubmitted,
       awaitingName: state.awaitingName,
+      awaitingPilot: state.awaitingPilot,
+      activePilotId: state.activePilotId,
+      selectedPilotId: state.selectedPilotId,
       playerName: state.playerName,
       backendTopScores: state.backendTopScores
     }
@@ -1150,6 +1264,7 @@ function closeNameModal() {
   if (!state.powerModalOpen) {
     refreshPauseState();
   }
+  maybeOpenPilotModal();
   markSessionDirty();
 }
 
@@ -1170,6 +1285,118 @@ function handleNameSubmit() {
   openInfoModal();
 }
 
+function renderPilotModal() {
+  if (!pilotListEl) return;
+  if (pilotSubtitle) {
+    pilotSubtitle.textContent = t('pilot_modal.subtitle');
+  }
+  // reset scroll to avoid content hidden on top when re-opening
+  pilotListEl.scrollTop = 0;
+  pilotListEl.innerHTML = '';
+  PILOT_DEFS.forEach((pilot, idx) => {
+    const { title, desc } = getPilotStartDescription(pilot);
+    const startMedia = MEDIA_BY_NAME[pilot.start?.name];
+    const startIcon = startMedia?.imageUrl
+      ? `<img src="${startMedia.imageUrl}" alt="${pilot.start?.name || ''}" class="pilot-start-icon" style="width:28px; height:28px;" />`
+      : '';
+    const card = document.createElement('button');
+    card.type = 'button';
+    card.className = 'pilot-card';
+    card.dataset.pilotId = pilot.id;
+    card.innerHTML = `
+      <div class="pilot-avatar" style="border-color:${pilot.color || '#334155'};">
+        <img src="${PILOT_PORTRAITS[pilot.id] || ''}" alt="${pilot.name}" />
+      </div>
+      <div class="pilot-card-body">
+        <span class="pilot-name">${pilot.name}</span>
+        ${pilot.tagline ? `<span class="pilot-tagline">${pilot.tagline}</span>` : ''}
+        <span class="pilot-start-title">${title}${startIcon ? ` <span class="pilot-start-icon-wrap">${startIcon}</span>` : ''}</span>
+        <span class="pilot-start-desc">${desc}</span>
+      </div>
+    `;
+    card.onclick = () => handlePilotSelect(pilot.id);
+    pilotListEl.appendChild(card);
+    if (idx === 0 && !state.selectedPilotId) {
+      handlePilotSelect(pilot.id, { silent: true });
+    }
+  });
+  if (pilotConfirmBtn) {
+    pilotConfirmBtn.disabled = !state.selectedPilotId;
+  }
+}
+
+function handlePilotSelect(pilotId, options = {}) {
+  const pilot = getPilotDef(pilotId);
+  if (!pilot) return;
+  state.selectedPilotId = pilot.id;
+  if (pilotListEl) {
+    const cards = Array.from(pilotListEl.querySelectorAll('.pilot-card'));
+    cards.forEach((card) => {
+      const isActive = card.dataset.pilotId === pilot.id;
+      card.classList.toggle('selected', isActive);
+    });
+  }
+  if (pilotConfirmBtn) {
+    pilotConfirmBtn.disabled = false;
+    const baseLabel = t('pilot_modal.confirm');
+    pilotConfirmBtn.textContent = `${baseLabel} · ${pilot.name}`;
+  }
+  if (!options.silent) {
+    const activeCard = pilotListEl?.querySelector('.pilot-card.selected');
+    if (activeCard) activeCard.focus();
+  }
+}
+
+function grantStartingLoadout(pilot) {
+  if (!pilot?.start) return;
+  if (pilot.start.kind === 'power') {
+    applyPower(pilot.start.name, { consumeChoice: false, skipClose: true, fromPilot: true });
+  } else if (pilot.start.kind === 'talent') {
+    applyTalent(pilot.start.name, { consumeChoice: false, skipClose: true, fromPilot: true });
+  }
+  refreshPauseState();
+}
+
+function closePilotModal() {
+  if (pilotModalBackdrop) pilotModalBackdrop.classList.remove('open');
+  state.awaitingPilot = false;
+  refreshPauseState();
+}
+
+function maybeOpenPilotModal() {
+  if (
+    !state.awaitingPilot ||
+    state.awaitingName ||
+    state.infoOpen ||
+    state.catalogOpen ||
+    state.settingsOpen ||
+    state.powerModalOpen
+  ) {
+    refreshPauseState();
+    return;
+  }
+  if (!pilotModalBackdrop) return;
+  renderPilotModal();
+  pilotModalBackdrop.classList.add('open');
+  state.paused = true;
+  refreshPauseState();
+}
+
+function openPilotModal() {
+  state.awaitingPilot = true;
+  maybeOpenPilotModal();
+}
+
+function handlePilotConfirm() {
+  const pilot = getPilotDef(state.selectedPilotId);
+  if (!pilot) return;
+  state.activePilotId = pilot.id;
+  closePilotModal();
+  grantStartingLoadout(pilot);
+  markSessionDirty();
+  refreshPauseState();
+}
+
 function openInfoModal() {
   if (!infoModalBackdrop) return;
   state.paused = true;
@@ -1185,6 +1412,7 @@ function closeInfoModal() {
   if (!state.powerModalOpen && !state.awaitingName) {
     refreshPauseState();
   }
+  maybeOpenPilotModal();
 }
 
 function openCatalogModal() {
@@ -1211,6 +1439,7 @@ function closeCatalogModal() {
   } else if (!state.powerModalOpen && !state.awaitingName) {
     refreshPauseState();
   }
+  maybeOpenPilotModal();
 }
 
 function openSettingsModal() {
@@ -1240,6 +1469,7 @@ function closeSettingsModal() {
   if (!state.powerModalOpen && !state.awaitingName) {
     refreshPauseState();
   }
+  maybeOpenPilotModal();
 }
 
 function applySettingsBindings() {
@@ -1385,6 +1615,21 @@ function getPowerDef(name) {
 
 function getTalentDef(name) {
   return TALENT_DEFS.find((t) => t.name === name) || { name, maxLevel: 1 };
+}
+
+function getPilotDef(id) {
+  return PILOT_DEFS.find((p) => p.id === id) || null;
+}
+
+function getPilotStartDescription(pilot) {
+  if (!pilot?.start) return { title: '', desc: '' };
+  const isPower = pilot.start.kind === 'power';
+  const name = pilot.start.name;
+  const desc = isPower ? getPowerDescription(name) : getTalentDescription(name);
+  const titleKey = isPower ? 'pilot_modal.start_power' : 'pilot_modal.start_talent';
+  const levelLabel = state.language === 'fr' ? 'Niv. 1' : state.language === 'es' ? 'Nv. 1' : 'Lv. 1';
+  const title = `${name} (${levelLabel})`;
+  return { title, desc: desc?.plain || '' };
 }
 
 function getPowerDescription(name) {
@@ -2036,7 +2281,8 @@ function applySelection(selection) {
   }
 }
 
-function applyPower(powerName) {
+function applyPower(powerName, options = {}) {
+  const { consumeChoice = true, skipClose = false } = options;
   const def = getPowerDef(powerName);
   const existing = state.powers.find((p) => p.name === powerName);
   const fusion = getFusionDef(powerName);
@@ -2049,10 +2295,12 @@ function applyPower(powerName) {
   let newLevel = 1;
   if (existing) {
     if (existing.level >= def.maxLevel) {
-      state.pendingPowerChoices = Math.max(0, state.pendingPowerChoices - 1);
-      closePowerModal();
-      refreshPauseState();
-      if (state.pendingPowerChoices > 0) tryOpenPowerModal();
+      if (consumeChoice) state.pendingPowerChoices = Math.max(0, state.pendingPowerChoices - 1);
+      if (!skipClose) {
+        closePowerModal();
+        refreshPauseState();
+      }
+      if (consumeChoice && state.pendingPowerChoices > 0) tryOpenPowerModal();
       return;
     }
     existing.level = Math.min(existing.level + 1, def.maxLevel);
@@ -2081,11 +2329,19 @@ function applyPower(powerName) {
     state.specialPocket.push(powerName);
   }
   clampLivesToMax();
-  state.pendingPowerChoices = Math.max(0, state.pendingPowerChoices - 1);
-  closePowerModal();
-  if (state.pendingPowerChoices > 0) {
-    tryOpenPowerModal();
-  } else {
+  if (consumeChoice) {
+    state.pendingPowerChoices = Math.max(0, state.pendingPowerChoices - 1);
+  }
+  if (!skipClose) {
+    closePowerModal();
+  }
+  if (consumeChoice) {
+    if (state.pendingPowerChoices > 0) {
+      tryOpenPowerModal();
+    } else {
+      refreshPauseState();
+    }
+  } else if (!skipClose) {
     refreshPauseState();
   }
   markSessionDirty();
@@ -2145,7 +2401,8 @@ function handlePowerConfirm() {
   }
 }
 
-function applyTalent(talentName) {
+function applyTalent(talentName, options = {}) {
+  const { consumeChoice = true, skipClose = false } = options;
   const def = getTalentDef(talentName);
   const existing = state.talents.find((t) => t.name === talentName);
   const fusion = getFusionDef(talentName);
@@ -2157,10 +2414,10 @@ function applyTalent(talentName) {
   if (!existing && fusion && talentCount - consumedTalents + 1 > MAX_TALENTS) return;
   if (existing) {
     if (existing.level >= def.maxLevel) {
-      state.pendingPowerChoices = Math.max(0, state.pendingPowerChoices - 1);
+      if (consumeChoice) state.pendingPowerChoices = Math.max(0, state.pendingPowerChoices - 1);
     } else {
       existing.level = Math.min(existing.level + 1, def.maxLevel);
-      state.pendingPowerChoices = Math.max(0, state.pendingPowerChoices - 1);
+      if (consumeChoice) state.pendingPowerChoices = Math.max(0, state.pendingPowerChoices - 1);
     }
   } else {
     state.talents.push({ name: talentName, level: 1 });
@@ -2169,7 +2426,7 @@ function applyTalent(talentName) {
     state.talents = state.talents.filter((t) => !fusion.ingredients.includes(t.name));
     removeShipSkins(fusion.ingredients);
     }
-    state.pendingPowerChoices = Math.max(0, state.pendingPowerChoices - 1);
+    if (consumeChoice) state.pendingPowerChoices = Math.max(0, state.pendingPowerChoices - 1);
   }
   if (!state.activeShipSkins.includes(talentName)) {
     state.activeShipSkins.push(talentName);
@@ -2179,10 +2436,16 @@ function applyTalent(talentName) {
     state.lives = Math.min(maxLife, maxLife);
   }
   clampLivesToMax();
-  closePowerModal();
-  if (state.pendingPowerChoices > 0) {
-    tryOpenPowerModal();
-  } else {
+  if (!skipClose) {
+    closePowerModal();
+  }
+  if (consumeChoice) {
+    if (state.pendingPowerChoices > 0) {
+      tryOpenPowerModal();
+    } else {
+      refreshPauseState();
+    }
+  } else if (!skipClose) {
     refreshPauseState();
   }
   markSessionDirty();
@@ -3178,6 +3441,9 @@ function fireLaser(powerName, brick, now, modes = []) {
 function resetGame() {
   state.score = 0;
   state.activeShipSkins = [];
+  state.activePilotId = null;
+  state.selectedPilotId = null;
+  state.awaitingPilot = false;
   const maxLife = getMaxLives();
   state.lives = Math.min(maxLife, CONFIG.startLives + 5 * getTalentLevel('Stim Pack'));
   const now = performance.now ? performance.now() : Date.now();
@@ -3222,8 +3488,10 @@ function resetGame() {
   state.lastEndedAt = null;
   state.scoreSubmitted = false;
   powerModalBackdrop.classList.remove('open');
+  if (pilotModalBackdrop) pilotModalBackdrop.classList.remove('open');
   placeBallOnPaddle({ centerPaddle: true });
   spawnBrickRow();
+  openPilotModal();
   markSessionDirty();
   lastSessionSave = -SESSION_SAVE_INTERVAL;
 }
@@ -3831,7 +4099,7 @@ function updatePauseButton() {
 }
 
 function refreshPauseState() {
-  const modalPause = state.powerModalOpen || state.awaitingName || state.infoOpen || state.catalogOpen || state.settingsOpen;
+  const modalPause = state.powerModalOpen || state.awaitingName || state.awaitingPilot || state.infoOpen || state.catalogOpen || state.settingsOpen;
   state.paused = state.manualPause || modalPause;
 }
 
@@ -5880,6 +6148,13 @@ function bindControls() {
       applyTranslations();
     }
   });
+  pilotConfirmBtn?.addEventListener('click', handlePilotConfirm);
+  pilotModalBackdrop?.addEventListener('click', (event) => {
+    // On force le choix d'un pilote : clic extérieur ne ferme pas, mais ne bloque pas non plus.
+    if (event.target === pilotModalBackdrop) {
+      maybeOpenPilotModal();
+    }
+  });
   powerPassBtn?.addEventListener('click', handlePowerPass);
   powerRerollBtn?.addEventListener('click', handlePowerReroll);
   powerCatalogBtn?.addEventListener('click', () => {
@@ -5901,7 +6176,8 @@ function bindControls() {
     !state.infoOpen &&
     !state.catalogOpen &&
     !state.settingsOpen &&
-    !state.awaitingName
+    !state.awaitingName &&
+    !state.awaitingPilot
   );
 
   canvas.addEventListener('click', (event) => {
@@ -5917,6 +6193,7 @@ function bindControls() {
       return;
     }
     if (state.ballHeld) {
+      if (state.awaitingPilot) return;
       updateAim(event.clientX, event.clientY);
       launchBall();
     }
@@ -5935,7 +6212,7 @@ function bindControls() {
       resetGame();
       return;
     }
-    if (state.ballHeld) launchBall();
+    if (state.ballHeld && !state.awaitingPilot) launchBall();
   }, { passive: true });
 
   canvas.addEventListener('touchmove', (event) => {

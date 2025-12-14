@@ -70,6 +70,13 @@
     "pass": "Pasar",
     "confirm": "Confirmar"
   },
+  "pilot_modal": {
+    "title": "Elige tu piloto",
+    "subtitle": "Cada piloto empieza con un poder o talento de nivel 1.",
+    "confirm": "Comenzar partida",
+    "start_power": "Poder inicial",
+    "start_talent": "Talento inicial"
+  },
   "suggestions": {
     "header": "Sugerencias y bugs",
     "note": "Vinculado a tu apodo",

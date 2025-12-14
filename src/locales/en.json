@@ -70,6 +70,13 @@
     "pass": "Pass",
     "confirm": "Confirm"
   },
+  "pilot_modal": {
+    "title": "Choose your pilot",
+    "subtitle": "Each pilot starts with a free level 1 power or talent.",
+    "confirm": "Start run",
+    "start_power": "Starting power",
+    "start_talent": "Starting talent"
+  },
   "suggestions": {
     "header": "Suggestions & bugs",
     "note": "Linked to your nickname",
