@@ -355,6 +355,7 @@ const FUSION_DEFS = [
     name: 'Gale',
     maxLevel: 1,
     fusion: true,
+    kind: 'power',
     ingredients: ['Crusher', 'Wind'],
     color: 'rgba(14, 165, 233, 0.55)'
   },
@@ -362,6 +363,7 @@ const FUSION_DEFS = [
     name: 'Radiant',
     maxLevel: 1,
     fusion: true,
+    kind: 'power',
     ingredients: ['Vampire', 'Resilience'],
     color: 'rgba(253, 230, 138, 0.55)'
   },
@@ -369,6 +371,7 @@ const FUSION_DEFS = [
     name: 'Thornstep',
     maxLevel: 1,
     fusion: true,
+    kind: 'talent',
     ingredients: ['Thorns', 'Boots'],
     color: 'rgba(34, 197, 94, 0.55)'
   },
@@ -376,6 +379,7 @@ const FUSION_DEFS = [
     name: 'Scopebeam',
     maxLevel: 1,
     fusion: true,
+    kind: 'power',
     ingredients: ['Beamline', 'Scope'],
     color: 'rgba(34, 211, 238, 0.55)'
   },
@@ -383,6 +387,7 @@ const FUSION_DEFS = [
     name: 'Meteor',
     maxLevel: 1,
     fusion: true,
+    kind: 'power',
     ingredients: ['Fire', 'Crusher'],
     color: 'rgba(248, 113, 113, 0.6)'
   },
@@ -390,6 +395,7 @@ const FUSION_DEFS = [
     name: 'Prism Paddle',
     maxLevel: 1,
     fusion: true,
+    kind: 'talent',
     ingredients: ['Paddle', 'Mirror'],
     color: 'rgba(148, 163, 184, 0.5)'
   },
@@ -397,6 +403,7 @@ const FUSION_DEFS = [
     name: 'Royal Surge',
     maxLevel: 1,
     fusion: true,
+    kind: 'talent',
     ingredients: ['Crown', 'Surge'],
     color: 'rgba(250, 204, 21, 0.6)'
   },
@@ -714,7 +721,7 @@ function sanitizeKeyBindings(raw) {
 function clampPaddlePosition() {
   const { paddle } = state;
   const mirrorLevel = getTalentLevel('Mirror');
-  const prismFusion = getPowerLevel('Prism Paddle') > 0;
+  const prismFusion = getTalentLevel('Prism Paddle') > 0;
   const halfWidth = paddle.w * 0.5;
   const gap = 8;
   const extraWidth = prismFusion ? paddle.w * 0.35 : 0;
@@ -1301,7 +1308,7 @@ function getPaddleSpeed() {
   const level = getTalentLevel('Boots');
   const mult = 1 + 0.1 * level;
   const aimMult = state.autoPlay ? 0.5 : 2; // slower in auto-aim, faster in manual
-  const prismBoost = getPowerLevel('Prism Paddle') > 0 ? 1.05 : 1;
+  const prismBoost = getTalentLevel('Prism Paddle') > 0 ? 1.05 : 1;
   return CONFIG.paddleSpeed * mult * aimMult * prismBoost;
 }
 
@@ -1321,7 +1328,7 @@ function getCooldowns(nextIsSpecial) {
 
 function getPaddleWidth() {
   const level = getTalentLevel('Paddle');
-  const fusionBonus = getPowerLevel('Prism Paddle') > 0 ? 0.1 : 0;
+  const fusionBonus = getTalentLevel('Prism Paddle') > 0 ? 0.1 : 0;
   const mult = 1 + 0.2 * level + fusionBonus;
   return CONFIG.paddleWidth * mult;
 }
@@ -1506,7 +1513,7 @@ function getPowerDescription(name) {
         plain: 'Fusion of Pillar + Curse: longer stun/curse and spreads curse to 3 nearby bricks',
         rich: '<strong>Fusion</strong> of <span class="power-desc-accent">Pillar + Curse</span>: longer stun/curse and spreads to <span class="power-desc-accent">3 nearby</span> bricks'
       };
-    case 'Radiant Shield':
+    case 'Radiant':
       return {
         plain: 'Fusion of Vampire + Resilience: stun on hit + +2 temp HP shield for 5s',
         rich: '<strong>Fusion</strong> of <span class="power-desc-accent">Vampire + Resilience</span>: stun on hit + <span class="power-desc-accent">+2 temp HP</span> shield for <span class="power-desc-accent">5s</span>'
@@ -1628,6 +1635,16 @@ function getTalentDescription(name) {
         plain: 'Gain +1 HP per stage at level 1 (+1 per level)',
         rich: 'Heal <span class=\"power-desc-accent\">+1 HP</span> per stage <span class=\"power-desc-muted\">(+1 per level)</span>'
       };
+    case 'Prism Paddle':
+      return {
+        plain: 'Fusion (Paddle + Mirror): short side mirrors, slight width & speed bump on rebounds',
+        rich: '<strong>Fusion</strong> Paddle + Mirror: side mirrors for angled rebounds; slight width & speed bump'
+      };
+    case 'Royal Surge':
+      return {
+        plain: 'Fusion (Crown + Surge): stage start speed + bonus XP buff; while active, damage +10%',
+        rich: '<strong>Fusion</strong> Crown + Surge: stage start surge + <span class=\"power-desc-accent\">bonus XP</span>; buff gives <span class=\"power-desc-accent\">+10% dmg</span>'
+      };
     case 'Booster':
       return {
         plain: 'Boosts all damage by 10% per level (max 30%)',
@@ -1700,7 +1717,9 @@ function isTalentName(name) {
 
 function fusionKind(fusion) {
   if (!fusion?.fusion) return 'power';
-  const ingredients = fusion.ingredients || [];
+  if (fusion?.kind === 'talent') return 'talent';
+  if (fusion?.kind === 'power') return 'power';
+  const ingredients = fusion?.ingredients || [];
   const allTalents = ingredients.length > 0 && ingredients.every(isTalentName);
   return allTalents ? 'talent' : 'power';
 }
@@ -4049,7 +4068,7 @@ function update(dt) {
     state.brickSpeed *= CONFIG.speedIncreaseMultiplier;
     state.level += 1;
     const surgeLevel = getTalentLevel('Surge');
-    const crownSurge = getFusionDef('Royal Surge') && getPowerLevel('Royal Surge') > 0;
+    const crownSurge = getFusionDef('Royal Surge') && getTalentLevel('Royal Surge') > 0;
     if (surgeLevel > 0) {
       const surgeDuration = 4000 + 1000 * surgeLevel;
       state.surgeUntil = now + surgeDuration;
@@ -4125,7 +4144,7 @@ function update(dt) {
   const paddleRects = (() => {
     const rects = [{ x: paddle.x, y: paddle.y, w: paddle.w, h: paddle.h }];
     const mirrorLevel = getTalentLevel('Mirror');
-    const prismFusion = getPowerLevel('Prism Paddle') > 0;
+    const prismFusion = getTalentLevel('Prism Paddle') > 0;
     const halfWidth = paddle.w * 0.5;
     const gap = 8;
     if (mirrorLevel >= 1) rects.push({ x: paddle.x - halfWidth - gap, y: paddle.y, w: halfWidth, h: paddle.h });
@@ -4512,7 +4531,7 @@ function update(dt) {
       const damageMult = 1.1;
       const currentBoost = Math.max(1, ball.damageScale || 1);
       const nextBoost = Math.min(currentBoost * damageMult, 1.1 ** 3); // max ~1.331
-      const prismFusion = getPowerLevel('Prism Paddle') > 0;
+      const prismFusion = getTalentLevel('Prism Paddle') > 0;
       const speedBoost = Math.min(Math.hypot(ball.vx, ball.vy) * bounceSpeedMult * (prismFusion ? 1.05 : 1), getBallSpeed(Boolean(ball.specialPower)) * 1.35);
       const speedRatio = speedBoost / (Math.hypot(ball.vx, ball.vy) || 1);
       ball.vx *= speedRatio;
