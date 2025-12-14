@@ -1470,6 +1470,7 @@ function handlePilotClose() {
   pilotModalBackdrop.classList.remove('open');
   state.awaitingPilot = true;
   state.manualPause = true;
+  updateQuitVisibility();
   refreshPauseState();
 }
 
@@ -4300,7 +4301,8 @@ function updatePauseButton() {
 
 function updateQuitVisibility() {
   if (!abandonBtn) return;
-  abandonBtn.style.display = state.running ? '' : 'none';
+  const visible = state.running && !state.awaitingPilot && !state.gameOverHandled;
+  abandonBtn.style.display = visible ? '' : 'none';
 }
 
 function refreshPauseState() {
@@ -5990,12 +5992,25 @@ function renderHUD() {
     const leftX = 14;
     let leftY = 32;
     h.font = '22px "Segoe UI", sans-serif';
+    const statusText = (() => {
+      if (!state.running) return 'Quit';
+      if (state.paused) return 'Pause';
+      return 'Running';
+    })();
+    const statusColor = statusText === 'Running' ? '#22c55e' : statusText === 'Pause' ? '#fbbf24' : '#f87171';
+    h.fillStyle = statusColor;
+    h.fillText(`Game: ${statusText}`, leftX, leftY);
+    leftY += 22;
     h.fillStyle = '#7dd3fc';
     h.fillText(`Version: ${BUILD_LABEL}`, leftX, leftY);
-    leftY += 26;
+    leftY += 22;
     const displayName = state.playerName ? state.playerName : 'Name?';
     h.fillText(`Player: ${displayName}`, leftX, leftY);
-    leftY += 26;
+    leftY += 22;
+    const pilotLabel = state.activePilotId ? (getPilotDef(state.activePilotId)?.name || state.activePilotId) : 'None';
+    h.fillStyle = '#cbd5e1';
+    h.fillText(`Pilot: ${pilotLabel}`, leftX, leftY);
+    leftY += 22;
     h.fillStyle = '#e2e8f0';
     h.fillText(`Score: ${formatScore(state.score)}`, leftX, leftY);
     leftY += 26;
