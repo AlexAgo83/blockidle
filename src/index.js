@@ -866,8 +866,8 @@ function loadPreferences() {
     }
     if (typeof data.scoreSort === 'string') {
       state.scoreSort = data.scoreSort === 'date' ? 'date' : 'score';
-      if (scoreSortSelect) scoreSortSelect.value = state.scoreSort;
-    } else if (scoreSortSelect) {
+    }
+    if (scoreSortSelect) {
       scoreSortSelect.value = state.scoreSort;
     }
     if (typeof data.showDamageByPower === 'boolean') {
@@ -916,8 +916,21 @@ function loadPreferences() {
       settingsDownInput.value = state.keyBindings.down;
       if (settingsLaunchInput) settingsLaunchInput.value = state.keyBindings.launch;
     }
+    // legacy reset: force defaults to match new baseline
     state.scoreSort = 'score';
-    if (scoreSortSelect) scoreSortSelect.value = 'score';
+    state.showDamageByPower = false;
+    state.showFps = false;
+    state.showPaddleRects = false;
+    state.showBallTrails = false;
+    state.showLoadoutSidebar = false;
+    state.autoPauseEnabled = true;
+    if (scoreSortSelect) scoreSortSelect.value = state.scoreSort;
+    if (settingsDamageToggle) settingsDamageToggle.checked = state.showDamageByPower;
+    if (settingsFpsToggle) settingsFpsToggle.checked = state.showFps;
+    if (settingsPaddleRectToggle) settingsPaddleRectToggle.checked = state.showPaddleRects;
+    if (settingsBallTrailsToggle) settingsBallTrailsToggle.checked = state.showBallTrails;
+    if (settingsAutoPauseToggle) settingsAutoPauseToggle.checked = state.autoPauseEnabled;
+    if (settingsLoadoutSidebarToggle) settingsLoadoutSidebarToggle.checked = state.showLoadoutSidebar;
   } catch (_) {
     // ignore parsing/storage errors
   }
@@ -941,7 +954,10 @@ function savePreferences() {
       showBallTrails: state.showBallTrails,
       showLoadoutSidebar: state.showLoadoutSidebar,
       autoPauseEnabled: state.autoPauseEnabled,
-      keyBindings: state.keyBindings
+      keyBindings: {
+        ...state.keyBindings,
+        launch: undefined
+      }
     };
     localStorage.setItem(PREFS_KEY, JSON.stringify(payload));
   } catch (_) {
@@ -1131,18 +1147,17 @@ function closeSettingsModal() {
 }
 
 function applySettingsBindings() {
-  const left = (settingsLeftInput?.value || '').trim();
-  const right = (settingsRightInput?.value || '').trim();
-  const up = (settingsUpInput?.value || '').trim();
-  const down = (settingsDownInput?.value || '').trim();
-  const launch = (settingsLaunchInput?.value || '').trim();
-  state.keyBindings = sanitizeKeyBindings({
-    left,
-    right,
-    up,
-    down,
-    launch
-  });
+    const left = (settingsLeftInput?.value || '').trim();
+    const right = (settingsRightInput?.value || '').trim();
+    const up = (settingsUpInput?.value || '').trim();
+    const down = (settingsDownInput?.value || '').trim();
+    state.keyBindings = sanitizeKeyBindings({
+      left,
+      right,
+      up,
+      down,
+      launch: state.keyBindings.launch
+    });
   if (settingsDamageToggle) {
     state.showDamageByPower = !!settingsDamageToggle.checked;
   }
