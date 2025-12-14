@@ -35,6 +35,7 @@ const pilotModalBackdrop = document.getElementById('pilot-modal-backdrop');
 const pilotListEl = document.getElementById('pilot-list');
 const pilotConfirmBtn = document.getElementById('pilot-confirm-btn');
 const pilotSubtitle = document.getElementById('pilot-subtitle');
+const pilotCloseBtn = document.getElementById('pilot-close-btn');
 const abandonBtn = document.getElementById('abandon-btn');
 const pauseBtn = document.getElementById('pause-btn');
 const infoBtn = document.getElementById('info-btn');
@@ -1455,7 +1456,20 @@ function handlePilotConfirm() {
   closePilotModal();
   grantStartingLoadout(pilot);
   pushNotification(`${pilot.name} ready (Lv.1 ${pilot.start?.name || 'Loadout'})`, 5000);
+  state.manualPause = false;
+  state.paused = false;
+  state.running = true;
+  updatePauseButton();
+  updateQuitVisibility();
   markSessionDirty();
+  refreshPauseState();
+}
+
+function handlePilotClose() {
+  if (!pilotModalBackdrop) return;
+  pilotModalBackdrop.classList.remove('open');
+  state.awaitingPilot = true;
+  state.manualPause = true;
   refreshPauseState();
 }
 
@@ -3604,8 +3618,9 @@ function resetGame() {
   state.stageScalingNotified = false;
   state.activePilotId = null;
   state.selectedPilotId = null;
-  state.awaitingPilot = false;
+  state.awaitingPilot = true;
   ensurePilotUnlocks();
+  state.running = false;
   const maxLife = getMaxLives();
   state.cachedMaxLives = maxLife;
   state.lives = Math.min(maxLife, CONFIG.startLives + 5 * getTalentLevel('Stim Pack'));
@@ -3656,6 +3671,10 @@ function resetGame() {
   placeBallOnPaddle({ centerPaddle: true });
   spawnBrickRow();
   openPilotModal();
+  state.manualPause = true; // reste à l'arrêt tant qu'un pilote n'est pas choisi
+  updateQuitVisibility();
+  updatePauseButton();
+  refreshPauseState();
   markSessionDirty();
   lastSessionSave = -SESSION_SAVE_INTERVAL;
 }
@@ -4275,7 +4294,13 @@ function updateSuggestionChevron() {
 
 function updatePauseButton() {
   if (!pauseBtn) return;
+  pauseBtn.style.display = state.running ? '' : 'none';
   pauseBtn.textContent = state.manualPause ? t('controls.resume') : t('controls.pause');
+}
+
+function updateQuitVisibility() {
+  if (!abandonBtn) return;
+  abandonBtn.style.display = state.running ? '' : 'none';
 }
 
 function refreshPauseState() {
@@ -4638,6 +4663,7 @@ function bindSuggestionToggle() {
 function triggerGameOver() {
   if (state.gameOverHandled) return;
   state.running = false;
+  updateQuitVisibility();
   state.gameOverHandled = true;
   state.manualPause = false;
   state.paused = false;
@@ -6289,6 +6315,7 @@ function bindControls() {
     if (!state.running || state.gameOverHandled) return;
     state.lives = 0;
     triggerGameOver();
+    pushNotification('Run ended', 2500);
   });
   infoBtn?.addEventListener('click', () => openInfoModal());
   infoCloseBtn?.addEventListener('click', () => closeInfoModal());
@@ -6350,6 +6377,7 @@ function bindControls() {
       maybeOpenPilotModal();
     }
   });
+  pilotCloseBtn?.addEventListener('click', handlePilotClose);
   powerPassBtn?.addEventListener('click', handlePowerPass);
   powerRerollBtn?.addEventListener('click', handlePowerReroll);
   powerCatalogBtn?.addEventListener('click', () => {
@@ -6376,6 +6404,10 @@ function bindControls() {
   );
 
   canvas.addEventListener('click', (event) => {
+    if (state.awaitingPilot) {
+      openPilotModal();
+      return;
+    }
     if (state.manualPause && state.paused && canResumeFromCanvas()) {
       state.manualPause = false;
       refreshPauseState();
@@ -6383,12 +6415,12 @@ function bindControls() {
       return;
     }
     if (!state.running) {
-      state.running = true;
-      resetGame();
+      state.awaitingPilot = true;
+      openPilotModal();
+      refreshPauseState();
       return;
     }
     if (state.ballHeld) {
-      if (state.awaitingPilot) return;
       updateAim(event.clientX, event.clientY);
       launchBall();
     }
@@ -6403,6 +6435,10 @@ function bindControls() {
     if (!touch) return;
     updateAim(touch.clientX, touch.clientY);
     if (!state.running) {
+      if (state.awaitingPilot) {
+        openPilotModal();
+        return;
+      }
       state.running = true;
       resetGame();
       return;
@@ -6532,6 +6568,7 @@ function init() {
   setAutoButtonLabel();
   if (autoFireToggle) autoFireToggle.checked = state.autoFire;
   updatePauseButton();
+  updateQuitVisibility();
   if (!savedName && !state.playerName) {
     openNameModal();
   }
