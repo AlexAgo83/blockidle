@@ -5244,7 +5244,10 @@ function renderPaddle() {
     ctx.fillRect(paddle.x, paddle.y, paddle.w, paddle.h);
   }
 
-  const mirrorLevel = getTalentLevel('Mirror');
+  const mirrorLevel = Math.max(
+    getTalentLevel('Mirror'),
+    getTalentLevel('Prism Paddle') > 0 ? getTalentDef('Mirror').maxLevel : 0
+  );
   const halfWidth = paddle.w * 0.5;
   const gap = 8;
   if (mirrorLevel >= 1) {
