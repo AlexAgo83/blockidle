@@ -2101,14 +2101,34 @@ function renderPowerModal(powerOptions, talentOptions) {
 
 function getModalEntries() {
   const entries = [];
+  let powerIdx = 0;
+  let rowOffset = 0;
   if (Array.isArray(state.currentPowerOptions)) {
     state.currentPowerOptions.forEach((p, i) => {
-      if (p && powerButtons[i]) entries.push({ btn: powerButtons[i] });
+      if (p && powerButtons[i]) {
+        entries.push({
+          btn: powerButtons[i],
+          group: 'power',
+          row: Math.floor(powerIdx / 2),
+          col: powerIdx % 2
+        });
+        powerIdx += 1;
+      }
     });
   }
+  rowOffset = Math.ceil(powerIdx / 2);
+  let talentIdx = 0;
   if (Array.isArray(state.currentTalentOptions)) {
     state.currentTalentOptions.forEach((t, i) => {
-      if (t && talentButtons[i]) entries.push({ btn: talentButtons[i] });
+      if (t && talentButtons[i]) {
+        entries.push({
+          btn: talentButtons[i],
+          group: 'talent',
+          row: rowOffset + Math.floor(talentIdx / 2),
+          col: talentIdx % 2
+        });
+        talentIdx += 1;
+      }
     });
   }
   return entries;
@@ -2148,28 +2168,31 @@ function moveModalSelection(dx, dy) {
   const total = entries.length;
   if (!total) return;
   const cols = 2;
-  const maxIndex = total - 1;
-  let idx = clamp(state.modalSelectionIndex || 0, 0, maxIndex);
-  const row = Math.floor(idx / cols);
-  const col = idx % cols;
-  let newRow = row + dy;
-  let newCol = Math.max(0, Math.min(cols - 1, col + dx));
-  const maxRow = Math.floor(maxIndex / cols);
-  newRow = Math.max(0, Math.min(maxRow, newRow));
-  let newIdx = newRow * cols + newCol;
-  if (newIdx > maxIndex) newIdx = maxIndex;
-  state.modalSelectionIndex = newIdx;
-  const target = entries[newIdx]?.btn;
-  if (target) {
-    if (target.dataset.power) {
-      selectPowerOrTalent({ kind: 'power', name: target.dataset.power });
-    } else if (target.dataset.talent) {
-      selectPowerOrTalent({ kind: 'talent', name: target.dataset.talent });
-    }
-    target.focus();
-  } else {
+  const currentIdx = clamp(state.modalSelectionIndex || 0, 0, total - 1);
+  const current = entries[currentIdx];
+  const curRow = current?.row ?? 0;
+  const curCol = current?.col ?? 0;
+  const maxRow = Math.max(...entries.map((e) => e.row));
+  const minRow = Math.min(...entries.map((e) => e.row));
+
+  let targetRow = Math.max(minRow, Math.min(maxRow, curRow + dy));
+  let targetCol = Math.max(0, Math.min(cols - 1, curCol + dx));
+
+  const candidates = entries.filter((e) => e.row === targetRow);
+  let candidate = candidates.find((e) => e.col === targetCol) || candidates[0];
+
+  if (!candidate) {
     focusModalSelection();
+    return;
   }
+
+  state.modalSelectionIndex = entries.indexOf(candidate);
+  if (candidate.btn.dataset.power) {
+    selectPowerOrTalent({ kind: 'power', name: candidate.btn.dataset.power });
+  } else if (candidate.btn.dataset.talent) {
+    selectPowerOrTalent({ kind: 'talent', name: candidate.btn.dataset.talent });
+  }
+  focusModalSelection();
 }
 
 function sampleOptions(list, count) {
