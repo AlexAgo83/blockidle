@@ -1453,6 +1453,7 @@ function handlePilotConfirm() {
   if (idx > 0 && !state.pilotUnlocks[idx]) return; // verrouillé
   state.activePilotId = pilot.id;
   state.selectedPilotId = pilot.id;
+  state.awaitingPilot = false;
   closePilotModal();
   grantStartingLoadout(pilot);
   pushNotification(`${pilot.name} ready (Lv.1 ${pilot.start?.name || 'Loadout'})`, 5000);
@@ -6264,7 +6265,6 @@ function bindControls() {
     if (isKeyBinding(event, state.keyBindings.up)) state.keys.up = true;
     if (isKeyBinding(event, state.keyBindings.down)) state.keys.down = true;
     if (keyValue === 'enter' && !state.running) {
-      state.running = true;
       resetGame();
     }
   });
@@ -6430,9 +6430,7 @@ function bindControls() {
       return;
     }
     if (!state.running) {
-      state.awaitingPilot = true;
-      openPilotModal();
-      refreshPauseState();
+      resetGame();
       return;
     }
     if (state.ballHeld) {
@@ -6454,7 +6452,6 @@ function bindControls() {
         openPilotModal();
         return;
       }
-      state.running = true;
       resetGame();
       return;
     }
@@ -6576,6 +6573,7 @@ function init() {
     }
   });
   const savedName = loadPlayerName();
+  loadPilotProgress();
   resetGame();
   loadPreferences();
   applyTranslations();
@@ -6594,7 +6592,6 @@ function init() {
   fetchTopScoresFromBackend(TOP_LIMIT);
   fetchSuggestionsFromBackend();
   fetchCommits();
-  loadPilotProgress();
   setInterval(() => {
     fetchTopScoresFromBackend().catch(() => {});
   }, 30000);
