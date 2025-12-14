@@ -1951,8 +1951,15 @@ function tryOpenPowerModal() {
     .filter((p) => fusionKind(p) === 'power')
     .map((p) => p.name)
     .filter((name) => canUpgradePower(name));
+  const blockedTalentIngredients = state.talents
+    .filter((t) => {
+      const fusion = getFusionDef(t.name);
+      return fusion && fusionKind(fusion) === 'talent' && getTalentLevel(t.name) > 0;
+    })
+    .flatMap((t) => getFusionDef(t.name)?.ingredients || []);
   const availableTalents = [...TALENT_DEFS, ...FUSION_DEFS.filter((f) => fusionKind(f) === 'talent')]
     .map((t) => t.name)
+    .filter((name) => !blockedTalentIngredients.includes(name))
     .filter((name) => canUpgradeTalent(name));
 
   if (!availablePowers.length && !availableTalents.length) {
@@ -2262,9 +2269,18 @@ function renderPowerModal(powerOptions, talentOptions) {
       if (talent) {
         btn.classList.remove('has-fusion-partner');
         btn.style.display = 'flex';
+        const fusion = getFusionDef(talent);
+        if (fusion) {
+          btn.style.background = 'linear-gradient(135deg, #2dd4bf, #16a34a)';
+          btn.style.border = '1px solid rgba(16, 185, 129, 0.6)';
+          btn.style.color = '#0b172a';
+        } else {
+          btn.style.background = '';
+          btn.style.border = '';
+          btn.style.color = '';
+        }
         const currentLv = getTalentLevel(talent);
         const nextLv = nextTalentLevel(talent);
-      const fusion = getFusionDef(talent);
       const status = currentLv === 0
         ? fusion ? 'FUSION' : 'NEW'
         : `Lv. ${currentLv} → ${nextLv}`;
@@ -4533,7 +4549,10 @@ function update(dt) {
     }
 
     // Paddle
-    const mirrorLevel = getTalentLevel('Mirror');
+    const mirrorLevel = Math.max(
+      getTalentLevel('Mirror'),
+      getTalentLevel('Prism Paddle') > 0 ? getTalentDef('Mirror').maxLevel : 0
+    );
     const paddles = [{ x: paddle.x, w: paddle.w }];
     const halfWidth = paddle.w * 0.5;
     const gap = 8;
