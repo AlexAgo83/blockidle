@@ -69,6 +69,9 @@ const talentSlotsLabel = document.getElementById('talent-slots-label');
 const ownedPowersGrid = document.getElementById('owned-powers-grid');
 const ownedTalentsGrid = document.getElementById('owned-talents-grid');
 const timeButtons = Array.from(document.querySelectorAll('.time-btn'));
+const speedThumb = document.getElementById('speed-thumb');
+const speedFill = document.getElementById('speed-fill');
+const speedStops = Array.from(document.querySelectorAll('.speed-stop'));
 const suggestionToggle = document.getElementById('suggestion-toggle');
 const suggestionChevron = document.getElementById('suggestion-chevron');
 const suggestionForm = document.getElementById('suggestion-form');
@@ -580,7 +583,7 @@ function t(key) {
 
 function setAutoButtonLabel() {
   if (!autoBtn) return;
-  autoBtn.textContent = 'Auto-aim';
+  autoBtn.textContent = 'Auto';
   autoBtn.classList.toggle('active', !!state.autoPlay);
 }
 
@@ -1148,13 +1151,21 @@ function applySettingsBindings() {
 
 function setTimeScale(scale) {
   state.timeScale = scale;
-  timeButtons.forEach((btn) => {
-    const val = Number(btn.dataset.speed);
-    if (val === scale) {
-      btn.classList.add('active');
-    } else {
-      btn.classList.remove('active');
-    }
+  // Legacy buttons removed; slider updates below
+  updateSpeedSlider();
+}
+
+function updateSpeedSlider() {
+  if (!speedThumb || !speedFill || !speedStops.length) return;
+  const speeds = [1, 2, 3, 5];
+  const idx = Math.max(0, speeds.indexOf(state.timeScale));
+  const pct = (idx / (speeds.length - 1)) * 100;
+  speedThumb.style.left = `${pct}%`;
+  speedFill.style.width = `${pct}%`;
+  speedStops.forEach((stop) => {
+    const val = Number(stop.dataset.speed);
+    const active = val === state.timeScale;
+    stop.classList.toggle('active', active);
   });
 }
 
@@ -1991,18 +2002,24 @@ function renderPowerModal(powerOptions, talentOptions) {
   }
   powerButtons.forEach((btn) => { btn.disabled = false; btn.tabIndex = 0; btn.style.pointerEvents = 'auto'; btn.style.visibility = 'visible'; });
   talentButtons.forEach((btn) => { btn.disabled = false; btn.tabIndex = 0; btn.style.pointerEvents = 'auto'; btn.style.visibility = 'visible'; });
-  const powerTitleEl = document.querySelector('.power-title');
-  const talentTitleEl = document.querySelector('.talent-title');
-  if (powerTitleEl) powerTitleEl.style.marginBottom = '4px';
-  if (talentTitleEl) talentTitleEl.style.marginBottom = '4px';
   if (ownedPowersGrid) {
     ownedPowersGrid.style.transform = 'scale(0.9)';
     ownedPowersGrid.style.transformOrigin = 'top left';
+    ownedPowersGrid.style.justifyItems = 'center';
+    ownedPowersGrid.style.margin = '0';
+    ownedPowersGrid.style.padding = '0';
   }
   if (ownedTalentsGrid) {
     ownedTalentsGrid.style.transform = 'scale(0.9)';
     ownedTalentsGrid.style.transformOrigin = 'top left';
+    ownedTalentsGrid.style.justifyItems = 'center';
+    ownedTalentsGrid.style.margin = '0';
+    ownedTalentsGrid.style.padding = '0';
   }
+  const modalGrids = document.querySelectorAll('.power-grid');
+  modalGrids.forEach((grid) => {
+    grid.style.marginTop = '12px';
+  });
   renderOwnedGrid(ownedPowersGrid, state.powers, 'power');
   renderOwnedGrid(ownedTalentsGrid, state.talents, 'talent');
   state.modalSelectionIndex = 0;
@@ -5334,6 +5351,42 @@ function bindControls() {
     setAutoButtonLabel();
     savePreferences();
   });
+  // Speed slider interactions
+  if (speedStops.length && speedThumb && speedFill) {
+    const speeds = [1, 2, 3, 5];
+    const snapTo = (val) => {
+      const closest = speeds.reduce((acc, v) => (Math.abs(v - val) < Math.abs(acc - val) ? v : acc), speeds[0]);
+      setTimeScale(closest);
+      savePreferences();
+    };
+    speedStops.forEach((stop) => {
+      stop.addEventListener('click', () => {
+        snapTo(Number(stop.dataset.speed));
+      });
+    });
+    const rail = speedFill.parentElement;
+    const onPointer = (clientX) => {
+      const rect = rail.getBoundingClientRect();
+      const pct = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+      const speedsCount = speeds.length - 1;
+      const approx = 1 + pct * (speedsCount);
+      const target = speeds[Math.round((speeds.length - 1) * pct)] || 1;
+      snapTo(target);
+    };
+    speedThumb.addEventListener('pointerdown', (e) => {
+      e.preventDefault();
+      const move = (ev) => onPointer(ev.clientX);
+      const up = () => {
+        window.removeEventListener('pointermove', move);
+        window.removeEventListener('pointerup', up);
+      };
+      window.addEventListener('pointermove', move);
+      window.addEventListener('pointerup', up, { once: true });
+    });
+    rail.addEventListener('click', (e) => {
+      onPointer(e.clientX);
+    });
+  }
   pauseBtn?.addEventListener('click', () => {
     state.manualPause = !state.manualPause;
     refreshPauseState();

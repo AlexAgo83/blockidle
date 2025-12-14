@@ -237,15 +237,17 @@
       display: grid;
       grid-template-columns: repeat(2, minmax(0, 1fr));
       gap: 10px;
-      margin-top: 12px;
-      margin-bottom: 10px;
+      margin-top: 0;
+      margin-bottom: 0;
+      justify-items: center;
     }
     .owned-grid {
       display: grid;
       grid-template-columns: repeat(4, 1fr);
       gap: 7px;
-      margin: 10px auto 14px;
+      margin: 4px auto 6px;
       max-width: 224px;
+      justify-items: center;
     }
     .owned-cell {
       min-height: 34px;
@@ -831,6 +833,9 @@
       flex: 1 1 220px;
       gap: 10px;
     }
+    .time-left button {
+      padding: 8px 10px;
+    }
     #abandon-btn {
       background: linear-gradient(135deg, #fca5a5, #f87171);
       color: #0b1223;
@@ -853,13 +858,76 @@
     .danger-btn:hover {
       box-shadow: 0 10px 20px rgba(248, 113, 113, 0.35);
     }
-    .time-btn {
-      padding: 6px 12px;
-      font-size: 0.95rem;
+    .speed-slider {
+      position: relative;
+      width: 220px;
+      max-width: 100%;
+      height: 32px;
+      display: grid;
+      grid-template-rows: auto auto;
+      gap: 6px;
+      align-items: center;
+      user-select: none;
     }
-    .time-btn.active {
+    .speed-rail {
+      position: relative;
+      height: 12px;
+      background: linear-gradient(90deg, #0ea5e9, #6366f1);
+      border-radius: 999px;
+      box-shadow: 0 4px 12px rgba(79, 70, 229, 0.35);
+      overflow: hidden;
+    }
+    .speed-fill {
+      position: absolute;
+      top: 0;
+      left: 0;
+      height: 100%;
+      background: linear-gradient(90deg, #22d3ee, #c084fc);
+      border-radius: 999px;
+      transition: width 160ms ease-out;
+    }
+    .speed-thumb {
+      position: absolute;
+      top: 50%;
+      width: 28px;
+      height: 28px;
+      transform: translate(-50%, -50%);
+      background: radial-gradient(circle at 30% 30%, rgba(255,255,255,0.35), rgba(14,165,233,0.85));
+      border: 1px solid rgba(226,232,240,0.5);
+      box-shadow: 0 6px 16px rgba(14,165,233,0.4);
+      border-radius: 50%;
+      cursor: pointer;
+      transition: box-shadow 140ms ease, transform 140ms ease;
+    }
+    .speed-thumb:focus {
       outline: 2px solid #38bdf8;
-      outline-offset: 1px;
+      outline-offset: 3px;
+    }
+    .speed-thumb:hover {
+      box-shadow: 0 8px 18px rgba(14,165,233,0.55);
+      transform: translate(-50%, -50%) scale(1.03);
+    }
+    .speed-stops {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 0;
+      align-items: center;
+      justify-items: center;
+      font-size: 0.85rem;
+      color: #cbd5e1;
+    }
+    .speed-stop-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: rgba(226,232,240,0.4);
+      margin-bottom: 4px;
+      transition: transform 140ms ease, background 140ms ease;
+    }
+    .speed-stop.active .speed-stop-dot {
+      transform: scale(1.3);
+      background: #22d3ee;
+      box-shadow: 0 0 0 4px rgba(34,211,238,0.2);
     }
     .score-controls {
       display: flex;
@@ -891,30 +959,50 @@
       font-weight: 700;
       letter-spacing: 0.01em;
     }
-  </style>
-</head>
-<body>
-  <div id="app">
-    <div class="canvas-shell narrow">
+    </style>
+  </head>
+  <body>
+    <div id="app">
+      <div class="canvas-shell narrow">
       <div class="star-layer slow" aria-hidden="true"></div>
       <div class="star-layer fast" aria-hidden="true"></div>
       <canvas id="game" width="880" height="1728"></canvas>
     </div>
-    <div class="time-controls narrow">
-      <div class="time-left">
-        <button id="abandon-btn" type="button" data-i18n="controls.quit">Quit</button>
-        <button id="pause-btn" type="button" data-i18n="controls.pause">Pause</button>
-        <button id="auto-toggle" type="button">Auto-aim</button>
-        <button id="settings-btn" type="button" data-i18n="controls.settings">Settings</button>
-        <button id="info-btn" type="button" data-i18n="controls.info">Info</button>
+      <div class="time-controls narrow">
+        <div class="time-left">
+          <button id="abandon-btn" type="button" data-i18n="controls.quit">Quit</button>
+          <button id="pause-btn" type="button" data-i18n="controls.pause">Pause</button>
+          <button id="auto-toggle" type="button">Auto</button>
+          <button id="settings-btn" type="button" data-i18n="controls.settings">Settings</button>
+          <button id="info-btn" type="button" data-i18n="controls.info">Info</button>
+        </div>
+        <div class="time-right">
+          <div class="speed-slider" aria-label="Speed">
+            <div class="speed-rail">
+              <div class="speed-fill" id="speed-fill"></div>
+              <button class="speed-thumb" id="speed-thumb" type="button"></button>
+            </div>
+            <div class="speed-stops">
+              <div class="speed-stop" data-speed="1">
+                <div class="speed-stop-dot"></div>
+                <span>x1</span>
+              </div>
+              <div class="speed-stop" data-speed="2">
+                <div class="speed-stop-dot"></div>
+                <span>x2</span>
+              </div>
+              <div class="speed-stop" data-speed="3">
+                <div class="speed-stop-dot"></div>
+                <span>x3</span>
+              </div>
+              <div class="speed-stop" data-speed="5">
+                <div class="speed-stop-dot"></div>
+                <span>x5</span>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
-      <div class="time-right">
-        <button class="time-btn" data-speed="1" type="button">x1</button>
-        <button class="time-btn" data-speed="2" type="button">x2</button>
-        <button class="time-btn" data-speed="3" type="button">x3</button>
-        <button class="time-btn" data-speed="5" type="button">x5</button>
-      </div>
-    </div>
     <div class="commits narrow">
       <div class="score-header">
         <div class="commit-header" id="score-toggle">
@@ -1015,18 +1103,22 @@
   </div>
   <div id="power-modal-backdrop" class="modal-backdrop">
     <div class="modal">
-      <h2 data-i18n="power_modal.title">Choose a power</h2>
+      <h2 data-i18n="power_modal.title">MAKE YOUR CHOICE</h2>
       <p class="subtitle" data-i18n="power_modal.subtitle">Each level grants you an upgrade. Pick the option you prefer:</p>
-      <h3 data-i18n="power_modal.powers">Powers <span id="power-slots-label" class="slots-label"></span></h3>
-      <div id="owned-powers-grid" class="owned-grid"></div>
+      <div style="display:flex; flex-direction:column; align-items:center; gap:2px;">
+        <div id="power-slots-label" class="slots-label" style="margin-bottom:2px;"></div>
+        <div id="owned-powers-grid" class="owned-grid" style="margin-bottom:12px;"></div>
+      </div>
       <div class="power-grid">
         <button class="power-btn" data-power="Fire">Fire</button>
         <button class="power-btn" data-power="Poison">Poison</button>
         <button class="power-btn" data-power="Metal">Metal</button>
         <button class="power-btn" data-power="Ice">Ice</button>
       </div>
-      <h3 data-i18n="power_modal.talents">Talents <span id="talent-slots-label" class="slots-label"></span></h3>
-      <div id="owned-talents-grid" class="owned-grid"></div>
+      <div style="display:flex; flex-direction:column; align-items:center; gap:2px;">
+        <div id="talent-slots-label" class="slots-label" style="margin-top:2px; margin-bottom:2px;"></div>
+        <div id="owned-talents-grid" class="owned-grid" style="margin-bottom:8px;"></div>
+      </div>
       <div class="talent-grid">
         <button class="talent-btn" data-talent="Boots">Boots</button>
         <button class="talent-btn" data-talent="Feather">Feather</button>
