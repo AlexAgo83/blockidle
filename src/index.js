@@ -167,7 +167,7 @@ const DEFAULT_KEYS = {
 const MAX_POWERS = 4;
 const MAX_TALENTS = 4;
 const formatDesc = (desc) => desc?.plain || desc?.rich || '';
-const SCORE_PAGE_SIZE = 10;
+const SCORE_PAGE_SIZE = 20;
 
 const API_BASE = (() => {
   const envBase = (import.meta?.env?.VITE_API_BASE || '').trim();
@@ -1992,7 +1992,11 @@ function renderPowerModal(powerOptions, talentOptions) {
       const hasFusionPartner = currentLv === 0 && hasOwnedFusionPartner(power);
       const label = `${power} ${status}${hasFusionPartner ? ' F' : ''}`;
       const badgeHtml = hasFusionPartner ? '<span class="fusion-badge" title="Fusion ready">F</span>' : '';
-      btn.innerHTML = `<span class="btn-title">${power}</span><span class="btn-right"><span class="btn-state ${fusion ? 'fusion' : ''}">${status}</span>${badgeHtml}</span>`;
+      const media = MEDIA_BY_NAME[power];
+      const iconHtml = media?.imageUrl
+        ? `<img class="btn-icon" src="${media.imageUrl}" alt="${power} icon" />`
+        : '';
+      btn.innerHTML = `<span class="btn-title">${iconHtml}<span>${power}</span></span><span class="btn-right"><span class="btn-state ${fusion ? 'fusion' : ''}">${status}</span>${badgeHtml}</span>`;
       btn.dataset.power = power;
       btn.title = getPowerDescription(power).plain;
       const showPreview = () => updatePowerPreview(power, { label, statusText: status, fusionBadge: hasFusionPartner }, 'power', fusion);
@@ -2021,7 +2025,11 @@ function renderPowerModal(powerOptions, talentOptions) {
         const hasFusionPartner = currentLv === 0 && hasOwnedFusionPartner(talent);
         const label = `${talent} ${status}${hasFusionPartner ? ' F' : ''}`;
         const badgeHtml = hasFusionPartner ? '<span class="fusion-badge" title="Fusion ready">F</span>' : '';
-        btn.innerHTML = `<span class="btn-title">${talent}</span><span class="btn-right"><span class="btn-state">${status}</span>${badgeHtml}</span>`;
+        const media = MEDIA_BY_NAME[talent];
+        const iconHtml = media?.imageUrl
+          ? `<img class="btn-icon" src="${media.imageUrl}" alt="${talent} icon" />`
+          : '';
+        btn.innerHTML = `<span class="btn-title">${iconHtml}<span>${talent}</span></span><span class="btn-right"><span class="btn-state">${status}</span>${badgeHtml}</span>`;
         btn.dataset.talent = talent;
         btn.title = getTalentDescription(talent).plain;
       const showPreview = () => updatePowerPreview(talent, { label, statusText: status, fusionBadge: hasFusionPartner }, 'talent');
