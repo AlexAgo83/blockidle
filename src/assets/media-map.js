@@ -348,6 +348,18 @@ const MEDIA_LIST = [
     color: '#facc15'
   },
   {
+    name: 'Regen',
+    imageUrl: makeIcon(
+      'Rg',
+      '#22c55e',
+      '#10b981',
+      'talent',
+      '<g><rect x="34" y="34" width="28" height="28" rx="8" fill="url(#rg-Rg-talent)" stroke="rgba(0,0,0,0.25)" stroke-width="1.4"/><path d="M48 30 L48 50" stroke="#f0fdf4" stroke-width="3" stroke-linecap="round"/><path d="M40 38 L48 30 L56 38" stroke="#f0fdf4" stroke-width="3" stroke-linecap="round" fill="none"/></g>',
+      '<linearGradient id="rg-Rg-talent" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#bbf7d0"/><stop offset="100%" stop-color="#22c55e"/></linearGradient>'
+    ),
+    color: '#22c55e'
+  },
+  {
     name: 'Booster',
     imageUrl: makeIcon(
       'Bo',
@@ -660,6 +672,42 @@ const MEDIA_LIST = [
       '<linearGradient id="pe-Pe-fusion" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#bbf7d0"/><stop offset="50%" stop-color="#22c55e"/><stop offset="100%" stop-color="#a855f7"/></linearGradient>'
     ),
     color: '#22c55e'
+  },
+  {
+    name: 'Meteor',
+    imageUrl: makeIcon(
+      'Me',
+      '#f97316',
+      '#facc15',
+      'fusion',
+      '<g><circle cx="48" cy="44" r="12" fill="url(#me-Me-fusion)" stroke="rgba(0,0,0,0.25)" stroke-width="1.6"/><path d="M38 46 L50 34 L52 42 L60 40 Z" fill="rgba(255,255,255,0.8)" opacity="0.9"/></g>',
+      '<radialGradient id="me-Me-fusion" cx="50%" cy="45%" r="65%"><stop offset="0%" stop-color="#fed7aa"/><stop offset="60%" stop-color="#fb923c"/><stop offset="100%" stop-color="#facc15"/></radialGradient>'
+    ),
+    color: '#f97316'
+  },
+  {
+    name: 'Prism Paddle',
+    imageUrl: makeIcon(
+      'PP',
+      '#94a3b8',
+      '#cbd5e1',
+      'fusion',
+      '<g><rect x="30" y="42" width="36" height="8" rx="3" fill="url(#pp-PP-fusion)" stroke="rgba(0,0,0,0.25)" stroke-width="1.2"/><rect x="24" y="42" width="8" height="8" rx="2" fill="#38bdf8"/><rect x="66" y="42" width="8" height="8" rx="2" fill="#38bdf8"/></g>',
+      '<linearGradient id="pp-PP-fusion" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#cbd5e1"/><stop offset="100%" stop-color="#94a3b8"/></linearGradient>'
+    ),
+    color: '#94a3b8'
+  },
+  {
+    name: 'Royal Surge',
+    imageUrl: makeIcon(
+      'RS',
+      '#facc15',
+      '#22d3ee',
+      'fusion',
+      '<g><circle cx="48" cy="44" r="12" fill="url(#rs-RS-fusion)" stroke="rgba(0,0,0,0.25)" stroke-width="1.4"/><path d="M38 52 L58 52" stroke="#0b1223" stroke-width="2" stroke-linecap="round"/><path d="M42 34 L48 28 L54 34" stroke="#0b1223" stroke-width="2" stroke-linecap="round"/></g>',
+      '<linearGradient id="rs-RS-fusion" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#fef08a"/><stop offset="100%" stop-color="#38bdf8"/></linearGradient>'
+    ),
+    color: '#facc15'
   },
   {
     name: 'Thornstep',

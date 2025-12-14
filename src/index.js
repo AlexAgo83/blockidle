@@ -380,6 +380,27 @@ const FUSION_DEFS = [
     color: 'rgba(34, 211, 238, 0.55)'
   },
   {
+    name: 'Meteor',
+    maxLevel: 1,
+    fusion: true,
+    ingredients: ['Fire', 'Crusher'],
+    color: 'rgba(248, 113, 113, 0.6)'
+  },
+  {
+    name: 'Prism Paddle',
+    maxLevel: 1,
+    fusion: true,
+    ingredients: ['Paddle', 'Mirror'],
+    color: 'rgba(148, 163, 184, 0.5)'
+  },
+  {
+    name: 'Royal Surge',
+    maxLevel: 1,
+    fusion: true,
+    ingredients: ['Crown', 'Surge'],
+    color: 'rgba(250, 204, 21, 0.6)'
+  },
+  {
     name: 'Photon',
     maxLevel: 1,
     fusion: true,
@@ -409,6 +430,7 @@ const TALENT_DEFS = [
   { name: 'Surge', maxLevel: 3 },
   { name: 'Gravity', maxLevel: 3 },
   { name: 'Crown', maxLevel: 3 },
+  { name: 'Regen', maxLevel: 3 },
   { name: 'Booster', maxLevel: 3 },
   { name: 'Twin Core', maxLevel: 2 }
 ];
@@ -427,6 +449,7 @@ const TALENT_SHIP_SKINS = {
   Gravity: { tint: '#14b8a6', glow: 'rgba(20, 184, 166, 0.5)' },
   Crown: { tint: '#facc15', glow: 'rgba(250, 204, 21, 0.5)' },
   Booster: { tint: '#ef4444', glow: 'rgba(239, 68, 68, 0.5)' },
+  Regen: { tint: '#22c55e', glow: 'rgba(34, 197, 94, 0.4)' },
   'Twin Core': { tint: '#ec4899', glow: 'rgba(236, 72, 153, 0.55)' }
 };
 
@@ -590,7 +613,10 @@ const state = {
   damageFlashUntil: 0,
   damageShakeUntil: 0,
   shotEffects: [],
-  activeShipSkins: []
+  activeShipSkins: [],
+  regenStageHeals: 0,
+  royalSurgeUntil: 0,
+  royalSurgeXpMult: 1
 };
 globalThis.__brickidle_state = state;
 
@@ -688,10 +714,12 @@ function sanitizeKeyBindings(raw) {
 function clampPaddlePosition() {
   const { paddle } = state;
   const mirrorLevel = getTalentLevel('Mirror');
+  const prismFusion = getPowerLevel('Prism Paddle') > 0;
   const halfWidth = paddle.w * 0.5;
   const gap = 8;
-  const minOffset = mirrorLevel >= 1 ? -halfWidth - gap : 0;
-  const maxOffset = mirrorLevel >= 2 ? paddle.w + gap + halfWidth : paddle.w;
+  const extraWidth = prismFusion ? paddle.w * 0.35 : 0;
+  const minOffset = mirrorLevel >= 1 ? -halfWidth - gap - extraWidth : 0;
+  const maxOffset = mirrorLevel >= 2 ? paddle.w + gap + halfWidth + extraWidth : paddle.w;
 
   // Bordures extérieures
   paddle.x = clamp(paddle.x, -minOffset, CONFIG.width - maxOffset);
@@ -940,21 +968,23 @@ function loadPreferences() {
       settingsDownInput.value = state.keyBindings.down;
       if (settingsLaunchInput) settingsLaunchInput.value = state.keyBindings.launch;
     }
-    // legacy reset: force defaults to match new baseline
-    state.scoreSort = 'score';
-    state.showDamageByPower = false;
-    state.showFps = false;
-    state.showPaddleRects = false;
-    state.showBallTrails = false;
-    state.showLoadoutSidebar = false;
-    state.autoPauseEnabled = true;
-    if (scoreSortSelect) scoreSortSelect.value = state.scoreSort;
-    if (settingsDamageToggle) settingsDamageToggle.checked = state.showDamageByPower;
-    if (settingsFpsToggle) settingsFpsToggle.checked = state.showFps;
-    if (settingsPaddleRectToggle) settingsPaddleRectToggle.checked = state.showPaddleRects;
-    if (settingsBallTrailsToggle) settingsBallTrailsToggle.checked = state.showBallTrails;
-    if (settingsAutoPauseToggle) settingsAutoPauseToggle.checked = state.autoPauseEnabled;
-    if (settingsLoadoutSidebarToggle) settingsLoadoutSidebarToggle.checked = state.showLoadoutSidebar;
+    if (!data.prefsVersion || Number(data.prefsVersion) < 1) {
+      state.scoreSort = 'score';
+      state.showDamageByPower = false;
+      state.showFps = false;
+      state.showPaddleRects = false;
+      state.showBallTrails = false;
+      state.showLoadoutSidebar = false;
+      state.autoPauseEnabled = true;
+      if (scoreSortSelect) scoreSortSelect.value = state.scoreSort;
+      if (settingsDamageToggle) settingsDamageToggle.checked = state.showDamageByPower;
+      if (settingsFpsToggle) settingsFpsToggle.checked = state.showFps;
+      if (settingsPaddleRectToggle) settingsPaddleRectToggle.checked = state.showPaddleRects;
+      if (settingsBallTrailsToggle) settingsBallTrailsToggle.checked = state.showBallTrails;
+      if (settingsAutoPauseToggle) settingsAutoPauseToggle.checked = state.autoPauseEnabled;
+      if (settingsLoadoutSidebarToggle) settingsLoadoutSidebarToggle.checked = state.showLoadoutSidebar;
+      data.prefsVersion = 1;
+    }
   } catch (_) {
     // ignore parsing/storage errors
   }
@@ -978,6 +1008,7 @@ function savePreferences() {
       showBallTrails: state.showBallTrails,
       showLoadoutSidebar: state.showLoadoutSidebar,
       autoPauseEnabled: state.autoPauseEnabled,
+      prefsVersion: 1,
       keyBindings: {
         ...state.keyBindings,
         launch: undefined
@@ -1270,7 +1301,8 @@ function getPaddleSpeed() {
   const level = getTalentLevel('Boots');
   const mult = 1 + 0.1 * level;
   const aimMult = state.autoPlay ? 0.5 : 2; // slower in auto-aim, faster in manual
-  return CONFIG.paddleSpeed * mult * aimMult;
+  const prismBoost = getPowerLevel('Prism Paddle') > 0 ? 1.05 : 1;
+  return CONFIG.paddleSpeed * mult * aimMult * prismBoost;
 }
 
 function getPaddleMaxSpeed() {
@@ -1289,7 +1321,8 @@ function getCooldowns(nextIsSpecial) {
 
 function getPaddleWidth() {
   const level = getTalentLevel('Paddle');
-  const mult = 1 + 0.2 * level;
+  const fusionBonus = getPowerLevel('Prism Paddle') > 0 ? 0.1 : 0;
+  const mult = 1 + 0.2 * level + fusionBonus;
   return CONFIG.paddleWidth * mult;
 }
 
@@ -1352,6 +1385,11 @@ function getPowerDescription(name) {
       return {
         plain: 'On hit, shoves the brick slightly (up to 3 pushes before the ball snaps back if not blocked)',
         rich: 'On hit, <span class="power-desc-accent">shoves</span> the brick slightly <span class="power-desc-muted">(max 3 pushes before snapping back; blocked bricks won’t move)</span>'
+      };
+    case 'Meteor':
+      return {
+        plain: 'Fusion of Fire + Crusher: stronger shove, stacks small burns, and triggers a cone blast after 2 pushes before returning',
+        rich: '<strong>Fusion</strong> of <span class="power-desc-accent">Fire + Crusher</span>: stronger shove, small burns, cone blast after <span class="power-desc-accent">2 pushes</span> then returns'
       };
     case 'Beamline':
       return {
@@ -1493,6 +1531,16 @@ function getPowerDescription(name) {
         plain: 'Fusion of Poison + Curse: longer DoT/curse; spreads infection to 1 nearby every 1.5s while alive (limited)',
         rich: '<strong>Fusion</strong> of <span class="power-desc-accent">Poison + Curse</span>: longer DoT/curse; spreads to <span class="power-desc-accent">1 nearby</span> every <span class="power-desc-accent">1.5s</span> while alive (limited)'
       };
+    case 'Prism Paddle':
+      return {
+        plain: 'Fusion of Paddle + Mirror: adds two short side mirrors that grant angled rebounds and slight width increase; mirror hits give a small speed bump',
+        rich: '<strong>Fusion</strong> of <span class="power-desc-accent">Paddle + Mirror</span>: short side mirrors for angled rebounds + slight width; mirror hits add a <span class="power-desc-accent">speed bump</span>'
+      };
+    case 'Royal Surge':
+      return {
+        plain: 'Fusion of Crown + Surge: on stage start, gain surge speed + bonus XP buff for a few seconds; while buffed, deal +10% damage',
+        rich: '<strong>Fusion</strong> of <span class="power-desc-accent">Crown + Surge</span>: stage start surge + <span class="power-desc-accent">bonus XP buff</span>; while active, damage <span class="power-desc-accent">+10%</span>'
+      };
     case 'Radiant':
       return {
         plain: 'Fusion of Light + Resilience: stuns on hit and grants a brief shield (+2 temp HP, 5s)',
@@ -1574,6 +1622,11 @@ function getTalentDescription(name) {
       return {
         plain: 'Gain +10% XP per level from all sources',
         rich: 'XP gain <span class=\"power-desc-accent\">+10%</span> per level from all sources'
+      };
+    case 'Regen':
+      return {
+        plain: 'Gain +1 HP per stage at level 1 (+1 per level)',
+        rich: 'Heal <span class=\"power-desc-accent\">+1 HP</span> per stage <span class=\"power-desc-muted\">(+1 per level)</span>'
       };
     case 'Booster':
       return {
@@ -1826,9 +1879,12 @@ function xpForLevel(level) {
 }
 
 function gainXp(amount) {
+  const now = performance.now ? performance.now() : Date.now();
   const crownLv = getTalentLevel('Crown');
-  const bonusMult = 1 + 0.1 * crownLv;
-  const gained = crownLv > 0 ? Math.max(1, Math.round(amount * bonusMult)) : amount;
+  const crownMult = 1 + 0.1 * crownLv;
+  const surgeMult = state.royalSurgeUntil && state.royalSurgeUntil > now ? state.royalSurgeXpMult || 1 : 1;
+  const totalMult = crownMult * surgeMult;
+  const gained = Math.max(1, Math.round(amount * totalMult));
   state.xp += gained;
   let leveled = false;
   while (state.xp >= state.xpNeeded) {
@@ -2986,6 +3042,9 @@ function resetGame() {
   state.currentPowerOptions = [];
   state.currentTalentOptions = [];
   state.lastHitSpecial = null;
+  state.regenStageHeals = 0;
+  state.royalSurgeUntil = 0;
+  state.royalSurgeXpMult = 1;
   state.passRemaining = PASS_LIMIT_PER_MODAL;
   state.lastVampireHeal = 0;
   state.lastBossLevelSpawned = 0;
@@ -3990,9 +4049,20 @@ function update(dt) {
     state.brickSpeed *= CONFIG.speedIncreaseMultiplier;
     state.level += 1;
     const surgeLevel = getTalentLevel('Surge');
+    const crownSurge = getFusionDef('Royal Surge') && getPowerLevel('Royal Surge') > 0;
     if (surgeLevel > 0) {
       const surgeDuration = 4000 + 1000 * surgeLevel;
       state.surgeUntil = now + surgeDuration;
+    }
+    if (crownSurge) {
+      state.royalSurgeUntil = now + 6000;
+      state.royalSurgeXpMult = 1.15;
+    }
+    const regenLv = getTalentLevel('Regen');
+    if (regenLv > 0) {
+      const maxLife = getMaxLives();
+      state.lives = Math.min(maxLife, state.lives + regenLv);
+      state.regenStageHeals += regenLv;
     }
     maybeSpawnBoss();
   }
@@ -4055,10 +4125,16 @@ function update(dt) {
   const paddleRects = (() => {
     const rects = [{ x: paddle.x, y: paddle.y, w: paddle.w, h: paddle.h }];
     const mirrorLevel = getTalentLevel('Mirror');
+    const prismFusion = getPowerLevel('Prism Paddle') > 0;
     const halfWidth = paddle.w * 0.5;
     const gap = 8;
     if (mirrorLevel >= 1) rects.push({ x: paddle.x - halfWidth - gap, y: paddle.y, w: halfWidth, h: paddle.h });
     if (mirrorLevel >= 2) rects.push({ x: paddle.x + paddle.w + gap, y: paddle.y, w: halfWidth, h: paddle.h });
+    if (prismFusion) {
+      const shortW = Math.max(30, paddle.w * 0.35);
+      rects.push({ x: paddle.x - shortW - gap * 0.5, y: paddle.y, w: shortW, h: paddle.h });
+      rects.push({ x: paddle.x + paddle.w + gap * 0.5, y: paddle.y, w: shortW, h: paddle.h });
+    }
     return rects;
   })();
   for (const brick of state.bricks) {
@@ -4436,7 +4512,8 @@ function update(dt) {
       const damageMult = 1.1;
       const currentBoost = Math.max(1, ball.damageScale || 1);
       const nextBoost = Math.min(currentBoost * damageMult, 1.1 ** 3); // max ~1.331
-      const speedBoost = Math.min(Math.hypot(ball.vx, ball.vy) * bounceSpeedMult, getBallSpeed(Boolean(ball.specialPower)) * 1.3);
+      const prismFusion = getPowerLevel('Prism Paddle') > 0;
+      const speedBoost = Math.min(Math.hypot(ball.vx, ball.vy) * bounceSpeedMult * (prismFusion ? 1.05 : 1), getBallSpeed(Boolean(ball.specialPower)) * 1.35);
       const speedRatio = speedBoost / (Math.hypot(ball.vx, ball.vy) || 1);
       ball.vx *= speedRatio;
       ball.vy *= speedRatio;
@@ -4514,7 +4591,7 @@ function update(dt) {
           ball.echoBonus = Math.max(0, ball.echoBonus - 1);
         }
 
-        if ((ball.specialPower === 'Wind' || ball.specialPower === 'Jetstream' || ball.specialPower === 'Cyclone' || ball.specialPower === 'Gale') && ball.windPierceLeft !== undefined) {
+    if ((ball.specialPower === 'Wind' || ball.specialPower === 'Jetstream' || ball.specialPower === 'Cyclone' || ball.specialPower === 'Gale') && ball.windPierceLeft !== undefined) {
           if (ball.lastWindBrick === brick && ball.lastWindHit && now - ball.lastWindHit < 20) {
             // Already pierced this brick this frame; skip further processing.
           } else {
@@ -5849,6 +5926,33 @@ function applyPowerOnHit(ball, brick, now, options = {}) {
     brick.effectUntil = now + 500;
   } else if (power === 'Light') {
     applyLightStun(brick, ball, now);
+  } else if (power === 'Meteor') {
+    const pushed = tryCrusherPush(brick, ball, 20);
+    brick.effectColor = getPowerColor(power);
+    brick.effectUntil = now + 600;
+    damageBrick(brick, 0.5, now, power);
+    if (pushed) {
+      ball.crusherPushCount = (ball.crusherPushCount || 0) + 1;
+      if (ball.crusherPushCount >= 2 && !ball.returning) {
+        const cx = brick.x + brick.w / 2;
+        const cy = brick.y + brick.h / 2;
+        const targets = state.bricks
+          .filter((b) => b.alive && b !== brick)
+          .map((b) => {
+            const dx = b.x + b.w / 2 - cx;
+            const dy = b.y + b.h / 2 - cy;
+            return { b, dist: Math.hypot(dx, dy) };
+          })
+          .sort((a, b) => a.dist - b.dist)
+          .slice(0, 2);
+        for (const { b } of targets) {
+          damageBrick(b, 1, now, power);
+          b.effectColor = getPowerColor(power);
+          b.effectUntil = now + 500;
+        }
+        redirectBallToPaddle(ball, 0.65);
+      }
+    }
   } else if (power === 'Crusher' || power === 'Gale') {
     const pushed = tryCrusherPush(brick, ball, power === 'Gale' ? 18 : 14);
     if (pushed) {
@@ -6156,6 +6260,9 @@ function applyPowerOnHit(ball, brick, now, options = {}) {
 }
 
 function damageBrick(brick, amount, now, sourcePower = null) {
+  if (state.royalSurgeUntil && state.royalSurgeUntil > now) {
+    amount *= 1.1;
+  }
   brick.flashTime = now;
   brick.shakeTime = now;
   if (brick.rustUntil && brick.rustUntil > now) {
