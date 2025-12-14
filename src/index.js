@@ -1722,6 +1722,12 @@ function getActivePowerIcons() {
   return uniqueIconList((state.powers || []).map((p) => p.name));
 }
 
+function removeShipSkins(names = []) {
+  if (!Array.isArray(names) || !names.length) return;
+  const removal = new Set(names);
+  state.activeShipSkins = (state.activeShipSkins || []).filter((name) => !removal.has(name));
+}
+
 function uniqueIconList(names = []) {
   const seen = new Set();
   const list = [];
@@ -2046,6 +2052,7 @@ function applyPower(powerName) {
       state.powers = state.powers.filter((p) => !fusion.ingredients.includes(p.name));
       state.talents = state.talents.filter((t) => !fusion.ingredients.includes(t.name));
       state.specialPocket = state.specialPocket.filter((p) => !fusion.ingredients.includes(p));
+      removeShipSkins(fusion.ingredients);
       purgeFusionIngredients(fusion);
     }
   }
@@ -2148,6 +2155,7 @@ function applyTalent(talentName) {
     if (fusion && Array.isArray(fusion.ingredients)) {
     state.powers = state.powers.filter((p) => !fusion.ingredients.includes(p.name));
     state.talents = state.talents.filter((t) => !fusion.ingredients.includes(t.name));
+    removeShipSkins(fusion.ingredients);
     }
     state.pendingPowerChoices = Math.max(0, state.pendingPowerChoices - 1);
   }
@@ -3112,6 +3120,7 @@ function purgeFusionIngredients(fusion) {
   state.balls.forEach((b) => {
     if (ingredients.has(b.specialPower)) b.specialPower = null;
   });
+  removeShipSkins(fusion.ingredients);
 }
 
 function fireLaser(powerName, brick, now, modes = []) {
