@@ -616,6 +616,7 @@ const state = {
   lastHitSpecial: null,
   lastVampireHeal: 0,
   lastBossLevelSpawned: 0,
+  tempHpCooldown: {},
   damageByPower: {},
   beamCooldown: {},
   beamEffects: [],
@@ -1322,6 +1323,17 @@ function getBallRadius(isSpecial) {
     ? st.talents.find((t) => t.name === 'Gravity')?.level || 0
     : 0;
   return baseBallRadius(isSpecial, gravityLv);
+}
+
+function grantTempHpOnce(powerName, amount = 2, cooldownMs = 5000) {
+  const now = performance.now ? performance.now() : Date.now();
+  state.tempHpCooldown = state.tempHpCooldown || {};
+  const last = state.tempHpCooldown[powerName] || 0;
+  if (now - last < cooldownMs) return false;
+  state.tempHpCooldown[powerName] = now;
+  const maxLife = getMaxLives();
+  state.lives = Math.min(maxLife + amount, state.lives + amount);
+  return true;
 }
 
 function getMaxLives() {
@@ -3196,6 +3208,7 @@ function resetGame() {
   state.regenStageHeals = 0;
   state.royalSurgeUntil = 0;
   state.royalSurgeXpMult = 1;
+  state.tempHpCooldown = {};
   state.rerollRemaining = REROLL_LIMIT_PER_MODAL;
   state.passRemaining = PASS_LIMIT_PER_MODAL;
   state.lastVampireHeal = 0;
@@ -6327,8 +6340,7 @@ function applyPowerOnHit(ball, brick, now, options = {}) {
     ball.vy *= 1.05;
   } else if (power === 'Radiance') {
     applyLightStun(brick, ball, now);
-    const maxLife = getMaxLives();
-    state.lives = Math.min(maxLife + 2, state.lives + 2);
+    grantTempHpOnce(power, 2, 5000);
     brick.effectColor = getPowerColor(power);
     brick.effectUntil = now + 1000;
   } else if (power === 'Shard') {
@@ -6407,7 +6419,7 @@ function applyPowerOnHit(ball, brick, now, options = {}) {
     }
   } else if (power === 'Radiant') {
     applyLightStun(brick, ball, now);
-    state.lives = Math.min(getMaxLives() + 2, state.lives + 2);
+    grantTempHpOnce(power, 2, 5000);
     brick.effectColor = getPowerColor(power);
     brick.effectUntil = now + 1200;
   } else if (power === 'Thornstep') {
