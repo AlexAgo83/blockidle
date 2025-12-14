@@ -166,6 +166,18 @@ const MEDIA_LIST = [
     color: '#7dd3fc'
   },
   {
+    name: 'Crusher',
+    imageUrl: makeIcon(
+      'Cr',
+      '#f59e0b',
+      '#fbbf24',
+      'power',
+      '<g><rect x="32" y="30" width="32" height="36" rx="8" fill="url(#crusher-Cr-power)" stroke="rgba(0,0,0,0.25)" stroke-width="1.8"/><path d="M36 48 H60" stroke="#0b1223" stroke-width="3" stroke-linecap="round"/><path d="M42 38 H54" stroke="#0b1223" stroke-width="2.2" stroke-linecap="round"/><path d=\"M42 58 H54\" stroke=\"#0b1223\" stroke-width=\"2.2\" stroke-linecap=\"round\"/></g>',
+      '<linearGradient id="crusher-Cr-power" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#fcd34d"/><stop offset="100%" stop-color="#f59e0b"/></linearGradient>'
+    ),
+    color: '#f59e0b'
+  },
+  {
     name: 'Beamline',
     imageUrl: makeIcon(
       'Be',
@@ -312,16 +324,28 @@ const MEDIA_LIST = [
     color: '#c084fc'
   },
   {
-    name: 'Anti Gravity',
+    name: 'Gravity',
     imageUrl: makeIcon(
-      'AG',
+      'Gr',
       '#38bdf8',
       '#7dd3fc',
       'talent',
-      '<g><circle cx="48" cy="48" r="12" fill="url(#ag-AG-talent)" stroke="rgba(0,0,0,0.25)" stroke-width="1.2"/><path d="M48 34 L54 42 H50 V58 H46 V42 H42 Z" fill="#ecfeff"/></g>',
-      '<radialGradient id="ag-AG-talent" cx="50%" cy="50%" r="65%"><stop offset="0%" stop-color="#e0f2fe"/><stop offset="60%" stop-color="#38bdf8"/><stop offset="100%" stop-color="#0ea5e9"/></radialGradient>'
+      '<g><circle cx="48" cy="48" r="12" fill="url(#gravity-Gr-talent)" stroke="rgba(0,0,0,0.25)" stroke-width="1.2"/><path d="M48 34 L54 42 H50 V58 H46 V42 H42 Z" fill="#ecfeff"/></g>',
+      '<radialGradient id="gravity-Gr-talent" cx="50%" cy="50%" r="65%"><stop offset="0%" stop-color="#e0f2fe"/><stop offset="60%" stop-color="#38bdf8"/><stop offset="100%" stop-color="#0ea5e9"/></radialGradient>'
     ),
     color: '#38bdf8'
+  },
+  {
+    name: 'Crown',
+    imageUrl: makeIcon(
+      'Cr',
+      '#facc15',
+      '#fbbf24',
+      'talent',
+      '<g><path d="M30 56 H66 V60 H30 Z" fill="#facc15" stroke="rgba(0,0,0,0.2)" stroke-width="1.4"/><path d="M30 56 L36 36 L48 50 L60 36 L66 56 Z" fill="url(#crown-Cr-talent)" stroke="rgba(0,0,0,0.25)" stroke-width="1.6"/><circle cx="36" cy="36" r="3" fill="#fde68a"/><circle cx="60" cy="36" r="3" fill="#fde68a"/><circle cx="48" cy="44" r="3" fill="#fde68a"/></g>',
+      '<linearGradient id="crown-Cr-talent" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#fef9c3"/><stop offset="100%" stop-color="#f59e0b"/></linearGradient>'
+    ),
+    color: '#facc15'
   },
   {
     name: 'Booster',
@@ -590,16 +614,52 @@ const MEDIA_LIST = [
     color: '#38bdf8'
   },
   {
-    name: 'Radiant Shield',
+    name: 'Gale',
     imageUrl: makeIcon(
-      'RS',
+      'Ga',
+      '#38bdf8',
+      '#fbbf24',
+      'fusion',
+      '<g><path d="M30 50 H66" stroke="rgba(255,255,255,0.85)" stroke-width="3" stroke-linecap="round"/><path d="M30 42 H66" stroke="rgba(255,255,255,0.65)" stroke-width="2" stroke-linecap="round"/><rect x="40" y="32" width="16" height="32" rx="6" fill="url(#ga-Ga-fusion)" stroke="rgba(0,0,0,0.25)" stroke-width="1.6"/></g>',
+      '<linearGradient id="ga-Ga-fusion" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#fef9c3"/><stop offset="100%" stop-color="#38bdf8"/></linearGradient>'
+    ),
+    color: '#38bdf8'
+  },
+  {
+    name: 'Radiant',
+    imageUrl: makeIcon(
+      'Ra',
       '#fde68a',
       '#c084fc',
       'fusion',
-      '<g><path d="M36 34 L60 34 L60 48 C60 54 54 62 48 66 C42 62 36 54 36 48 Z" fill="url(#rs-RS-fusion)" stroke="rgba(0,0,0,0.25)" stroke-width="1.4"/><circle cx="48" cy="46" r="6" fill="#fef9c3" stroke="rgba(0,0,0,0.2)" stroke-width="1.2"/></g>',
-      '<linearGradient id="rs-RS-fusion" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#fef3c7"/><stop offset="100%" stop-color="#c084fc"/></linearGradient>'
+      '<g><path d="M36 34 L60 34 L60 48 C60 54 54 62 48 66 C42 62 36 54 36 48 Z" fill="url(#ra-Ra-fusion)" stroke="rgba(0,0,0,0.25)" stroke-width="1.4"/><circle cx="48" cy="46" r="6" fill="#fef9c3" stroke="rgba(0,0,0,0.2)" stroke-width="1.2"/></g>',
+      '<linearGradient id="ra-Ra-fusion" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#fef3c7"/><stop offset="100%" stop-color="#c084fc"/></linearGradient>'
     ),
     color: '#fde68a'
+  },
+  {
+    name: 'Photon',
+    imageUrl: makeIcon(
+      'Ph',
+      '#facc15',
+      '#f472b6',
+      'fusion',
+      '<g><circle cx="48" cy="44" r="12" fill="url(#ph-Ph-fusion)" stroke="rgba(255,255,255,0.35)" stroke-width="2"/><g stroke="rgba(255,255,255,0.9)" stroke-width="2" stroke-linecap="round"><line x1="32" y1="44" x2="64" y2="44"/><line x1="48" y1="28" x2="48" y2="60"/></g><circle cx="48" cy="44" r="5" fill="#0b1223" opacity="0.55"/></g>',
+      '<linearGradient id="ph-Ph-fusion" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#fef08a"/><stop offset="100%" stop-color="#f472b6"/></linearGradient>'
+    ),
+    color: '#facc15'
+  },
+  {
+    name: 'Pestilence',
+    imageUrl: makeIcon(
+      'Pe',
+      '#22c55e',
+      '#a855f7',
+      'fusion',
+      '<g><circle cx="48" cy="44" r="14" fill="url(#pe-Pe-fusion)" stroke="rgba(0,0,0,0.25)" stroke-width="1.4"/><path d="M42 42 Q48 36 54 42 Q48 48 42 42 Z" fill="rgba(255,255,255,0.75)" opacity="0.8"/><path d="M44 48 Q48 44 52 48 Q48 52 44 48 Z" fill="#0b1223" opacity="0.5"/></g>',
+      '<linearGradient id="pe-Pe-fusion" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#bbf7d0"/><stop offset="50%" stop-color="#22c55e"/><stop offset="100%" stop-color="#a855f7"/></linearGradient>'
+    ),
+    color: '#22c55e'
   },
   {
     name: 'Thornstep',

@@ -118,7 +118,7 @@ let bossVariants = [];
 let bossVariantsReady = false;
 const TOP_LIMIT = Infinity;
 const PASS_LIMIT_PER_MODAL = 3;
-const BUILD_LABEL = 'b22';
+const BUILD_LABEL = 'b23';
 const STARFIELD_LAYERS = [
   { count: 110, speed: 14, size: [0.4, 1.1], alpha: [0.25, 0.55] },
   { count: 65, speed: 28, size: [0.6, 1.6], alpha: [0.35, 0.8] }
@@ -207,7 +207,8 @@ const POWER_DEFS = [
   { name: 'Curse', maxLevel: 3 },
   { name: 'Wind', maxLevel: 3 },
   { name: 'Beamline', maxLevel: 3 },
-  { name: 'Pillar', maxLevel: 3 }
+  { name: 'Pillar', maxLevel: 3 },
+  { name: 'Crusher', maxLevel: 3 }
 ];
 const FUSION_DEFS = [
   {
@@ -351,7 +352,14 @@ const FUSION_DEFS = [
     color: 'rgba(125, 211, 252, 0.55)'
   },
   {
-    name: 'Radiant Shield',
+    name: 'Gale',
+    maxLevel: 1,
+    fusion: true,
+    ingredients: ['Crusher', 'Wind'],
+    color: 'rgba(14, 165, 233, 0.55)'
+  },
+  {
+    name: 'Radiant',
     maxLevel: 1,
     fusion: true,
     ingredients: ['Vampire', 'Resilience'],
@@ -370,6 +378,20 @@ const FUSION_DEFS = [
     fusion: true,
     ingredients: ['Beamline', 'Scope'],
     color: 'rgba(34, 211, 238, 0.55)'
+  },
+  {
+    name: 'Photon',
+    maxLevel: 1,
+    fusion: true,
+    ingredients: ['Light', 'Crusher'],
+    color: 'rgba(250, 204, 21, 0.55)'
+  },
+  {
+    name: 'Pestilence',
+    maxLevel: 1,
+    fusion: true,
+    ingredients: ['Poison', 'Curse'],
+    color: 'rgba(74, 222, 128, 0.5)'
   }
 ];
 const ALL_POWER_DEFS = [...POWER_DEFS, ...FUSION_DEFS];
@@ -385,7 +407,8 @@ const TALENT_DEFS = [
   { name: 'Momentum', maxLevel: 3 },
   { name: 'Resilience', maxLevel: 3 },
   { name: 'Surge', maxLevel: 3 },
-  { name: 'Anti Gravity', maxLevel: 3 },
+  { name: 'Gravity', maxLevel: 3 },
+  { name: 'Crown', maxLevel: 3 },
   { name: 'Booster', maxLevel: 3 },
   { name: 'Twin Core', maxLevel: 2 }
 ];
@@ -401,7 +424,8 @@ const TALENT_SHIP_SKINS = {
   Momentum: { tint: '#fb923c', glow: 'rgba(251, 146, 60, 0.5)' },
   Resilience: { tint: '#0ea5e9', glow: 'rgba(14, 165, 233, 0.55)' },
   Surge: { tint: '#a855f7', glow: 'rgba(168, 85, 247, 0.5)' },
-  'Anti Gravity': { tint: '#14b8a6', glow: 'rgba(20, 184, 166, 0.5)' },
+  Gravity: { tint: '#14b8a6', glow: 'rgba(20, 184, 166, 0.5)' },
+  Crown: { tint: '#facc15', glow: 'rgba(250, 204, 21, 0.5)' },
   Booster: { tint: '#ef4444', glow: 'rgba(239, 68, 68, 0.5)' },
   'Twin Core': { tint: '#ec4899', glow: 'rgba(236, 72, 153, 0.55)' }
 };
@@ -1223,10 +1247,10 @@ function baseBallRadius(isSpecial, antiGravityLevel = 0) {
 
 function getBallRadius(isSpecial) {
   const st = globalThis.__brickidle_state;
-  const antiGravityLv = Array.isArray(st?.talents)
-    ? st.talents.find((t) => t.name === 'Anti Gravity')?.level || 0
+  const gravityLv = Array.isArray(st?.talents)
+    ? st.talents.find((t) => t.name === 'Gravity')?.level || 0
     : 0;
-  return baseBallRadius(isSpecial, antiGravityLv);
+  return baseBallRadius(isSpecial, gravityLv);
 }
 
 function getMaxLives() {
@@ -1323,6 +1347,11 @@ function getPowerDescription(name) {
       return {
         plain: 'Ball pierces up to 3 bricks then returns to the paddle (1 hit per brick)',
         rich: 'Ball pierces <span class="power-desc-accent">up to 3 bricks</span> then returns to the paddle <span class="power-desc-muted">(1 hit per brick)</span>'
+      };
+    case 'Crusher':
+      return {
+        plain: 'On hit, shoves the brick slightly (up to 3 pushes before the ball snaps back if not blocked)',
+        rich: 'On hit, <span class="power-desc-accent">shoves</span> the brick slightly <span class="power-desc-muted">(max 3 pushes before snapping back; blocked bricks won’t move)</span>'
       };
     case 'Beamline':
       return {
@@ -1449,7 +1478,22 @@ function getPowerDescription(name) {
         plain: 'Fusion of Wind + Mirror: pierces more and spawns a mirrored ghost ball (50% dmg)',
         rich: '<strong>Fusion</strong> of <span class="power-desc-accent">Wind + Mirror</span>: extra pierce and a mirrored ghost ball <span class="power-desc-accent">(50% dmg)</span>'
       };
-    case 'Radiant Shield':
+    case 'Gale':
+      return {
+        plain: 'Fusion of Crusher + Wind: pierces then returns, while each hit shoves the brick unless blocked',
+        rich: '<strong>Fusion</strong> of <span class="power-desc-accent">Crusher + Wind</span>: pierces then returns, each hit <span class="power-desc-accent">shoves</span> the brick unless blocked'
+      };
+    case 'Photon':
+      return {
+        plain: 'Fusion of Light + Crusher: shoves the brick and briefly stuns it and up to 2 nearby, snapping back sooner after 2 pushes',
+        rich: '<strong>Fusion</strong> of <span class="power-desc-accent">Light + Crusher</span>: shoves target, <span class="power-desc-accent">stuns</span> target + up to 2 nearby, snaps back after <span class="power-desc-accent">2 pushes</span>'
+      };
+    case 'Pestilence':
+      return {
+        plain: 'Fusion of Poison + Curse: longer DoT/curse; spreads infection to 1 nearby every 1.5s while alive (limited)',
+        rich: '<strong>Fusion</strong> of <span class="power-desc-accent">Poison + Curse</span>: longer DoT/curse; spreads to <span class="power-desc-accent">1 nearby</span> every <span class="power-desc-accent">1.5s</span> while alive (limited)'
+      };
+    case 'Radiant':
       return {
         plain: 'Fusion of Light + Resilience: stuns on hit and grants a brief shield (+2 temp HP, 5s)',
         rich: '<strong>Fusion</strong> of <span class="power-desc-accent">Light + Resilience</span>: stun on hit + <span class="power-desc-accent">+2 temp HP</span> shield for <span class="power-desc-accent">5s</span>'
@@ -1521,10 +1565,15 @@ function getTalentDescription(name) {
         plain: 'On new stage: ball speed +20% for 4s (+1s per level)',
         rich: 'On stage start: ball speed <span class=\"power-desc-accent\">+20%</span> for <span class=\"power-desc-accent\">4s</span> <span class=\"power-desc-muted\">(+1s per level)</span>'
       };
-    case 'Anti Gravity':
+    case 'Gravity':
       return {
         plain: 'Increases ball size by 15% per level (max 45%)',
         rich: 'Ball size <span class=\"power-desc-accent\">+15%</span> per level <span class=\"power-desc-muted\">(max 45%)</span>'
+      };
+    case 'Crown':
+      return {
+        plain: 'Gain +10% XP per level from all sources',
+        rich: 'XP gain <span class=\"power-desc-accent\">+10%</span> per level from all sources'
       };
     case 'Booster':
       return {
@@ -1777,7 +1826,10 @@ function xpForLevel(level) {
 }
 
 function gainXp(amount) {
-  state.xp += amount;
+  const crownLv = getTalentLevel('Crown');
+  const bonusMult = 1 + 0.1 * crownLv;
+  const gained = crownLv > 0 ? Math.max(1, Math.round(amount * bonusMult)) : amount;
+  state.xp += gained;
   let leveled = false;
   while (state.xp >= state.xpNeeded) {
     state.xp -= state.xpNeeded;
@@ -2403,8 +2455,30 @@ function renderOwnedGrid(container, items, kind = 'power') {
   });
 }
 
+function tryCrusherPush(brick, ball, distance = 14) {
+  if (!brick || !brick.alive || brick.type === 'boss') return false;
+  const len = Math.hypot(ball.vx, ball.vy) || 1;
+  const dx = (ball.vx / len) * distance;
+  const dy = (ball.vy / len) * distance;
+  const nextX = clamp(brick.x + dx, 0, CONFIG.width - brick.w);
+  const nextY = clamp(brick.y + dy, -CONFIG.height, CONFIG.height);
+  const nextRect = { x: nextX, y: nextY, w: brick.w, h: brick.h };
+  const blocked = state.bricks.some((b) => (
+    b !== brick &&
+    b.alive &&
+    b.x < nextRect.x + nextRect.w &&
+    b.x + b.w > nextRect.x &&
+    b.y < nextRect.y + nextRect.h &&
+    b.y + b.h > nextRect.y
+  ));
+  if (blocked) return false;
+  brick.x = nextX;
+  brick.y = nextY;
+  return true;
+}
+
 function applyLightStun(target, ball, now) {
-  const duration = 750;
+  const duration = 562; // 25% shorter stun
   const color = getPowerColor('Light');
   const stun = (brick) => {
     brick.freezeUntil = Math.max(brick.freezeUntil || 0, now + duration);
@@ -2806,7 +2880,8 @@ function launchBall() {
     vy,
     returning: false,
     specialPower,
-    windPierceLeft: specialPower === 'Wind' || specialPower === 'Jetstream' || specialPower === 'Cyclone' ? 3 : 0
+    windPierceLeft: specialPower === 'Wind' || specialPower === 'Jetstream' || specialPower === 'Cyclone' || specialPower === 'Gale' ? 3 : 0,
+    crusherPushCount: 0
   });
   state.shotEffects.push({
     x: originX,
@@ -4116,19 +4191,45 @@ function update(dt) {
 
   // Tick poison sur les briques
   for (const brick of state.bricks) {
-  if (!brick.alive || !brick.poisonActive) continue;
-  if (brick.poisonNextTick && brick.poisonNextTick <= now) {
-    brick.poisonNextTick = now + 1000;
-    const source = brick.poisonSource || (brick.leechActive ? 'Leech' : 'Poison');
-    damageBrick(brick, 1, now, source);
-    if (brick.leechActive) {
-      const maxLife = getMaxLives();
-      if (state.lives < maxLife) {
-        state.lives = Math.min(maxLife, state.lives + 0.5);
+    if (!brick.alive || !brick.poisonActive) continue;
+    if (brick.poisonNextTick && brick.poisonNextTick <= now) {
+      brick.poisonNextTick = now + 1000;
+      const source = brick.poisonSource || (brick.leechActive ? 'Leech' : 'Poison');
+      damageBrick(brick, 1, now, source);
+      if (brick.leechActive) {
+        const maxLife = getMaxLives();
+        if (state.lives < maxLife) {
+          state.lives = Math.min(maxLife, state.lives + 0.5);
+        }
+      }
+    }
+    if (brick.pestSpreadUntil && brick.pestSpreadUntil > now && brick.pestSpreadNext && brick.pestSpreadNext <= now) {
+      brick.pestSpreadNext = now + 1500;
+      const cx = brick.x + brick.w / 2;
+      const cy = brick.y + brick.h / 2;
+      const target = state.bricks
+        .filter((b) => b.alive && b !== brick && !b.curseSource && !b.poisonActive)
+        .map((b) => {
+          const dx = b.x + b.w / 2 - cx;
+          const dy = b.y + b.h / 2 - cy;
+          return { b, dist: Math.hypot(dx, dy) };
+        })
+        .sort((a, b) => a.dist - b.dist)[0];
+      if (target) {
+        target.b.poisonActive = true;
+        target.b.poisonNextTick = now + 1000;
+        target.b.poisonSource = 'Pestilence';
+        target.b.curseTick = now + 2500;
+        target.b.curseMidTick = now + 1300;
+        target.b.curseSpreadAt = now + 900;
+        target.b.curseSource = 'Pestilence';
+        target.b.effectColor = getPowerColor('Pestilence');
+        target.b.effectUntil = target.b.curseTick;
+        target.b.pestSpreadUntil = now + 3000;
+        target.b.pestSpreadNext = now + 1500;
       }
     }
   }
-}
 
 // Propagation malédiction (si la brique est encore en vie après 1s)
   for (const brick of state.bricks) {
@@ -4413,7 +4514,7 @@ function update(dt) {
           ball.echoBonus = Math.max(0, ball.echoBonus - 1);
         }
 
-        if ((ball.specialPower === 'Wind' || ball.specialPower === 'Jetstream' || ball.specialPower === 'Cyclone') && ball.windPierceLeft !== undefined) {
+        if ((ball.specialPower === 'Wind' || ball.specialPower === 'Jetstream' || ball.specialPower === 'Cyclone' || ball.specialPower === 'Gale') && ball.windPierceLeft !== undefined) {
           if (ball.lastWindBrick === brick && ball.lastWindHit && now - ball.lastWindHit < 20) {
             // Already pierced this brick this frame; skip further processing.
           } else {
@@ -5748,6 +5849,16 @@ function applyPowerOnHit(ball, brick, now, options = {}) {
     brick.effectUntil = now + 500;
   } else if (power === 'Light') {
     applyLightStun(brick, ball, now);
+  } else if (power === 'Crusher' || power === 'Gale') {
+    const pushed = tryCrusherPush(brick, ball, power === 'Gale' ? 18 : 14);
+    if (pushed) {
+      ball.crusherPushCount = (ball.crusherPushCount || 0) + 1;
+      brick.effectColor = getPowerColor(power);
+      brick.effectUntil = now + 400;
+      if (ball.crusherPushCount >= 3 && !ball.returning) {
+        redirectBallToPaddle(ball, power === 'Gale' ? 0.75 : 0.6);
+      }
+    }
   } else if (power === 'Curse') {
     brick.curseTick = now + 3000;
     brick.curseMidTick = now + 1500;
@@ -5755,6 +5866,20 @@ function applyPowerOnHit(ball, brick, now, options = {}) {
     brick.curseSource = power;
     brick.effectColor = getPowerColor(power);
     brick.effectUntil = brick.curseTick;
+  } else if (power === 'Pestilence') {
+    brick.poisonActive = true;
+    brick.poisonNextTick = now + 1000;
+    brick.poisonSource = power;
+    brick.curseTick = now + 3500;
+    brick.curseMidTick = now + 1800;
+    brick.curseSpreadAt = now + 1200;
+    brick.curseSource = power;
+    brick.effectColor = getPowerColor(power);
+    brick.effectUntil = brick.curseTick;
+    if (!brick.pestSpreadUntil || brick.pestSpreadUntil < now) {
+      brick.pestSpreadUntil = now + 4500;
+      brick.pestSpreadNext = now + 1500;
+    }
   } else if (power === 'Thorns') {
     brick.thornActive = true;
     brick.thornNextTick = now + 1000; // +1.5 dmg
@@ -6012,7 +6137,7 @@ function applyPowerOnHit(ball, brick, now, options = {}) {
       state.balls.push(clone);
       ball.spawnedMirrorClone = true;
     }
-  } else if (power === 'Radiant Shield') {
+  } else if (power === 'Radiant') {
     applyLightStun(brick, ball, now);
     state.lives = Math.min(getMaxLives() + 2, state.lives + 2);
     brick.effectColor = getPowerColor(power);
@@ -6068,6 +6193,8 @@ function damageBrick(brick, amount, now, sourcePower = null) {
         state.lastVampireHeal = now;
       }
     }
+    brick.pestSpreadUntil = 0;
+    brick.pestSpreadNext = 0;
   }
   return destroyed;
 }
