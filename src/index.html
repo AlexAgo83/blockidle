@@ -236,6 +236,7 @@
       gap: 10px;
       margin: 0;
       flex: 1 1 auto;
+      min-height: 0;
       overflow-y: auto;
       -webkit-overflow-scrolling: touch;
       padding: 10px 14px 10px;
@@ -248,6 +249,8 @@
       align-items: center;
       gap: 10px;
       padding: 10px;
+      min-height: 96px;
+      flex-shrink: 0;
       border-radius: 10px;
       border: 1px solid #334155;
       background: #111827;
@@ -303,10 +306,12 @@
     .pilot-feats {
       position: absolute;
       right: 8px;
-      bottom: 8px;
+      bottom: -4px;
       display: inline-flex;
       gap: 4px;
       z-index: 4;
+      padding-bottom: 6px;
+      padding-top: 2px;
     }
     .pilot-feat {
       width: 14px;
@@ -373,6 +378,7 @@
       color: #e5e7eb;
       font-size: 0.85rem;
       font-weight: 400;
+      margin-bottom: 6px;
     }
     .pilot-start-icon-wrap {
       display: inline-flex;

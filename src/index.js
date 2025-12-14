@@ -716,6 +716,78 @@ const PILOT_PORTRAITS = {
     accent: '#f8fafc',
     visor: '#fbbf24',
     stroke: '#eab308'
+  }),
+  viper: makePilotPortrait({
+    initials: 'Vp',
+    bgStart: '#140d22',
+    bgEnd: '#10b981',
+    face: '#0f172a',
+    accent: '#34d399',
+    visor: '#22c55e',
+    stroke: '#10b981'
+  }),
+  titan: makePilotPortrait({
+    initials: 'Tt',
+    bgStart: '#1e1b24',
+    bgEnd: '#9ca3af',
+    face: '#111827',
+    accent: '#f8fafc',
+    visor: '#d1d5db',
+    stroke: '#9ca3af'
+  }),
+  lumen: makePilotPortrait({
+    initials: 'Lm',
+    bgStart: '#1e0f2e',
+    bgEnd: '#a855f7',
+    face: '#0f172a',
+    accent: '#fef3c7',
+    visor: '#fbbf24',
+    stroke: '#c084fc'
+  }),
+  briar: makePilotPortrait({
+    initials: 'Br',
+    bgStart: '#1a0f14',
+    bgEnd: '#16a34a',
+    face: '#0f172a',
+    accent: '#22c55e',
+    visor: '#4ade80',
+    stroke: '#16a34a'
+  }),
+  hex: makePilotPortrait({
+    initials: 'Hx',
+    bgStart: '#150f2d',
+    bgEnd: '#7c3aed',
+    face: '#0b1223',
+    accent: '#a78bfa',
+    visor: '#8b5cf6',
+    stroke: '#7c3aed'
+  }),
+  zephyr: makePilotPortrait({
+    initials: 'Zy',
+    bgStart: '#0b172a',
+    bgEnd: '#22d3ee',
+    face: '#0f172a',
+    accent: '#7dd3fc',
+    visor: '#38bdf8',
+    stroke: '#22d3ee'
+  }),
+  ray: makePilotPortrait({
+    initials: 'Ry',
+    bgStart: '#111827',
+    bgEnd: '#3b82f6',
+    face: '#0b1223',
+    accent: '#93c5fd',
+    visor: '#60a5fa',
+    stroke: '#3b82f6'
+  }),
+  obel: makePilotPortrait({
+    initials: 'Ob',
+    bgStart: '#20130b',
+    bgEnd: '#f59e0b',
+    face: '#0f172a',
+    accent: '#fcd34d',
+    visor: '#fbbf24',
+    stroke: '#d97706'
   })
 };
 
@@ -745,6 +817,62 @@ const PILOT_DEFS = [
     id: 'atlas',
     name: 'Atlas',
     start: { kind: 'power', name: 'Crusher' },
+    tagline: '',
+    color: '#f59e0b'
+  },
+  {
+    id: 'viper',
+    name: 'Viper',
+    start: { kind: 'power', name: 'Poison' },
+    tagline: '',
+    color: '#10b981'
+  },
+  {
+    id: 'titan',
+    name: 'Titan',
+    start: { kind: 'power', name: 'Metal' },
+    tagline: '',
+    color: '#9ca3af'
+  },
+  {
+    id: 'lumen',
+    name: 'Lumen',
+    start: { kind: 'power', name: 'Light' },
+    tagline: '',
+    color: '#a855f7'
+  },
+  {
+    id: 'briar',
+    name: 'Briar',
+    start: { kind: 'power', name: 'Thorns' },
+    tagline: '',
+    color: '#16a34a'
+  },
+  {
+    id: 'hex',
+    name: 'Hex',
+    start: { kind: 'power', name: 'Curse' },
+    tagline: '',
+    color: '#7c3aed'
+  },
+  {
+    id: 'zephyr',
+    name: 'Zephyr',
+    start: { kind: 'power', name: 'Wind' },
+    tagline: '',
+    color: '#22d3ee'
+  },
+  {
+    id: 'ray',
+    name: 'Ray',
+    start: { kind: 'power', name: 'Beamline' },
+    tagline: '',
+    color: '#3b82f6'
+  },
+  {
+    id: 'obel',
+    name: 'Obel',
+    start: { kind: 'power', name: 'Pillar' },
     tagline: '',
     color: '#f59e0b'
   }
