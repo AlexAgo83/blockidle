@@ -59,7 +59,8 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
     await this.query('ALTER TABLE scores ADD COLUMN IF NOT EXISTS talents JSONB');
     await this.query('ALTER TABLE scores ADD COLUMN IF NOT EXISTS fusions JSONB');
     await this.query('ALTER TABLE scores ADD COLUMN IF NOT EXISTS pilot TEXT');
-    await this.query('CREATE UNIQUE INDEX IF NOT EXISTS scores_player_build_idx ON scores (player, build)');
+    await this.query('DROP INDEX IF EXISTS scores_player_build_idx');
+    await this.query('CREATE UNIQUE INDEX IF NOT EXISTS scores_player_build_pilot_idx ON scores (player, build, pilot)');
 
     await this.query(`
       CREATE TABLE IF NOT EXISTS suggestions (

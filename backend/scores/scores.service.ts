@@ -47,7 +47,7 @@ export class ScoresService {
       `
         INSERT INTO scores (player, score, stage, level, ended_at, build, powers, talents, fusions, pilot, submitted_at)
         VALUES ($1, $2, COALESCE($3, 1), COALESCE($4, 1), $5, $6, $7::jsonb, $8::jsonb, $9::jsonb, $10, now())
-        ON CONFLICT (player, build)
+        ON CONFLICT (player, build, pilot)
         DO UPDATE SET
           score = GREATEST(scores.score, EXCLUDED.score),
           stage = CASE WHEN EXCLUDED.score > scores.score THEN EXCLUDED.stage ELSE scores.stage END,

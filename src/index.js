@@ -3570,6 +3570,7 @@ function buildScorePayload(endedAt) {
     stage: state.level,
     level: state.playerLevel,
     endedAt,
+    build: BUILD_LABEL,
     ...loadout,
     ...pilot
   };
