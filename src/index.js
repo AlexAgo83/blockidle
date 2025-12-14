@@ -2996,18 +2996,25 @@ function renderCommitList() {
   commits.forEach((c) => {
     const item = document.createElement('div');
     item.className = 'commit-item';
-    const hash = document.createElement('div');
-    hash.className = 'commit-hash';
-    hash.textContent = c.hash || '';
     const msg = document.createElement('div');
     msg.className = 'commit-msg';
     msg.textContent = c.message || '';
-    const date = document.createElement('div');
+
+    const meta = document.createElement('div');
+    meta.className = 'commit-meta';
+    const date = document.createElement('span');
     date.className = 'commit-date';
     date.textContent = c.date || '';
-    item.appendChild(hash);
+    const hash = document.createElement('span');
+    hash.className = 'commit-hash';
+    hash.textContent = c.hash || '';
+    hash.style.marginLeft = '8px';
+    hash.style.fontSize = '90%';
+    meta.appendChild(date);
+    meta.appendChild(hash);
+
     item.appendChild(msg);
-    item.appendChild(date);
+    item.appendChild(meta);
     commitListEl.appendChild(item);
   });
   updateCommitChevron();
@@ -3214,6 +3221,8 @@ function getMockLoadout(entry) {
 function renderTopScoresPanel() {
   if (!scoreListEl) return;
   scoreListEl.innerHTML = '';
+  scoreListEl.style.display = state.topScoresExpanded ? 'block' : 'none';
+  if (!state.topScoresExpanded) return;
   const list = (state.backendTopScores && state.backendTopScores.length)
     ? state.backendTopScores
     : getTopScores();
@@ -3651,6 +3660,7 @@ function bindScoreToggle() {
     }
   });
   updateScoreChevron();
+  renderTopScoresPanel();
 }
 
 function bindScoreFilter() {
