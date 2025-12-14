@@ -267,11 +267,50 @@
       cursor: pointer;
       text-align: left;
       transition: background 120ms ease, border-color 120ms ease;
+      position: relative;
+      overflow: hidden;
     }
     .pilot-card:hover,
     .pilot-card.selected {
       background: #1f2937;
       border-color: #38bdf8;
+    }
+    .pilot-card.locked::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.75);
+      backdrop-filter: blur(1px);
+      z-index: 2;
+    }
+    .pilot-card.locked::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.75);
+      backdrop-filter: blur(1px);
+      z-index: 2;
+    }
+    .pilot-card.locked::before {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 68px;
+      height: 68px;
+      background:
+        radial-gradient(circle at 50% 40%, rgba(59,130,246,0.35), transparent 60%),
+        url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='68' height='68' viewBox='0 0 68 68'><defs><linearGradient id='g1' x1='0' x2='1' y1='0' y2='1'><stop offset='0%' stop-color='%234f46e5'/><stop offset='100%' stop-color='%2310b981'/></linearGradient></defs><rect x='10' y='18' width='48' height='40' rx='12' fill='%230b1223' stroke='url(%23g1)' stroke-width='3'/><path d='M22 30 v-6 a12 12 0 0 1 24 0 v6' fill='none' stroke='url(%23g1)' stroke-width='4' stroke-linecap='round'/><circle cx='34' cy='42' r='6' fill='%2310b981' stroke='%23e2e8f0' stroke-width='2'/><rect x='32' y='42' width='4' height='10' rx='2' fill='%23e2e8f0'/></svg>");
+      background-repeat: no-repeat;
+      background-position: center;
+      z-index: 3;
+      filter: drop-shadow(0 6px 14px rgba(0,0,0,0.55));
+      opacity: 0.95;
+    }
+    .pilot-card.locked {
+      pointer-events: none;
+      opacity: 0.45;
     }
     .pilot-avatar {
       width: 64px;

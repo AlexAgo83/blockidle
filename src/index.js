@@ -1315,9 +1315,10 @@ function renderPilotModal() {
     const startIcon = startMedia?.imageUrl
       ? `<img src="${startMedia.imageUrl}" alt="${pilot.start?.name || ''}" class="pilot-start-icon" style="width:28px; height:28px;" />`
       : '';
+    const locked = idx > 0; // pour l'instant, seul le premier est ouvert
     const card = document.createElement('button');
     card.type = 'button';
-    card.className = 'pilot-card';
+    card.className = `pilot-card${locked ? ' locked' : ''}`;
     card.dataset.pilotId = pilot.id;
     card.innerHTML = `
       <div class="pilot-avatar" style="border-color:${pilot.color || '#334155'};">
