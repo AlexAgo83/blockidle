@@ -4880,7 +4880,7 @@ function update(dt) {
       continue;
     }
     if (brick.vampireActive && brick.vampireNextTick && brick.vampireNextTick <= now) {
-      if (state.lives < maxLife) {
+      if (state.lives < maxLife && (!state.lastVampireHeal || now - state.lastVampireHeal >= 1000)) {
         state.lives = Math.min(maxLife, state.lives + 1);
         state.lastVampireHeal = now;
       }
@@ -4907,10 +4907,18 @@ function update(dt) {
       brick.effectUntil = brick.thornExpire;
       const source = brick.thornSource || 'Thorns';
       damageBrick(brick, 1.5, now, source);
+      if (brick.leechActive) {
+        const maxLife = getMaxLives();
+        if (state.lives < maxLife && (!state.lastVampireHeal || now - state.lastVampireHeal >= 1000)) {
+          state.lives = Math.min(maxLife, state.lives + 0.5);
+          state.lastVampireHeal = now;
+        }
+      }
       if (brick.gravebound) {
         const maxLife = getMaxLives();
-        if (state.lives < maxLife) {
-          state.lives = Math.min(maxLife, state.lives + 0.5);
+        if (state.lives < maxLife && (!state.lastVampireHeal || now - state.lastVampireHeal >= 1000)) {
+          state.lives = Math.min(maxLife, state.lives + 0.25);
+          state.lastVampireHeal = now;
         }
         brick.thornExpire = Math.max(brick.thornExpire || 0, now + 1500);
         brick.thornSecondTick = brick.thornSecondTick || now + 1200;
@@ -4924,8 +4932,9 @@ function update(dt) {
       damageBrick(brick, 0.5, now, source);
       if (brick.gravebound) {
         const maxLife = getMaxLives();
-        if (state.lives < maxLife) {
-          state.lives = Math.min(maxLife, state.lives + 0.5);
+        if (state.lives < maxLife && (!state.lastVampireHeal || now - state.lastVampireHeal >= 1000)) {
+          state.lives = Math.min(maxLife, state.lives + 0.25);
+          state.lastVampireHeal = now;
         }
         brick.thornExpire = Math.max(brick.thornExpire || 0, now + 1500);
       }
