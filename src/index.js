@@ -1323,10 +1323,15 @@ function renderPilotModal() {
       <div class="pilot-avatar" style="border-color:${pilot.color || '#334155'};">
         <img src="${PILOT_PORTRAITS[pilot.id] || ''}" alt="${pilot.name}" />
       </div>
-      <div class="pilot-card-body">
-        <span class="pilot-name">${pilot.name}</span>
+      <div class="pilot-card-body" style="display:flex; flex-direction:column; gap:4px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; gap:10px;">
+          <span class="pilot-name">${pilot.name}</span>
+          <span class="pilot-start-title" style="display:inline-flex; align-items:center; gap:6px; font-weight:700;">
+            ${startIcon ? `<span class="pilot-start-icon-wrap">${startIcon}</span>` : ''}
+            <span>${title}</span>
+          </span>
+        </div>
         ${pilot.tagline ? `<span class="pilot-tagline">${pilot.tagline}</span>` : ''}
-        <span class="pilot-start-title">${startIcon ? `<span class="pilot-start-icon-wrap">${startIcon}</span> ` : ''}${title}</span>
         <span class="pilot-start-desc">${desc}</span>
       </div>
     `;
@@ -4791,8 +4796,9 @@ function update(dt) {
       damageBrick(brick, 1, now, source);
       if (brick.leechActive) {
         const maxLife = getMaxLives();
-        if (state.lives < maxLife) {
-          state.lives = Math.min(maxLife, state.lives + 0.5);
+        if (state.lives < maxLife && (!state.lastVampireHeal || now - state.lastVampireHeal >= 1000)) {
+          state.lives = Math.min(maxLife, state.lives + 0.25);
+          state.lastVampireHeal = now;
         }
       }
     }
