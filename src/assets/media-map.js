@@ -252,14 +252,14 @@ const MEDIA_LIST = [
     color: '#cbd5e1'
   },
   {
-    name: 'Endurance',
+    name: 'Stim Pack',
     imageUrl: makeIcon(
-      'En',
+      'St',
       '#7c3aed',
       '#a855f7',
       'talent',
-      '<g><path d="M38 40 C38 34 44 32 48 36 C52 32 58 34 58 40 C58 46 52 52 48 58 C44 52 38 46 38 40 Z" fill="url(#heart-En-talent)" stroke="rgba(0,0,0,0.25)" stroke-width="1.4"/></g>',
-      '<radialGradient id="heart-En-talent" cx="50%" cy="40%" r="60%"><stop offset="0%" stop-color="#ede9fe"/><stop offset="55%" stop-color="#c084fc"/><stop offset="100%" stop-color="#6b21a8"/></radialGradient>'
+      '<g><path d="M38 40 C38 34 44 32 48 36 C52 32 58 34 58 40 C58 46 52 52 48 58 C44 52 38 46 38 40 Z" fill="url(#heart-St-talent)" stroke="rgba(0,0,0,0.25)" stroke-width="1.4"/></g>',
+      '<radialGradient id="heart-St-talent" cx="50%" cy="40%" r="60%"><stop offset="0%" stop-color="#ede9fe"/><stop offset="55%" stop-color="#c084fc"/><stop offset="100%" stop-color="#6b21a8"/></radialGradient>'
     ),
     color: '#7c3aed'
   },

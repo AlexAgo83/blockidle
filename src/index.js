@@ -304,7 +304,7 @@ const FUSION_DEFS = [
     name: 'Radiance',
     maxLevel: 1,
     fusion: true,
-    ingredients: ['Pillar', 'Endurance'],
+    ingredients: ['Pillar', 'Stim Pack'],
     color: 'rgba(255, 249, 196, 0.55)'
   },
   {
@@ -379,7 +379,7 @@ const TALENT_DEFS = [
   { name: 'Gloves', maxLevel: 3 },
   { name: 'Paddle', maxLevel: 3 },
   { name: 'Mirror', maxLevel: 2 },
-  { name: 'Endurance', maxLevel: 3 },
+  { name: 'Stim Pack', maxLevel: 3 },
   { name: 'Scope', maxLevel: 3 },
   { name: 'Momentum', maxLevel: 3 },
   { name: 'Resilience', maxLevel: 3 },
@@ -395,7 +395,7 @@ const TALENT_SHIP_SKINS = {
   Gloves: { tint: '#fbbf24', glow: 'rgba(251, 191, 36, 0.5)' },
   Paddle: { tint: '#fb7185', glow: 'rgba(251, 113, 133, 0.55)' },
   Mirror: { tint: '#8b5cf6', glow: 'rgba(139, 92, 246, 0.55)' },
-  Endurance: { tint: '#22c55e', glow: 'rgba(34, 197, 94, 0.5)' },
+  'Stim Pack': { tint: '#22c55e', glow: 'rgba(34, 197, 94, 0.5)' },
   Scope: { tint: '#f472b6', glow: 'rgba(244, 114, 182, 0.55)' },
   Momentum: { tint: '#fb923c', glow: 'rgba(251, 146, 60, 0.5)' },
   Resilience: { tint: '#0ea5e9', glow: 'rgba(14, 165, 233, 0.55)' },
@@ -1200,9 +1200,9 @@ function getBallRadius(isSpecial) {
 }
 
 function getMaxLives() {
-  const enduLevel = getTalentLevel('Endurance');
-  const playerBracketBonus = enduLevel > 0 ? Math.floor((state.playerLevel || 0) / 5) * 5 : 0;
-  return CONFIG.maxLives + 5 * enduLevel + playerBracketBonus;
+  const stimLevel = getTalentLevel('Stim Pack');
+  const playerBracketBonus = stimLevel > 0 ? Math.floor((state.playerLevel || 0) / 5) * 5 : 0;
+  return CONFIG.maxLives + 5 * stimLevel + playerBracketBonus;
 }
 
 function clampLivesToMax() {
@@ -1371,8 +1371,8 @@ function getPowerDescription(name) {
       };
     case 'Radiance':
       return {
-        plain: 'Fusion of Pillar + Endurance: brief stun and grants +2 temporary max HP on hit',
-        rich: '<strong>Fusion</strong> of <span class="power-desc-accent">Pillar + Endurance</span>: stun and gain <span class="power-desc-accent">+2 temp max HP</span> on hit'
+        plain: 'Fusion of Pillar + Stim Pack: brief stun and grants +2 temporary max HP on hit',
+        rich: '<strong>Fusion</strong> of <span class="power-desc-accent">Pillar + Stim Pack</span>: stun and gain <span class="power-desc-accent">+2 temp max HP</span> on hit'
       };
     case 'Shard':
       return {
@@ -1466,7 +1466,7 @@ function getTalentDescription(name) {
         plain: 'Adds half-paddles: left at level 1, right at level 2',
         rich: 'Adds half-paddles <span class=\"power-desc-accent\">left</span> (Lv1) then <span class=\"power-desc-accent\">right</span> (Lv2)'
       };
-    case 'Endurance':
+    case 'Stim Pack':
       return {
         plain: 'Increases max HP by 5 per level and +5 per player level bracket (every 5 levels) while owned',
         rich: 'Max HP <span class=\"power-desc-accent\">+5</span> per level and <span class=\"power-desc-accent\">+5</span> per player <span class=\"power-desc-accent\">5-level</span> bracket while owned'
@@ -1939,7 +1939,7 @@ function applyTalent(talentName) {
   if (!state.activeShipSkins.includes(talentName)) {
     state.activeShipSkins.push(talentName);
   }
-  if (talentName === 'Endurance') {
+  if (talentName === 'Stim Pack') {
     const maxLife = getMaxLives();
     state.lives = Math.min(maxLife, maxLife);
   }
@@ -2855,7 +2855,7 @@ function resetGame() {
   state.score = 0;
   state.activeShipSkins = [];
   const maxLife = getMaxLives();
-  state.lives = Math.min(maxLife, CONFIG.startLives + 5 * getTalentLevel('Endurance'));
+  state.lives = Math.min(maxLife, CONFIG.startLives + 5 * getTalentLevel('Stim Pack'));
   const now = performance.now ? performance.now() : Date.now();
   state.bricks = [];
   state.rowIndex = 0;
