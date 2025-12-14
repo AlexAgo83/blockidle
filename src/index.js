@@ -2017,14 +2017,14 @@ function applyPower(powerName) {
 function selectPowerOrTalent(selection) {
   if (!selection || !selection.name) return;
   state.currentSelection = selection;
+  const isFusion = Boolean(getFusionDef(selection.name));
   const highlight = (btnList, key, name) => {
     btnList.forEach((btn) => {
       if (btn.dataset[key] === name) {
         btn.classList.add('selected');
         btn.classList.toggle('power', selection.kind === 'power');
-        const isFusion = selection.kind === 'power' && Boolean(getFusionDef(selection.name));
+        btn.classList.toggle('talent', selection.kind === 'talent');
         btn.classList.toggle('fusion', isFusion);
-        btn.classList.toggle('talent', selection.kind === 'talent' && !isFusion);
       } else {
         btn.classList.remove('selected');
         btn.classList.remove('power', 'fusion', 'talent');
