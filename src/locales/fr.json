@@ -13,6 +13,8 @@
     "subtitle": "Personnalise tes touches pour bouger et tirer.",
     "move_left": "Aller à gauche",
     "move_right": "Aller à droite",
+    "move_up": "Monter",
+    "move_down": "Descendre",
     "launch_ball": "Lancer la balle",
     "show_damage": "Afficher les dégâts par pouvoir",
     "show_fps": "Afficher les FPS",

@@ -10,6 +10,18 @@ export function buildSettingsModal(root = document.body) {
   const existing = document.getElementById('settings-modal-backdrop');
   if (existing) existing.remove();
 
+  const upField = createFormField({
+    id: 'key-up',
+    labelKey: 'settings.move_up',
+    placeholder: 'e.g., ArrowUp or W',
+    maxLength: 20
+  });
+  const downField = createFormField({
+    id: 'key-down',
+    labelKey: 'settings.move_down',
+    placeholder: 'e.g., ArrowDown or S',
+    maxLength: 20
+  });
   const leftField = createFormField({
     id: 'key-left',
     labelKey: 'settings.move_left',
@@ -31,7 +43,13 @@ export function buildSettingsModal(root = document.body) {
 
   const settingsGrid = document.createElement('div');
   settingsGrid.className = 'settings-grid';
-  [leftField.wrapper, rightField.wrapper, launchField.wrapper].forEach((node) => settingsGrid.appendChild(node));
+  [
+    leftField.wrapper,
+    rightField.wrapper,
+    upField.wrapper,
+    downField.wrapper,
+    launchField.wrapper
+  ].forEach((node) => settingsGrid.appendChild(node));
 
   const damageToggle = createToggle({
     id: 'toggle-damage-graph',
@@ -91,6 +109,8 @@ export function buildSettingsModal(root = document.body) {
     backdrop: modal.backdrop,
     leftInput: leftField.input,
     rightInput: rightField.input,
+    upInput: upField.input,
+    downInput: downField.input,
     launchInput: launchField.input,
     damageToggle: damageToggle.input,
     fpsToggle: fpsToggle.input,

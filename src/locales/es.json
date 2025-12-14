@@ -13,6 +13,8 @@
     "subtitle": "Personaliza tus teclas para moverte y lanzar.",
     "move_left": "Mover a la izquierda",
     "move_right": "Mover a la derecha",
+    "move_up": "Subir",
+    "move_down": "Bajar",
     "launch_ball": "Lanzar bola",
     "show_damage": "Mostrar daño por poder",
     "show_fps": "Mostrar FPS",

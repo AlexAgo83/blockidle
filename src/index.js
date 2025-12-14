@@ -53,6 +53,8 @@ const settingsBtn = document.getElementById('settings-btn');
 const settingsModalBackdrop = document.getElementById('settings-modal-backdrop');
 const settingsLeftInput = document.getElementById('key-left');
 const settingsRightInput = document.getElementById('key-right');
+const settingsUpInput = document.getElementById('key-up');
+const settingsDownInput = document.getElementById('key-down');
 const settingsLaunchInput = document.getElementById('key-launch');
 const settingsSaveBtn = document.getElementById('settings-save');
 const settingsCancelBtn = document.getElementById('settings-cancel');
@@ -158,6 +160,8 @@ if (!API_TOKEN) {
 const DEFAULT_KEYS = {
   left: 'ArrowLeft',
   right: 'ArrowRight',
+  up: 'ArrowUp',
+  down: 'ArrowDown',
   launch: 'Space'
 };
 const MAX_POWERS = 4;
@@ -463,7 +467,9 @@ let starfieldLastTime = 0;
 const state = {
   keys: {
     left: false,
-    right: false
+    right: false,
+    up: false,
+    down: false
   },
   keyBindings: { ...DEFAULT_KEYS },
   paddle: {
@@ -637,7 +643,7 @@ function normalizeKeyValue(value) {
 function sanitizeKeyBindings(raw) {
   const next = { ...DEFAULT_KEYS };
   if (raw && typeof raw === 'object') {
-    ['left', 'right', 'launch'].forEach((key) => {
+    ['left', 'right', 'up', 'down', 'launch'].forEach((key) => {
       const val = (raw[key] || '').trim();
       if (val) next[key] = val;
     });
@@ -658,6 +664,11 @@ function clampPaddlePosition() {
 
   // Clamp final aux bords après ajustements
   paddle.x = clamp(paddle.x, -minOffset, CONFIG.width - maxOffset);
+
+  // Clamp vertical
+  const minY = CONFIG.height * 0.5;
+  const maxY = CONFIG.height - 40;
+  paddle.y = clamp(paddle.y, minY, maxY);
 }
 
 function computeHudSignature() {
@@ -796,9 +807,11 @@ function loadPreferences() {
       if (settingsPaddleRectToggle) settingsPaddleRectToggle.checked = state.showPaddleRects;
       if (settingsAutoPauseToggle) settingsAutoPauseToggle.checked = state.autoPauseEnabled;
       if (languageSelect) languageSelect.value = state.language;
-      if (settingsLeftInput && settingsRightInput && settingsLaunchInput) {
+      if (settingsLeftInput && settingsRightInput && settingsLaunchInput && settingsUpInput && settingsDownInput) {
         settingsLeftInput.value = state.keyBindings.left;
         settingsRightInput.value = state.keyBindings.right;
+        settingsUpInput.value = state.keyBindings.up;
+        settingsDownInput.value = state.keyBindings.down;
         settingsLaunchInput.value = state.keyBindings.launch;
       }
       return;
@@ -871,9 +884,11 @@ function loadPreferences() {
     if (data.keyBindings) {
       state.keyBindings = sanitizeKeyBindings(data.keyBindings);
     }
-    if (settingsLeftInput && settingsRightInput && settingsLaunchInput) {
+    if (settingsLeftInput && settingsRightInput && settingsLaunchInput && settingsUpInput && settingsDownInput) {
       settingsLeftInput.value = state.keyBindings.left;
       settingsRightInput.value = state.keyBindings.right;
+      settingsUpInput.value = state.keyBindings.up;
+      settingsDownInput.value = state.keyBindings.down;
       settingsLaunchInput.value = state.keyBindings.launch;
     }
     state.scoreSort = 'score';
@@ -1065,6 +1080,8 @@ function openSettingsModal() {
   state.settingsOpen = true;
   settingsLeftInput.value = state.keyBindings.left;
   settingsRightInput.value = state.keyBindings.right;
+  if (settingsUpInput) settingsUpInput.value = state.keyBindings.up;
+  if (settingsDownInput) settingsDownInput.value = state.keyBindings.down;
   settingsLaunchInput.value = state.keyBindings.launch;
   if (settingsDamageToggle) settingsDamageToggle.checked = !!state.showDamageByPower;
   if (settingsFpsToggle) settingsFpsToggle.checked = !!state.showFps;
@@ -1087,10 +1104,14 @@ function closeSettingsModal() {
 function applySettingsBindings() {
   const left = (settingsLeftInput?.value || '').trim();
   const right = (settingsRightInput?.value || '').trim();
+  const up = (settingsUpInput?.value || '').trim();
+  const down = (settingsDownInput?.value || '').trim();
   const launch = (settingsLaunchInput?.value || '').trim();
   state.keyBindings = sanitizeKeyBindings({
     left,
     right,
+    up,
+    down,
     launch
   });
   if (settingsDamageToggle) {
@@ -2413,14 +2434,16 @@ function selectTargetBrick() {
   return alive.sort((a, b) => b.y - a.y)[0];
 }
 
-function placeBallOnPaddle({ centerPaddle = false, refill = false } = {}) {
+function placeBallOnPaddle({ centerPaddle = false, refill = false, preserveY = false } = {}) {
   const { paddle, heldBall } = state;
   paddle.w = getPaddleWidth();
   paddle.h = CONFIG.paddleHeight;
   if (centerPaddle) {
     paddle.x = (CONFIG.width - paddle.w) / 2;
   }
-  paddle.y = CONFIG.height - 60;
+  if (!preserveY) {
+    paddle.y = CONFIG.height - 60;
+  }
   const nextIsSpecial = state.specialPocket.length > 0;
   heldBall.r = getBallRadius(nextIsSpecial);
   heldBall.x = paddle.x + paddle.w / 2;
@@ -3500,6 +3523,12 @@ function update(dt) {
     if (keys.right) {
       paddle.x += paddleSpeed * dt;
     }
+    if (keys.up) {
+      paddle.y -= paddleSpeed * dt;
+    }
+    if (keys.down) {
+      paddle.y += paddleSpeed * dt;
+    }
   }
   clampPaddlePosition();
 
@@ -3690,12 +3719,12 @@ function update(dt) {
         state.balls.splice(i, 1);
         if (ball.reward) {
           state.ballCount = Math.min(CONFIG.maxNormalBalls, state.ballCount + 1);
-          if (!state.ballHeld) placeBallOnPaddle();
+          if (!state.ballHeld) placeBallOnPaddle({ preserveY: true });
         } else if (ball.specialPower) {
           state.specialPocket.push(ball.specialPower);
-          placeBallOnPaddle();
+          placeBallOnPaddle({ preserveY: true });
         } else {
-          placeBallOnPaddle({ refill: true });
+          placeBallOnPaddle({ refill: true, preserveY: true });
         }
         continue;
       }
@@ -4791,6 +4820,8 @@ function bindControls() {
     }
     if (isKeyBinding(event, state.keyBindings.left)) state.keys.left = true;
     if (isKeyBinding(event, state.keyBindings.right)) state.keys.right = true;
+    if (isKeyBinding(event, state.keyBindings.up)) state.keys.up = true;
+    if (isKeyBinding(event, state.keyBindings.down)) state.keys.down = true;
     if (keyValue === 'enter' && !state.running) {
       state.running = true;
       resetGame();
@@ -4800,6 +4831,8 @@ function bindControls() {
     if (isSettingsOpen() || isCatalogOpen()) return;
     if (isKeyBinding(event, state.keyBindings.left)) state.keys.left = false;
     if (isKeyBinding(event, state.keyBindings.right)) state.keys.right = false;
+    if (isKeyBinding(event, state.keyBindings.up)) state.keys.up = false;
+    if (isKeyBinding(event, state.keyBindings.down)) state.keys.down = false;
   });
   autoBtn.addEventListener('click', () => {
     state.autoPlay = !state.autoPlay;
@@ -4850,6 +4883,8 @@ function bindControls() {
   };
   captureKey(settingsLeftInput);
   captureKey(settingsRightInput);
+  captureKey(settingsUpInput);
+  captureKey(settingsDownInput);
   captureKey(settingsLaunchInput);
   timeButtons.forEach((btn) => {
     btn.addEventListener('click', () => {

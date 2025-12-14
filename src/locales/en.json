@@ -13,6 +13,8 @@
     "subtitle": "Customize your keys for movement and launch.",
     "move_left": "Move left",
     "move_right": "Move right",
+    "move_up": "Move up",
+    "move_down": "Move down",
     "launch_ball": "Launch ball",
     "show_damage": "Show damage by power",
     "show_fps": "Show FPS",
