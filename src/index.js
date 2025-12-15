@@ -532,6 +532,7 @@ let lastSessionSave = -SESSION_SAVE_INTERVAL;
 let sessionDirty = true;
 const PREFS_KEY = 'brickidle_prefs';
 const PILOT_PROGRESS_KEY = 'brickidle_pilot_progress_v1';
+const LAST_PILOT_KEY = 'brickidle_last_pilot';
 let starfieldLastTime = 0;
 
 const state = {
@@ -1353,6 +1354,24 @@ function loadPilotProgress() {
   }
 }
 
+function setLastSelectedPilot(pilotId) {
+  if (!pilotId) return;
+  try {
+    localStorage.setItem(LAST_PILOT_KEY, pilotId);
+  } catch (_) {
+    // ignore
+  }
+}
+
+function loadLastSelectedPilot() {
+  try {
+    const val = localStorage.getItem(LAST_PILOT_KEY);
+    return typeof val === 'string' && val.trim() ? val.trim() : null;
+  } catch (_) {
+    return null;
+  }
+}
+
 function getSessionSnapshot() {
   return {
     version: SESSION_VERSION,
@@ -1473,6 +1492,7 @@ function renderPilotModal() {
   // reset scroll to avoid content hidden on top when re-opening
   pilotListEl.scrollTop = 0;
   pilotListEl.innerHTML = '';
+  let selectedIdx = -1;
   PILOT_DEFS.forEach((pilot, idx) => {
     const { title, desc } = getPilotStartDescription(pilot);
     const startMedia = MEDIA_BY_NAME[pilot.start?.name];
@@ -1506,10 +1526,19 @@ function renderPilotModal() {
     `;
     card.onclick = () => handlePilotSelect(pilot.id);
     pilotListEl.appendChild(card);
+    if (pilot.id === state.selectedPilotId) selectedIdx = idx;
     if (idx === 0 && !state.selectedPilotId) {
+      selectedIdx = 0;
       handlePilotSelect(pilot.id, { silent: true });
     }
   });
+  if (state.selectedPilotId) {
+    handlePilotSelect(state.selectedPilotId, { silent: true });
+  }
+  if (selectedIdx >= 0) {
+    state.modalSelectionIndex = selectedIdx;
+  }
+  focusPilotSelection(true);
   if (pilotConfirmBtn) {
     pilotConfirmBtn.disabled = !state.selectedPilotId;
   }
@@ -1586,6 +1615,7 @@ function handlePilotConfirm() {
   state.activePilotId = pilot.id;
   state.selectedPilotId = pilot.id;
   state.awaitingPilot = false;
+  setLastSelectedPilot(pilot.id);
   closePilotModal();
   grantStartingLoadout(pilot);
   pushNotification(`${pilot.name} ready (Lv.1 ${pilot.start?.name || 'Loadout'})`, 5000);
@@ -1875,6 +1905,14 @@ function ensurePilotUnlocks() {
     state.pilotUnlocks.push(false);
   }
   state.pilotUnlocks[0] = true; // le premier est toujours disponible
+}
+
+function isPilotUnlocked(pilotId) {
+  if (!pilotId) return false;
+  const idx = getPilotIndex(pilotId);
+  if (idx < 0) return false;
+  ensurePilotUnlocks();
+  return !!state.pilotUnlocks[idx];
 }
 
 function unlockPilot(index) {
@@ -3099,6 +3137,48 @@ function moveModalSelection(dx, dy) {
   focusModalSelection();
 }
 
+function getPilotEntries() {
+  const entries = [];
+  const cards = pilotListEl ? Array.from(pilotListEl.querySelectorAll('.pilot-card')) : [];
+  cards.forEach((card, idx) => {
+    const pid = card.dataset.pilotId;
+    entries.push({
+      btn: card,
+      pilotId: pid,
+      row: idx,
+      col: 0
+    });
+  });
+  return entries;
+}
+
+function focusPilotSelection(reset = false) {
+  const entries = getPilotEntries();
+  if (!entries.length) return;
+  const maxIndex = entries.length - 1;
+  const idx = reset ? 0 : clamp(state.modalSelectionIndex || 0, 0, maxIndex);
+  state.modalSelectionIndex = idx;
+  entries.forEach((entry, i) => {
+    entry.btn.classList.toggle('selected', entry.pilotId === state.selectedPilotId);
+    entry.btn.classList.toggle('modal-selected', i === idx);
+    if (i === idx) entry.btn.focus();
+  });
+}
+
+function movePilotSelection(dy) {
+  const entries = getPilotEntries();
+  const total = entries.length;
+  if (!total) return;
+  const currentIdx = clamp(state.modalSelectionIndex || 0, 0, total - 1);
+  const targetIdx = clamp(currentIdx + dy, 0, total - 1);
+  const target = entries[targetIdx];
+  if (target?.pilotId) {
+    handlePilotSelect(target.pilotId, { silent: true });
+    state.modalSelectionIndex = targetIdx;
+    focusPilotSelection();
+  }
+}
+
 function sampleOptions(list, count) {
   const pool = [...list];
   for (let i = pool.length - 1; i > 0; i -= 1) {
@@ -3757,7 +3837,6 @@ function resetGame() {
   state.cachedMaxLives = 0;
   state.stageScalingNotified = false;
   state.activePilotId = null;
-  state.selectedPilotId = null;
   state.awaitingPilot = true;
   ensurePilotUnlocks();
   state.running = false;
@@ -3817,6 +3896,12 @@ function resetGame() {
   refreshPauseState();
   markSessionDirty();
   lastSessionSave = -SESSION_SAVE_INTERVAL;
+}
+
+function restoreLastPilotSelection() {
+  const stored = loadLastSelectedPilot();
+  if (!stored || !isPilotUnlocked(stored)) return;
+  state.selectedPilotId = stored;
 }
 
 function getTopScores() {
@@ -6371,6 +6456,27 @@ function bindControls() {
 
   window.addEventListener('keydown', (event) => {
     if (state.awaitingName || isSettingsOpen() || isCatalogOpen()) return;
+    if (state.awaitingPilot && pilotModalBackdrop?.classList.contains('open')) {
+      const moveUp = isKeyBinding(event, state.keyBindings.up);
+      const moveDown = isKeyBinding(event, state.keyBindings.down);
+      const moveLeft = isKeyBinding(event, state.keyBindings.left);
+      const moveRight = isKeyBinding(event, state.keyBindings.right);
+      if (moveUp || moveDown) {
+        event.preventDefault();
+        movePilotSelection(moveDown ? 1 : -1);
+        return;
+      }
+      if (moveLeft || moveRight) {
+        event.preventDefault();
+        return;
+      }
+      const keyValue = normalizeKeyValue(event.key || event.code);
+      if (keyValue === 'enter') {
+        event.preventDefault();
+        handlePilotConfirm();
+        return;
+      }
+    }
     const keyValue = normalizeKeyValue(event.key || event.code);
     if (state.powerModalOpen) {
       const moveLeft = isKeyBinding(event, state.keyBindings.left);
@@ -6716,6 +6822,7 @@ function init() {
   const savedName = loadPlayerName();
   loadPilotProgress();
   resetGame();
+  restoreLastPilotSelection();
   loadPreferences();
   applyTranslations();
   const restored = loadSession();
