@@ -8,7 +8,7 @@
     "build": "sh -c \"if [ -d .git ]; then git fetch --unshallow --tags || git fetch --tags; fi\" && node scripts/bump-build.js && node -e \"const fs=require('fs'); if(!fs.existsSync('node_modules/vite')){console.log('Installing deps via npm ci...'); require('child_process').execSync('npm ci --include=dev', {stdio:'inherit'});} \" && npm run api:build && npm run build:app",
     "build:app": "vite build",
     "preview": "vite preview",
-    "start": "node backend/dist/main.js",
+    "start": "node -e \"const fs=require('fs'); if(!fs.existsSync('backend/dist/main.js')){require('child_process').execSync('npm run api:build', {stdio:'inherit'});} \" && node backend/dist/main.js",
     "api:dev": "node --loader ts-node/esm backend/main.ts",
     "api:build": "tsc -p tsconfig.backend.json",
     "api:start:prod": "node backend/dist/main.js",
