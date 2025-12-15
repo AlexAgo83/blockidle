@@ -12,7 +12,7 @@
     "api:dev": "node --loader ts-node/esm backend/main.ts",
     "api:build": "tsc -p tsconfig.backend.json",
     "api:start:prod": "node backend/dist/main.js",
-    "test": "node --test"
+    "test": "tsx --test backend/**/*.test.ts"
   },
   "keywords": [],
   "author": "",
@@ -35,8 +35,9 @@
   "devDependencies": {
     "@types/express": "^5.0.0",
     "@types/pg": "^8.11.11",
+    "supertest": "^7.1.1",
     "ts-node": "^10.9.2",
-    "typescript": "^5.3.3",
-    "supertest": "^7.1.1"
+    "tsx": "^4.21.0",
+    "typescript": "^5.3.3"
   }
 }
