@@ -2,7 +2,8 @@ import 'reflect-metadata';
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { NestExpressApplication } from '@nestjs/platform-express';
-import { json, Request, Response } from 'express';
+import { json, Request, Response, NextFunction } from 'express';
+import rateLimit from 'express-rate-limit';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -28,6 +29,21 @@ function isLocalOrigin(origin: string) {
 
 async function bootstrap() {
   const allowedOrigins = buildAllowedOrigins();
+
+  const mutateLimiter = rateLimit({
+    windowMs: 60_000,
+    max: 30,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: 'Too many requests, slow down.' }
+  });
+  const readLimiter = rateLimit({
+    windowMs: 60_000,
+    max: 120,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: 'Too many requests, slow down.' }
+  });
 
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {
     cors: {
@@ -56,6 +72,17 @@ async function bootstrap() {
 
   const expressApp = app.getHttpAdapter().getInstance();
   expressApp.set('trust proxy', 1);
+  expressApp.use('/scores', (req: Request, res: Response, next: NextFunction) => {
+    const handler = req.method === 'GET' ? readLimiter : mutateLimiter;
+    return handler(req, res, next);
+  });
+  expressApp.use('/suggestions', (req: Request, res: Response, next: NextFunction) => {
+    const handler = req.method === 'GET' ? readLimiter : mutateLimiter;
+    return handler(req, res, next);
+  });
+  expressApp.use('/commits', readLimiter);
+  expressApp.use('/health', readLimiter);
+
   const distPath = path.join(__dirname, '..', '..', 'dist');
   if (fs.existsSync(distPath)) {
     app.useStaticAssets(distPath);
