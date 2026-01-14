@@ -4,17 +4,33 @@ import { Pool, QueryResult, QueryResultRow } from 'pg';
 @Injectable()
 export class DatabaseService implements OnModuleInit, OnModuleDestroy {
   private pool: Pool | null = null;
+  private schema: string | null = null;
 
   async onModuleInit() {
     const connectionString = process.env.DATABASE_URL;
     if (!connectionString) {
-      console.warn('DATABASE_URL manquant : configurez la variable d’environnement pour Postgres.');
+      throw new Error('DATABASE_URL manquant : configurez la variable d’environnement pour Postgres.');
     }
+    const parsed = new URL(connectionString);
+    const schema = parsed.searchParams.get('schema');
+    if (!schema) {
+      throw new Error('DATABASE_URL doit inclure ?schema=<nom> (schéma dédié requis)');
+    }
+    const safeSchema = schema.replace(/"/g, '""');
+    this.schema = schema;
     this.pool = new Pool({
       connectionString,
       ssl: process.env.PGSSL_DISABLE === '1' ? false : { rejectUnauthorized: false }
     });
-    await this.initSchema();
+    this.pool.on('connect', (client) => {
+      if (this.schema) {
+        client.query(`SET search_path TO "${safeSchema}"`).catch((err) => {
+          console.error('Impossible de définir le search_path', err);
+        });
+      }
+    });
+    await this.query(`SET search_path TO "${safeSchema}"`);
+    await this.verifySchema();
   }
 
   async onModuleDestroy() {
@@ -30,49 +46,13 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
     return this.pool.query<T>(text, params);
   }
 
-  private async initSchema() {
-    await this.query(`
-      CREATE TABLE IF NOT EXISTS scores (
-        id SERIAL PRIMARY KEY,
-        player TEXT NOT NULL,
-        score INTEGER NOT NULL,
-        stage INTEGER DEFAULT 1,
-        level INTEGER DEFAULT 1,
-        ended_at TIMESTAMPTZ DEFAULT now(),
-        created_at TIMESTAMPTZ DEFAULT now(),
-        submitted_at TIMESTAMPTZ DEFAULT now(),
-        build TEXT,
-        powers JSONB,
-        talents JSONB,
-        fusions JSONB
-      )
-    `);
-    await this.query('ALTER TABLE scores ADD COLUMN IF NOT EXISTS stage INTEGER DEFAULT 1');
-    await this.query('ALTER TABLE scores ADD COLUMN IF NOT EXISTS level INTEGER DEFAULT 1');
-    await this.query('ALTER TABLE scores ADD COLUMN IF NOT EXISTS ended_at TIMESTAMPTZ DEFAULT now()');
-    await this.query('ALTER TABLE scores ADD COLUMN IF NOT EXISTS submitted_at TIMESTAMPTZ DEFAULT now()');
-    await this.query('ALTER TABLE scores ADD COLUMN IF NOT EXISTS build TEXT');
-    await this.query('ALTER TABLE scores DROP CONSTRAINT IF EXISTS scores_player_key');
-    await this.query('ALTER TABLE scores ALTER COLUMN build SET DEFAULT \'Old\'');
-    await this.query('UPDATE scores SET build = COALESCE(build, \'Old\') WHERE build IS NULL');
-    await this.query('ALTER TABLE scores ADD COLUMN IF NOT EXISTS powers JSONB');
-    await this.query('ALTER TABLE scores ADD COLUMN IF NOT EXISTS talents JSONB');
-    await this.query('ALTER TABLE scores ADD COLUMN IF NOT EXISTS fusions JSONB');
-    await this.query('ALTER TABLE scores ADD COLUMN IF NOT EXISTS pilot TEXT');
-    await this.query('DROP INDEX IF EXISTS scores_player_build_idx');
-    await this.query('CREATE UNIQUE INDEX IF NOT EXISTS scores_player_build_pilot_idx ON scores (player, build, pilot)');
-
-    await this.query(`
-      CREATE TABLE IF NOT EXISTS suggestions (
-        id SERIAL PRIMARY KEY,
-        player TEXT NOT NULL,
-        category TEXT DEFAULT 'feature',
-        message TEXT NOT NULL,
-        status TEXT DEFAULT 'open',
-        created_at TIMESTAMPTZ DEFAULT now()
-      )
-    `);
-    await this.query('ALTER TABLE suggestions ADD COLUMN IF NOT EXISTS status TEXT DEFAULT \'open\'');
-    await this.query('CREATE INDEX IF NOT EXISTS suggestions_created_at_idx ON suggestions (created_at DESC)');
+  private async verifySchema() {
+    const res = await this.query<{ scores: string | null; suggestions: string | null }>(
+      `SELECT to_regclass('scores') as scores, to_regclass('suggestions') as suggestions`
+    );
+    const tables = res.rows[0];
+    if (!tables?.scores || !tables?.suggestions) {
+      throw new Error('Schéma DB incomplet : exécutez npm run db:push pour créer les tables');
+    }
   }
 }

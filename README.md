@@ -9,14 +9,21 @@ Small idle brick game with a Vite frontend and a NestJS API backed by Postgres. 
 ## Quick start (local)
 1) Install deps: `npm ci`
 2) Start Postgres (e.g. `docker compose up db`)
-3) Set env vars (see below) and run the API: `npm run api:dev`
-4) Start the frontend against that API: `npm run dev`
+3) Set env vars (see below), push the schema, then seed (optional): `npm run db:push && npm run db:seed`
+4) Run the API: `npm run api:dev`
+5) Start the frontend against that API: `npm run dev`
+
+### Database (schéma dédié)
+- `DATABASE_URL` doit inclure `?schema=<nom>` (ex: `postgres://user:pass@host:5432/brickidle?schema=brickidle`). Évitez `schema=public`, surtout en prod.
+- Commandes : `npm run db:schema:ensure` (crée le schéma), `npm run db:push` (ensure schema + Prisma db push), `npm run db:seed` (via `prisma/seed.ts`, nécessite `DATABASE_SEED_PWD`), `npm run db:reset:schema` (drop/recreate schéma, push + seed, refuse en prod/public sauf `SCHEMA_RESET_FORCE=1`).
+- Le backend refuse de démarrer si `DATABASE_URL` n’a pas de schéma ou si les tables du schéma manquent (exécutez `npm run db:push`).
 
 ### Environment
 - Backend:
-  - `DATABASE_URL=postgres://user:pass@host:5432/db`
+  - `DATABASE_URL=postgres://user:pass@host:5432/db?schema=brickidle`
   - `API_KEYS=comma,separated,keys` (required for mutating routes)
   - `PGSSL_DISABLE=1` to disable SSL locally
+  - `DATABASE_SEED_PWD` required to run `npm run db:seed`
   - `PORT` (optional, default 3000)
   - `GITHUB_OWNER` / `GITHUB_REPO` (default: AlexAgo83/blockidle)
   - `GITHUB_TOKEN` (optional, avoids GitHub rate limits)

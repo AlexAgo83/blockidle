@@ -20,7 +20,7 @@ services:
     restart: unless-stopped
     environment:
       NODE_ENV: production
-      DATABASE_URL: postgres://brickidle:brickidle@db:5432/brickidle
+      DATABASE_URL: postgres://brickidle:brickidle@db:5432/brickidle?schema=brickidle
       API_KEYS: ${API_KEYS:-devkey}
       GITHUB_OWNER: ${GITHUB_OWNER:-AlexAgo83}
       GITHUB_REPO: ${GITHUB_REPO:-blockidle}

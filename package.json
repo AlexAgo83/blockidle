@@ -1,6 +1,6 @@
 {
   "name": "brickidle",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "type": "module",
   "main": "index.js",
   "scripts": {
@@ -9,10 +9,14 @@
     "build:app": "vite build",
     "preview": "vite preview",
     "start": "node -e \"const fs=require('fs'); if(!fs.existsSync('backend/dist/main.js')){require('child_process').execSync('npm run api:build', {stdio:'inherit'});} \" && node backend/dist/main.js",
-    "api:dev": "node --loader ts-node/esm backend/main.ts",
+    "api:dev": "tsx backend/main.ts",
     "api:build": "tsc -p tsconfig.backend.json",
     "api:start:prod": "node backend/dist/main.js",
-    "test": "tsx --test backend/**/*.test.ts"
+    "test": "tsx --test backend/**/*.test.ts",
+    "db:schema:ensure": "tsx scripts/db/schema-ensure.ts",
+    "db:push": "tsx scripts/db/push.ts",
+    "db:seed": "tsx prisma/seed.ts",
+    "db:reset:schema": "tsx scripts/db/reset-schema.ts"
   },
   "keywords": [],
   "author": "",
@@ -22,6 +26,7 @@
     "@nestjs/common": "^11.0.6",
     "@nestjs/core": "^11.0.6",
     "@nestjs/platform-express": "^11.0.6",
+    "@prisma/client": "^5.18.0",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.1",
     "cors": "^2.8.5",
@@ -35,6 +40,7 @@
   "devDependencies": {
     "@types/express": "^5.0.0",
     "@types/pg": "^8.11.11",
+    "prisma": "^5.18.0",
     "supertest": "^7.1.1",
     "ts-node": "^10.9.2",
     "tsx": "^4.21.0",

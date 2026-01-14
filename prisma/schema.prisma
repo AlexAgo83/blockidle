@@ -1,0 +1,39 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Score {
+  id          Int      @id @default(autoincrement())
+  player      String
+  score       Int
+  stage       Int      @default(1)
+  level       Int      @default(1)
+  endedAt     DateTime @map("ended_at") @default(now())
+  createdAt   DateTime @map("created_at") @default(now())
+  submittedAt DateTime @map("submitted_at") @default(now())
+  build       String   @default("Old")
+  powers      Json?
+  talents     Json?
+  fusions     Json?
+  pilot       String?
+
+  @@map("scores")
+  @@unique([player, build, pilot])
+}
+
+model Suggestion {
+  id        Int      @id @default(autoincrement())
+  player    String
+  category  String   @default("feature")
+  message   String
+  status    String   @default("open")
+  createdAt DateTime @map("created_at") @default(now())
+
+  @@map("suggestions")
+  @@index([createdAt(sort: Desc)])
+}
