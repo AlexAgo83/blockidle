@@ -84,11 +84,14 @@ async function bootstrap() {
   expressApp.use('/health', readLimiter);
 
   const distPath = path.join(__dirname, '..', '..', 'dist');
-  if (fs.existsSync(distPath)) {
+  const serveStatic = process.env.SERVE_STATIC !== '0';
+  if (serveStatic && fs.existsSync(distPath)) {
     app.useStaticAssets(distPath);
     expressApp.get(/.*/, (_req: Request, res: Response) => {
       res.sendFile(path.join(distPath, 'index.html'));
     });
+  } else if (!serveStatic) {
+    console.warn('Static assets hosting disabled (SERVE_STATIC=0).');
   } else {
     console.warn(`Static assets not found at ${distPath}, skipping frontend hosting.`);
   }
