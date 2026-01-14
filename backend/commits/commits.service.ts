@@ -15,17 +15,23 @@ export class CommitsService {
     if (token) {
       headers.Authorization = `Bearer ${token}`;
     }
-    const response = await fetch(url, { headers });
-    if (!response.ok) {
-      throw new Error(`GitHub API error ${response.status}`);
+    try {
+      const response = await fetch(url, { headers });
+      if (!response.ok) {
+        console.warn(`GitHub API error ${response.status}`);
+        return [];
+      }
+      const data = await response.json();
+      return Array.isArray(data)
+        ? data.map((c: any) => ({
+            hash: c.sha ? c.sha.slice(0, 7) : '',
+            message: c.commit?.message?.split('\n')[0] || '',
+            date: c.commit?.author?.date?.slice(0, 10) || ''
+          }))
+        : [];
+    } catch (err) {
+      console.warn('GitHub API unreachable', err);
+      return [];
     }
-    const data = await response.json();
-    return Array.isArray(data)
-      ? data.map((c: any) => ({
-          hash: c.sha ? c.sha.slice(0, 7) : '',
-          message: c.commit?.message?.split('\n')[0] || '',
-          date: c.commit?.author?.date?.slice(0, 10) || ''
-        }))
-      : [];
   }
 }
