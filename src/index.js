@@ -7170,19 +7170,19 @@ function applyPowerOnHit(ball, brick, now, options = {}) {
     brick.effectUntil = now + 800;
     ball.windPierceLeft = Math.max(0, ball.windPierceLeft || 0) + 2;
     if (!ball.spawnedMirrorClone) {
-      const clone = normalizeBall({
+      const clone = {
         x: ball.x + 6,
         y: ball.y,
         vx: -ball.vx,
         vy: ball.vy,
         r: ball.r,
-        specialPower: 'Mirrorwind',
-        damageScale: 0.6,
-        windPierceLeft: 2,
         returning: false,
         reward: false,
+        specialPower: 'Mirrorwind',
+        damageScale: Number.isFinite(ball.damageScale) ? ball.damageScale * 0.6 : 0.6,
+        windPierceLeft: 2,
         spawnedMirrorClone: true
-      }, { r: ball.r });
+      };
       state.balls.push(clone);
       ball.spawnedMirrorClone = true;
     }
