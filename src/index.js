@@ -2037,8 +2037,8 @@ function getPowerDescription(name) {
       };
     case 'Storm':
       return {
-        plain: 'Fusion of Light + Metal: chains to 2 nearby with +50% damage and a brief stun',
-        rich: '<strong>Fusion</strong> of <span class="power-desc-accent">Light + Metal</span>: chains to <span class="power-desc-accent">2 nearby</span> with <span class="power-desc-accent">+50% damage</span> and brief stun'
+        plain: 'Fusion of Pillar + Metal: chains to 2 nearby with +50% damage and a brief stun',
+        rich: '<strong>Fusion</strong> of <span class="power-desc-accent">Pillar + Metal</span>: chains to <span class="power-desc-accent">2 nearby</span> with <span class="power-desc-accent">+50% damage</span> and brief stun'
       };
     case 'Rust':
       return {
@@ -2084,11 +2084,6 @@ function getPowerDescription(name) {
       return {
         plain: 'Fusion of Beamline + Pillar: fires both horizontal and vertical lasers on hit (1 dmg, ~0.65s cooldown)',
         rich: '<strong>Fusion</strong> of <span class="power-desc-accent">Beamline + Pillar</span>: fires <span class="power-desc-accent">horizontal + vertical</span> lasers on hit <span class="power-desc-muted">(1 dmg, ~0.65s cd)</span>'
-      };
-    case 'Storm':
-      return {
-        plain: 'Fusion of Pillar + Metal: chains to 2 nearby with +50% damage and a brief stun',
-        rich: '<strong>Fusion</strong> of <span class="power-desc-accent">Pillar + Metal</span>: chains to <span class="power-desc-accent">2 nearby</span> with <span class="power-desc-accent">+50% damage</span> and brief stun'
       };
     case 'Aurora':
       return {
