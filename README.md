@@ -1,6 +1,17 @@
 # BrickIdle
 
-Small idle brick game with a Vite frontend and a NestJS API backed by Postgres. The API stores scores and player suggestions, surfaces recent GitHub commits, and exposes a simple healthcheck for uptime probes.
+**[▶ Play the demo](https://block-idle.onrender.com)** (hosted on Render's free tier: the first load can take ~30 s while it wakes up)
+
+A breakout game with roguelite builds. Break bricks before they reach the bottom, level up, and shape each run:
+
+- **Pilots**: each one starts the run with a free power or talent.
+- **Powers and talents**: every level offers an upgrade; up to 4 of each.
+- **Fusions**: some pairs at level 3 merge into a stronger power (Fire + Light → Sun).
+- **Auto-aim**: aim and launch yourself, or let the game fire for you.
+- **Leaderboard and suggestions**: scores and feature/bug ideas are saved online.
+- Available in English, French and Spanish.
+
+Built with a Vite frontend and a NestJS API on Postgres (Prisma).
 
 ## Requirements
 - Node 20+ and npm
@@ -13,10 +24,10 @@ Small idle brick game with a Vite frontend and a NestJS API backed by Postgres. 
 4) Run the API: `npm run api:dev`
 5) Start the frontend against that API: `npm run dev`
 
-### Database (schéma dédié)
-- `DATABASE_URL` doit inclure `?schema=<nom>` (ex: `postgres://user:pass@host:5432/brickidle?schema=brickidle`). Évitez `schema=public`, surtout en prod.
-- Commandes : `npm run db:schema:ensure` (crée le schéma), `npm run db:push` (ensure schema + Prisma db push), `npm run db:seed` (via `prisma/seed.ts`, nécessite `DATABASE_SEED_PWD`), `npm run db:reset:schema` (drop/recreate schéma, push + seed, refuse en prod/public sauf `SCHEMA_RESET_FORCE=1`).
-- Le backend refuse de démarrer si `DATABASE_URL` n’a pas de schéma ou si les tables du schéma manquent (exécutez `npm run db:push`).
+### Database (dedicated schema)
+- `DATABASE_URL` must include `?schema=<name>` (e.g. `postgres://user:pass@host:5432/brickidle?schema=brickidle`). Avoid `schema=public`, especially in production.
+- Commands: `npm run db:schema:ensure` (creates the schema), `npm run db:push` (ensures the schema, then Prisma db push), `npm run db:seed` (runs `prisma/seed.ts`, needs `DATABASE_SEED_PWD`), `npm run db:reset:schema` (drops and recreates the schema, then push and seed; refuses on prod/public unless `SCHEMA_RESET_FORCE=1`).
+- The backend refuses to start if `DATABASE_URL` has no schema or the schema's tables are missing (run `npm run db:push`).
 
 ### Environment
 - Backend:
